@@ -92,9 +92,15 @@ flowchart TD
     - Fast onboarding registration (`/api/auth/complete-onboarding`) $\rightarrow$ provisions `auth.users` and `profiles` dossier.
   - Candidate Dashboard (`/dashboard`) live with dynamic profile data and **30% Profile Completion Bar**.
   - Serial order SQL migrations saved as raw runnable files: `supabase/001_candidate_profiles_and_otp.sql`.
-- [ ] **Phase 3: Candidate Dashboard & Full Training Hub Expansion**
-  - Modular selector: Stage-1 Screening Hub vs Stage-2 Psychological Lab vs GTO Tactical Simulator.
-  - Readiness Index & OLQ diagnostic preview.
+- [x] **Phase 3: Candidate Dashboard & Training Hub Architecture (COMPLETED)**
+  - Reorganized dashboard layout to professional portal standards:
+    - Moved the candidate dossier completion progress meter to the **top-right navigation profile widget** (user avatar, percentage badge, and micro progress bar).
+    - Added welcome mission briefing HUD with entry call-sign and status indicator.
+    - Built the 3 primary selection assessment suites as prominent cards:
+      1. **Screening (Day 01):** CSSS cognitive micro-timers (~70 Qs), OPAM psychometrics (~120 Qs), and legacy OIR/PPDT mode.
+      2. **Psychology (Day 02):** Manso Vacha suite covering TAT (4-min slides), WAT (15s words), SRT, and SD.
+      3. **GTO (Day 03 & 04):** Karmana ground series featuring GPE tactical sand models, PGT/HGT bridging physics, and Lecturette intelligence.
+  - Zero build errors, fully type-checked with TypeScript and Next.js 16.
 - [ ] **Phase 4: Stage-1 Test Engine (CSSS + OPAM)**
   - Micro-timer runner (16-30s auto-advancing, no back button).
   - Web Audio API integration for tone and phonetic callouts.
