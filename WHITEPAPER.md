@@ -72,9 +72,12 @@ flowchart TD
 - [x] **Phase 0: Ground-Truth Research & Protocol Mapping**
   - Mapped DIPR CSSS & OPAM constraints (per-question timers, audio discrimination, Lie scales, no-backtracking rule).
 - [x] **Phase 1: Military Theme, Branding & High-UX Homepage (COMPLETED & REFINED)**
-  - Rebranded to **SSB ASTRA** with high-polish military officer crossed sabres emblem.
-  - Eliminated wedge/flat artifacts: tapered spear-point blades, illuminated fullers (blood grooves), curved cavalry quillons, ribbed hilts, and a faceted 8-pointed gold star crest.
-  - Complete App Icon & Favicon suite generated for Vercel, browser address bar, Android PWA (`/icon-192.png`, `/icon-512.png`), and iOS home screen (`/apple-touch-icon.png`).
+  - Rebranded to **SSB ASTRA** with authentic Indian Army-style bare-metal golden crossed scimitars / sabres.
+  - Web UI: Clean, transparent background featuring curved talwar blades, bevel spines, traditional crossguards with quillon knobs, and disc pommels.
+  - App Icon & Favicon Suite: Regimental Indian Army Crimson Red background with golden crossed swords and border, generated across all formats:
+    - Android PWA: `/icon-192.png` & `/icon-512.png`
+    - iOS Home Screen: `/apple-touch-icon.png` (180x180)
+    - Browser & Vercel Tab: `favicon.ico`, `favicon-32x32.png`, `favicon-16x16.png`
   - Web App Manifest configured (`public/manifest.json`).
   - Dual military theme switcher (Air Force Blue Light / Olive Army Dark).
   - Cleaned tags and layout fitted cleanly within viewports.
