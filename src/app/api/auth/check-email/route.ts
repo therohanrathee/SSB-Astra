@@ -56,7 +56,7 @@ export async function POST(req: Request) {
 
     // 3. Send email using Resend
     if (resend) {
-      const fromEmail = process.env.RESEND_FROM_EMAIL || "SSB Astra <onboarding@ssbastra.in>";
+      const fromEmail = process.env.RESEND_FROM_EMAIL || "SSB Astra <mails@ssbastra.in>";
       try {
         await resend.emails.send({
           from: fromEmail,

@@ -84,7 +84,7 @@ flowchart TD
 - [x] **Phase 2: Authentication & Candidate Onboarding (COMPLETED & VERIFIED)**
   - Single Smart Login / Signup flow implemented (`/login`).
   - Supabase PostgreSQL schema executed via `supabase/001_candidate_profiles_and_otp.sql`.
-  - Resend API key configured for live email OTP dispatch (`onboarding@resend.dev` / `onboarding@ssbastra.in`).
+  - Resend live transactional email delivery configured from custom domain: `SSB Astra <mails@ssbastra.in>`.
   - Live Supabase connection configured & verified:
     - User identity check (`/api/auth/check-email`) $\rightarrow$ identifies new vs existing aspirants.
     - 6-digit OTP verification (`/api/auth/verify-otp`) $\rightarrow$ verified against database table `email_otps`.
