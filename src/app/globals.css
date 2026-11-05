@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Air Force Blue & Navy Theme (Light Mode) */
+    --canvas-bg: #f8fafc;
+    --canvas-surface: #ffffff;
+    --canvas-surface-subtle: #f1f5f9;
+    --canvas-border: #cbd5e1;
+    --canvas-border-subtle: #e2e8f0;
+
+    --fg-primary: #0f172a;
+    --fg-secondary: #334155;
+    --fg-muted: #64748b;
+
+    --service-badge-bg: #e0f2fe;
+    --service-badge-text: #0369a1;
+    --service-badge-border: #bae6fd;
+
+    --primary-accent: #0284c7; /* Air Force Blue */
+    --primary-hover: #0369a1;
+    --primary-glow: rgba(2, 132, 199, 0.18);
+
+    --secondary-accent: #0f172a; /* Deep Navy */
+    --gold-accent: #d97706; /* Golden Crest Gold */
+
+    --radar-grid: rgba(2, 132, 199, 0.12);
+    --hud-border: #94a3b8;
+  }
+
+  .dark {
+    /* Tactical Military Olive & Combat Camo Theme (Dark Mode) */
+    --canvas-bg: #0b0f0a; /* Deep Camo Night */
+    --canvas-surface: #131911; /* Olive Bunker Surface */
+    --canvas-surface-subtle: #192217;
+    --canvas-border: #2d3b2a;
+    --canvas-border-subtle: #212c1e;
+
+    --fg-primary: #f2f5f1;
+    --fg-secondary: #cad5c7;
+    --fg-muted: #849680;
+
+    --service-badge-bg: rgba(77, 124, 15, 0.2);
+    --service-badge-text: #84cc16;
+    --service-badge-border: rgba(132, 204, 22, 0.3);
+
+    --primary-accent: #65a30d; /* Tactical Military Olive */
+    --primary-hover: #4d7c0f;
+    --primary-glow: rgba(101, 163, 13, 0.2);
+
+    --secondary-accent: #ca8a04; /* Desert Field Tan */
+    --gold-accent: #eab308;
+
+    --radar-grid: rgba(101, 163, 13, 0.15);
+    --hud-border: #3f523b;
+  }
+}
+
+body {
+  background-color: var(--canvas-bg);
+  color: var(--fg-primary);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
+}
+
+/* Military Grid & Cockpit HUD Patterns */
+.bg-military-grid {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, var(--radar-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--radar-grid) 1px, transparent 1px);
+}
+
+.radar-sweep {
+  background: conic-gradient(from 0deg at 50% 50%, transparent 280deg, var(--primary-glow) 360deg);
+  animation: sweep 4s linear infinite;
+}
+
+@keyframes sweep {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Vector Line Glow */
+.vector-line-glow {
+  filter: drop-shadow(0 0 6px var(--primary-accent));
+}
+
+/* Tactical Corner Brackets for HUD cards */
+.hud-corner {
+  position: relative;
+}
+
+.hud-corner::before,
+.hud-corner::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-color: var(--primary-accent);
+  pointer-events: none;
+}
+
+.hud-corner::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid;
+  border-left: 2px solid;
+}
+
+.hud-corner::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid;
+  border-right: 2px solid;
+}

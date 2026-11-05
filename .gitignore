@@ -1,0 +1,56 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+
+# Next.js Build Output
+/.next/
+/out/
+
+# Environment Variables & Secrets (CRITICAL SECURITY)
+.env
+.env*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+*.env.*
+!.env.example
+
+# Supabase Local & Credentials
+.supabase/
+supabase/.temp/
+
+# Debug Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Next.js telemetry & metadata
+.next/
+next-env.d.ts
+
+# OS & Editor generated files
+.DS_Store
+*.pem
+*.key
+*.cert
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary / Scratch directories
+scratch/
+tmp/
+*.tmp
