@@ -71,8 +71,11 @@ flowchart TD
 ### Phase Tracker:
 - [x] **Phase 0: Ground-Truth Research & Protocol Mapping**
   - Mapped DIPR CSSS & OPAM constraints (per-question timers, audio discrimination, Lie scales, no-backtracking rule).
-- [x] **Phase 1: Military Theme, Branding & High-UX Homepage (COMPLETED)**
-  - Rebranded to **SSB ASTRA** with custom Indian Army Crossed Swords emblem.
+- [x] **Phase 1: Military Theme, Branding & High-UX Homepage (COMPLETED & REFINED)**
+  - Rebranded to **SSB ASTRA** with high-polish military officer crossed sabres emblem.
+  - Eliminated wedge/flat artifacts: tapered spear-point blades, illuminated fullers (blood grooves), curved cavalry quillons, ribbed hilts, and a faceted 8-pointed gold star crest.
+  - Complete App Icon & Favicon suite generated for Vercel, browser address bar, Android PWA (`/icon-192.png`, `/icon-512.png`), and iOS home screen (`/apple-touch-icon.png`).
+  - Web App Manifest configured (`public/manifest.json`).
   - Dual military theme switcher (Air Force Blue Light / Olive Army Dark).
   - Cleaned tags and layout fitted cleanly within viewports.
 - [x] **Phase 2: Authentication & Candidate Onboarding (COMPLETED & VERIFIED)**
