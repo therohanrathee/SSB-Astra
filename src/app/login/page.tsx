@@ -433,7 +433,7 @@ export default function LoginPage() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Rohan Sharma"
-                    className="block w-full pl-9 pr-3 py-2 text-xs rounded border border-[var(--canvas-border)] bg-[var(--canvas-bg)] text-[var(--fg-primary)] placeholder-[var(--fg-muted)] focus:outline-none focus:border-[var(--primary-accent)]"
+                    className="block w-full pl-10 pr-3 py-2.5 text-xs rounded border border-[var(--canvas-border)] bg-[var(--canvas-bg)] text-[var(--fg-primary)] placeholder-[var(--fg-muted)] focus:outline-none focus:border-[var(--primary-accent)]"
                   />
                 </div>
               </div>
@@ -451,7 +451,7 @@ export default function LoginPage() {
                     required
                     value={dob}
                     onChange={(e) => setDob(e.target.value)}
-                    className="block w-full pl-9 pr-3 py-2 text-xs rounded border border-[var(--canvas-border)] bg-[var(--canvas-bg)] text-[var(--fg-primary)] focus:outline-none focus:border-[var(--primary-accent)]"
+                    className="block w-full pl-10 pr-3 py-2.5 text-xs rounded border border-[var(--canvas-border)] bg-[var(--canvas-bg)] text-[var(--fg-primary)] focus:outline-none focus:border-[var(--primary-accent)]"
                   />
                 </div>
               </div>
@@ -461,13 +461,13 @@ export default function LoginPage() {
                   Target SSB Entry
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[var(--fg-muted)]">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[var(--fg-muted)] z-10">
                     <Award className="w-4 h-4" />
                   </div>
                   <select
                     value={targetEntry}
                     onChange={(e) => setTargetEntry(e.target.value)}
-                    className="block w-full pl-9 pr-3 py-2 text-xs rounded border border-[var(--canvas-border)] bg-[var(--canvas-bg)] text-[var(--fg-primary)] focus:outline-none focus:border-[var(--primary-accent)]"
+                    className="block w-full pl-10 pr-8 py-2.5 text-xs rounded border border-[var(--canvas-border)] bg-[var(--canvas-bg)] text-[var(--fg-primary)] focus:outline-none focus:border-[var(--primary-accent)] appearance-none cursor-pointer"
                   >
                     <option value="NDA">NDA (National Defence Academy)</option>
                     <option value="CDS">CDS (IMA / OTA / AFA / INA)</option>
@@ -477,6 +477,9 @@ export default function LoginPage() {
                     <option value="NCC">NCC Special Entry Scheme</option>
                     <option value="OTHER">Other Officer Entry</option>
                   </select>
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[var(--fg-muted)]">
+                    <span className="text-[10px]">▼</span>
+                  </div>
                 </div>
               </div>
 
