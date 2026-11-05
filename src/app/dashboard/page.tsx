@@ -129,7 +129,7 @@ export default function DashboardPage() {
                   {profile?.full_name}
                 </span>
                 <span className="text-[10px] font-bold text-[var(--gold-accent)]">
-                  {completionPct}%
+                  {completionPct}% PIQ
                 </span>
               </div>
               
@@ -142,11 +142,11 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Quick Action to Complete Dossier */}
+            {/* Quick Action to Complete PIQ */}
             <button
-              onClick={() => alert("PIQ Dossier editor will open in the next module.")}
+              onClick={() => alert("PIQ (Personal Information Questionnaire) editor will open in the next module.")}
               className="text-[10px] font-bold px-2 py-1 rounded bg-[var(--primary-accent)] text-white hover:bg-[var(--primary-hover)] transition-all whitespace-nowrap hidden md:inline-block"
-              title="Complete your Personal Information Questionnaire to reach 100%"
+              title="Complete your Personal Information Questionnaire (PIQ) to reach 100%"
             >
               Complete PIQ
             </button>

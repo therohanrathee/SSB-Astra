@@ -142,7 +142,7 @@ export default function LoginPage() {
     }
     setErrorMsg("");
     setStep("onboarding");
-    setInfoMsg("Almost done! Provide basic candidate details for your SSB dossier.");
+    setInfoMsg("Almost done! Provide basic candidate details for your SSB PIQ.");
   };
 
   // STEP 4: Complete Fast Onboarding
@@ -228,7 +228,7 @@ export default function LoginPage() {
               {step === "password_login" && "STEP 02: CANDIDATE AUTH"}
               {step === "otp_verify" && "STEP 02: EMAIL VERIFICATION"}
               {step === "create_password" && "STEP 03: CREDENTIAL CREATION"}
-              {step === "onboarding" && "STEP 04: DOSSIER INITIALIZATION"}
+              {step === "onboarding" && "STEP 04: PIQ INITIALIZATION"}
             </span>
             <span className="text-[var(--gold-accent)]">
               {step === "email" && "1 / 4"}
@@ -488,7 +488,7 @@ export default function LoginPage() {
                 disabled={loading}
                 className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded text-xs font-bold uppercase tracking-wider text-white bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] transition-all shadow-md active:scale-95 disabled:opacity-50"
               >
-                <span>{loading ? "Registering Dossier..." : "Complete & Enter Dashboard"}</span>
+                <span>{loading ? "Registering PIQ..." : "Complete & Enter Dashboard"}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
