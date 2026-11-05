@@ -72,8 +72,8 @@ flowchart TD
 - [x] **Phase 0: Ground-Truth Research & Protocol Mapping**
   - Mapped DIPR CSSS & OPAM constraints (per-question timers, audio discrimination, Lie scales, no-backtracking rule).
 - [x] **Phase 1: Military Theme, Branding & High-UX Homepage (COMPLETED & REFINED)**
-  - Rebranded to **SSB ASTRA** with authentic Indian Army-style bare-metal golden crossed scimitars / sabres.
-  - Web UI: Clean, transparent background featuring curved talwar blades, bevel spines, traditional crossguards with quillon knobs, and disc pommels.
+  - Rebranded to **SSB ASTRA** with authentic Indian Army straight crossed broadswords (hilts at the bottom, straight double-edged blades pointing upward and outward in saltire).
+  - Web UI: Clean, transparent background featuring bare-metal gold faceted blades, crisp center spine ridge, straight crossguards with ball finials, and round pommels.
   - App Icon & Favicon Suite: Regimental Indian Army Crimson Red background with golden crossed swords and border, generated across all formats:
     - Android PWA: `/icon-192.png` & `/icon-512.png`
     - iOS Home Screen: `/apple-touch-icon.png` (180x180)
