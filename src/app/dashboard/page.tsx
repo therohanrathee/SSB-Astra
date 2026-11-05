@@ -20,12 +20,14 @@ import {
 } from "lucide-react";
 import CrossedSwords from "@/components/CrossedSwords";
 import { supabase } from "@/lib/supabaseClient";
+import { getDynamicOfficerGreeting } from "@/lib/greeting";
 
 interface UserProfile {
   id: string;
   email: string;
   full_name: string;
   dob?: string;
+  gender?: string | null; // Future field: to be populated in Phase 3.5 PIQ completion
   target_entry?: string;
   profile_completion_pct: number;
 }
@@ -34,6 +36,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [greeting, setGreeting] = useState("Welcome, Future Officer");
 
   useEffect(() => {
     async function loadUser() {
@@ -41,13 +44,16 @@ export default function DashboardPage() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           // If no active session, show preview cadet
-          setProfile({
+          const demoProfile = {
             id: "demo-officer",
             email: "candidate@ssbastra.in",
             full_name: "Cadet Aspirant",
             target_entry: "NDA",
+            gender: null,
             profile_completion_pct: 30,
-          });
+          };
+          setProfile(demoProfile);
+          setGreeting(getDynamicOfficerGreeting(demoProfile.full_name, demoProfile.gender));
         } else {
           // Fetch user profile from Supabase
           const { data } = await supabase
@@ -58,14 +64,18 @@ export default function DashboardPage() {
 
           if (data) {
             setProfile(data);
+            setGreeting(getDynamicOfficerGreeting(data.full_name, data.gender));
           } else {
-            setProfile({
+            const fallbackProfile = {
               id: user.id,
               email: user.email || "",
               full_name: user.user_metadata?.full_name || "Cadet Aspirant",
               target_entry: user.user_metadata?.target_entry || "CDS",
+              gender: null,
               profile_completion_pct: 30,
-            });
+            };
+            setProfile(fallbackProfile);
+            setGreeting(getDynamicOfficerGreeting(fallbackProfile.full_name, fallbackProfile.gender));
           }
         }
       } catch (err) {
@@ -174,7 +184,7 @@ export default function DashboardPage() {
               SSB ENTRY: {profile?.target_entry || "NDA"} • MISSION ACTIVE
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--fg-primary)] tracking-tight">
-              Officer Candidate Terminal
+              {greeting}
             </h1>
             <p className="text-xs sm:text-sm text-[var(--fg-secondary)] font-sans max-w-2xl mt-1">
               Select your targeted testing battery below to begin high-fidelity practice drills or launch complete mock evaluation sessions.

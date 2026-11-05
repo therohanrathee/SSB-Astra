@@ -95,12 +95,19 @@ flowchart TD
 - [x] **Phase 3: Candidate Dashboard & Training Hub Architecture (COMPLETED)**
   - Reorganized dashboard layout to professional portal standards:
     - Moved the candidate dossier completion progress meter to the **top-right navigation profile widget** (user avatar, percentage badge, and micro progress bar).
-    - Added welcome mission briefing HUD with entry call-sign and status indicator.
+    - Replaced static headline with dynamic military greeting engine (`getDynamicOfficerGreeting`):
+      - Adapts to time of day (*Good Morning / Good Afternoon / Good Evening*).
+      - Randomizes between candidate's first name, *"Future Officer"*, *"Officer Aspirant"*, or *"Cadet"*.
+      - Future-ready gender architecture: When `gender` is added in PIQ completion, will automatically unlock *"Gentleman"* (male) or *"Lady"* (female).
     - Built the 3 primary selection assessment suites as prominent cards:
       1. **Screening (Day 01):** CSSS cognitive micro-timers (~70 Qs), OPAM psychometrics (~120 Qs), and legacy OIR/PPDT mode.
       2. **Psychology (Day 02):** Manso Vacha suite covering TAT (4-min slides), WAT (15s words), SRT, and SD.
       3. **GTO (Day 03 & 04):** Karmana ground series featuring GPE tactical sand models, PGT/HGT bridging physics, and Lecturette intelligence.
   - Zero build errors, fully type-checked with TypeScript and Next.js 16.
+- [ ] **Phase 3.5: Full PIQ (Personal Information Questionnaire) Profile Completion Engine (NEXT TASK)**
+  - Database Migration `002_add_piq_fields.sql`: add `gender`, `father_occupation`, `education_10th_12th_grad`, `ncc_details`, `sports_participation`, `achievements`.
+  - Full-screen PIQ wizard advancing profile completion from 30% to 100%.
+  - Unlocks gender-specific salutations (*"Good Morning, Gentleman" / "Good Morning, Lady"*).
 - [ ] **Phase 4: Stage-1 Test Engine (CSSS + OPAM)**
   - Micro-timer runner (16-30s auto-advancing, no back button).
   - Web Audio API integration for tone and phonetic callouts.
