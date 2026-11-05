@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { Resend } from "resend";
+import { getAdaptiveOtpEmailHtml } from "@/lib/emailTemplates";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
@@ -62,23 +63,7 @@ export async function POST(req: Request) {
           from: fromEmail,
           to: normalizedEmail,
           subject: `${otpCode} is your SSB Astra Verification Code`,
-          html: `
-            <div style="font-family: Arial, sans-serif; background-color: #0b0f0a; color: #f2f5f1; padding: 30px; border-radius: 8px; max-width: 500px; margin: auto;">
-              <div style="border-bottom: 1px solid #2d3b2a; padding-bottom: 15px; margin-bottom: 20px;">
-                <h2 style="color: #65a30d; margin: 0;">SSB ASTRA</h2>
-                <p style="font-size: 11px; color: #ca8a04; margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 1px;">Officer Intelligence Suite</p>
-              </div>
-              <p style="font-size: 14px; line-height: 1.5; color: #cad5c7;">Candidate Verification Protocol,</p>
-              <p style="font-size: 14px; line-height: 1.5; color: #cad5c7;">Use the one-time authentication code below to verify your email and activate your officer preparation profile:</p>
-              <div style="background-color: #131911; border: 1px solid #65a30d; padding: 16px; text-align: center; font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #84cc16; border-radius: 6px; margin: 25px 0;">
-                ${otpCode}
-              </div>
-              <p style="font-size: 12px; color: #849680;">This code will expire in 10 minutes. If you did not request this verification, please disregard this email.</p>
-              <div style="border-top: 1px solid #2d3b2a; padding-top: 15px; margin-top: 30px; font-size: 10px; color: #849680; text-align: center;">
-                Tri-Services Officer Preparation Platform • Indian Army, Navy & Air Force
-              </div>
-            </div>
-          `,
+          html: getAdaptiveOtpEmailHtml(otpCode),
         });
       } catch (emailErr) {
         console.error("Resend delivery failed:", emailErr);
