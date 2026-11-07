@@ -92,9 +92,16 @@ flowchart TD
     - Fast onboarding registration (`/api/auth/complete-onboarding`) $\rightarrow$ provisions `auth.users` and `profiles` dossier.
   - Candidate Dashboard (`/dashboard`) live with dynamic profile data and **30% Profile Completion Bar**.
   - Serial order SQL migrations saved as raw runnable files: `supabase/001_candidate_profiles_and_otp.sql`.
-- [x] **Phase 3: Candidate Dashboard & Training Hub Architecture (COMPLETED)**
+- [x] **Phase 3: Candidate Dashboard & Training Hub Architecture (COMPLETED & REFINED)**
   - Reorganized dashboard layout to professional portal standards:
-    - Moved the candidate dossier completion progress meter to the **top-right navigation profile widget** (user avatar, percentage badge, and micro progress bar).
+    - **Header Profile Architecture:**
+      - Removed dedicated external logout button from dashboard header.
+      - Integrated profile dropdown menu toggled by clicking the avatar icon (contains candidate details, Edit PIQ shortcut, and Sign Out action).
+      - **Extended Window State (when PIQ < 100%):** Profile icon on the far right, candidate name/meter in the middle, and **`Complete PIQ` action button on the left**.
+      - **Compact State (when PIQ = 100%):** Collapses into a standalone avatar trigger on the right.
+    - **Session Persistence & Smart Navigation:**
+      - Homepage top bar automatically detects user session via Supabase auth state (`onAuthStateChange`).
+      - Logged-in users see a direct **`Go to Dashboard`** button instead of having to log in every time.
     - Replaced static headline with dynamic military greeting engine (`getDynamicOfficerGreeting`):
       - Adapts to time of day (*Good Morning / Good Afternoon / Good Evening*).
       - Randomizes between candidate's first name, *"Future Officer"*, *"Officer Aspirant"*, or *"Cadet"*.

@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Sun, Moon, Terminal, Award, HelpCircle } from "lucide-react";
+import { Sun, Moon, Terminal, Award, HelpCircle, LayoutDashboard, UserCheck } from "lucide-react";
 import CrossedSwords from "@/components/CrossedSwords";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function Navbar() {
   const [isDark, setIsDark] = useState(true);
   const [scrolled, setScrolled] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -15,11 +17,26 @@ export default function Navbar() {
     };
     window.addEventListener("scroll", handleScroll);
 
-    // Initial check
+    // Initial check for theme
     const isDocDark = document.documentElement.classList.contains("dark");
     setIsDark(isDocDark);
 
-    return () => window.removeEventListener("scroll", handleScroll);
+    // Check user auth state
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsLoggedIn(!!user);
+    };
+    checkUser();
+
+    // Listen to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session?.user);
+    });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const toggleTheme = () => {
@@ -117,13 +134,23 @@ export default function Navbar() {
             )}
           </button>
 
-          {/* Single Smart Login / Signup CTA */}
-          <Link
-            href="/login"
-            className="inline-flex items-center justify-center px-4 py-2 rounded text-xs font-mono font-bold uppercase tracking-wider text-white transition-all bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] shadow-sm hover:shadow-[0_0_15px_var(--primary-glow)] active:scale-95"
-          >
-            <span>Login / Signup</span>
-          </Link>
+          {/* Conditional Auth CTA: Dashboard if logged in, otherwise Login/Signup */}
+          {isLoggedIn ? (
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-1.5 justify-center px-4 py-2 rounded text-xs font-mono font-bold uppercase tracking-wider text-white transition-all bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] shadow-sm hover:shadow-[0_0_15px_var(--primary-glow)] active:scale-95"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span>Go to Dashboard</span>
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className="inline-flex items-center justify-center px-4 py-2 rounded text-xs font-mono font-bold uppercase tracking-wider text-white transition-all bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] shadow-sm hover:shadow-[0_0_15px_var(--primary-glow)] active:scale-95"
+            >
+              <span>Login / Signup</span>
+            </Link>
+          )}
         </div>
       </div>
     </header>

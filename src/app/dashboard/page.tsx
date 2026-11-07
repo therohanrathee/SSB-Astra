@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
@@ -16,7 +16,8 @@ import {
   Sparkles, 
   Clock, 
   Flame, 
-  Target 
+  Target,
+  Edit3
 } from "lucide-react";
 import CrossedSwords from "@/components/CrossedSwords";
 import { supabase } from "@/lib/supabaseClient";
@@ -37,6 +38,19 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [greeting, setGreeting] = useState("Welcome, Future Officer");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Close dropdown on outside click
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     async function loadUser() {
@@ -122,54 +136,99 @@ export default function DashboardPage() {
         </Link>
 
         {/* Right: Professional User Profile Widget with Completion Meter */}
-        <div className="flex items-center gap-3 sm:gap-5">
-          
-          {/* Embedded Profile Status & Completion Bar */}
-          <div className="flex items-center gap-3 bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)] rounded-lg py-1.5 px-3">
-            
-            {/* User Avatar Circle */}
-            <div className="w-8 h-8 rounded-full border border-[var(--primary-accent)]/40 bg-[var(--primary-accent)]/10 text-[var(--primary-accent)] flex items-center justify-center font-bold text-xs shrink-0">
-              {profile?.full_name?.charAt(0).toUpperCase() || "C"}
-            </div>
-
-            {/* Candidate Metadata & Micro Progress */}
-            <div className="hidden sm:block text-left">
-              <div className="flex items-center justify-between gap-3 leading-tight">
-                <span className="text-xs font-bold text-[var(--fg-primary)] max-w-[120px] truncate">
-                  {profile?.full_name}
-                </span>
-                <span className="text-[10px] font-bold text-[var(--gold-accent)]">
-                  {completionPct}% PIQ
-                </span>
-              </div>
+        <div className="relative" ref={menuRef}>
+          {completionPct < 100 ? (
+            /* Extended Profile Window when profile is not complete:
+               Complete button on LEFT, Profile info & Avatar on RIGHT */
+            <div className="flex items-center gap-2.5 sm:gap-3 bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)] rounded-lg py-1.5 px-3">
               
-              {/* Micro Progress Bar */}
-              <div className="w-28 h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden mt-1">
-                <div
-                  className="h-full bg-gradient-to-r from-[var(--gold-accent)] to-[var(--primary-accent)]"
-                  style={{ width: `${completionPct}%` }}
-                />
+              {/* Complete PIQ Button on the LEFT */}
+              <button
+                onClick={() => alert("PIQ (Personal Information Questionnaire) editor will open in the next module.")}
+                className="text-[10px] font-bold px-2.5 py-1 rounded bg-[var(--primary-accent)] text-white hover:bg-[var(--primary-hover)] transition-all whitespace-nowrap active:scale-95 shadow-sm"
+                title="Complete your Personal Information Questionnaire (PIQ) to reach 100%"
+              >
+                Complete PIQ
+              </button>
+
+              {/* Candidate Info & Micro Progress */}
+              <div className="hidden sm:block text-right">
+                <div className="flex items-center justify-end gap-2 leading-tight">
+                  <span className="text-xs font-bold text-[var(--fg-primary)] max-w-[120px] truncate">
+                    {profile?.full_name}
+                  </span>
+                  <span className="text-[10px] font-bold text-[var(--gold-accent)]">
+                    {completionPct}% PIQ
+                  </span>
+                </div>
+                
+                {/* Micro Progress Bar */}
+                <div className="w-24 h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden mt-1 ml-auto">
+                  <div
+                    className="h-full bg-gradient-to-r from-[var(--gold-accent)] to-[var(--primary-accent)]"
+                    style={{ width: `${completionPct}%` }}
+                  />
+                </div>
               </div>
+
+              {/* Profile Avatar Trigger Button on the RIGHT */}
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="w-8 h-8 rounded-full border border-[var(--primary-accent)]/50 bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] hover:border-[var(--primary-accent)] flex items-center justify-center font-bold text-xs shrink-0 transition-transform active:scale-95 focus:outline-none"
+                title="Account menu"
+              >
+                {profile?.full_name?.charAt(0).toUpperCase() || "C"}
+              </button>
             </div>
-
-            {/* Quick Action to Complete PIQ */}
+          ) : (
+            /* Compact Icon when profile is 100% complete */
             <button
-              onClick={() => alert("PIQ (Personal Information Questionnaire) editor will open in the next module.")}
-              className="text-[10px] font-bold px-2 py-1 rounded bg-[var(--primary-accent)] text-white hover:bg-[var(--primary-hover)] transition-all whitespace-nowrap hidden md:inline-block"
-              title="Complete your Personal Information Questionnaire (PIQ) to reach 100%"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="w-9 h-9 rounded-full border border-[var(--primary-accent)]/60 bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] hover:border-[var(--primary-accent)] flex items-center justify-center font-bold text-sm shrink-0 transition-transform active:scale-95 shadow-sm focus:outline-none"
+              title="Account menu"
             >
-              Complete PIQ
+              {profile?.full_name?.charAt(0).toUpperCase() || "C"}
             </button>
-          </div>
+          )}
 
-          {/* Sign Out Button */}
-          <button
-            onClick={handleLogout}
-            className="p-2 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface)] hover:border-rose-500 hover:text-rose-500 transition-colors"
-            title="Sign Out"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          {/* Profile Dropdown Menu with Logout Option */}
+          {menuOpen && (
+            <div className="absolute right-0 mt-2 w-60 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface)] shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100 font-mono">
+              <div className="p-2 border-b border-[var(--canvas-border)] mb-1">
+                <div className="text-xs font-bold text-[var(--fg-primary)] truncate">
+                  {profile?.full_name}
+                </div>
+                <div className="text-[10px] text-[var(--fg-muted)] truncate">
+                  {profile?.email}
+                </div>
+                <div className="mt-1 inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-[var(--service-badge-bg)] text-[var(--service-badge-text)] font-semibold">
+                  ENTRY: {profile?.target_entry || "NDA"}
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  alert("PIQ (Personal Information Questionnaire) editor will open in the next module.");
+                }}
+                className="w-full text-left flex items-center gap-2 px-2.5 py-2 text-xs rounded hover:bg-[var(--canvas-surface-subtle)] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] transition-colors"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
+                <span>Edit PIQ Details</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  handleLogout();
+                }}
+                className="w-full text-left flex items-center gap-2 px-2.5 py-2 text-xs rounded hover:bg-rose-500/10 text-rose-500 transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
