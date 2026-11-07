@@ -143,13 +143,13 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2.5 sm:gap-3 bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)] rounded-lg py-1.5 px-3">
               
               {/* Complete PIQ Button on the LEFT */}
-              <button
-                onClick={() => alert("PIQ (Personal Information Questionnaire) editor will open in the next module.")}
-                className="text-[10px] font-bold px-2.5 py-1 rounded bg-[var(--primary-accent)] text-white hover:bg-[var(--primary-hover)] transition-all whitespace-nowrap active:scale-95 shadow-sm"
+              <Link
+                href="/profile"
+                className="text-[10px] font-bold px-2.5 py-1 rounded bg-[var(--primary-accent)] text-white hover:bg-[var(--primary-hover)] transition-all whitespace-nowrap active:scale-95 shadow-sm inline-block text-center"
                 title="Complete your Personal Information Questionnaire (PIQ) to reach 100%"
               >
                 Complete PIQ
-              </button>
+              </Link>
 
               {/* Candidate Info & Micro Progress */}
               <div className="hidden sm:block text-right">
@@ -206,16 +206,14 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  alert("PIQ (Personal Information Questionnaire) editor will open in the next module.");
-                }}
+              <Link
+                href="/profile"
+                onClick={() => setMenuOpen(false)}
                 className="w-full text-left flex items-center gap-2 px-2.5 py-2 text-xs rounded hover:bg-[var(--canvas-surface-subtle)] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] transition-colors"
               >
                 <Edit3 className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
                 <span>Edit PIQ Details</span>
-              </button>
+              </Link>
 
               <button
                 onClick={() => {

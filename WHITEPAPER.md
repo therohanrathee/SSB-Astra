@@ -111,10 +111,23 @@ flowchart TD
       2. **Psychology (Day 02):** Manso Vacha suite covering TAT (4-min slides), WAT (15s words), SRT, and SD.
       3. **GTO (Day 03 & 04):** Karmana ground series featuring GPE tactical sand models, PGT/HGT bridging physics, and Lecturette intelligence.
   - Zero build errors, fully type-checked with TypeScript and Next.js 16.
-- [ ] **Phase 3.5: Full PIQ (Personal Information Questionnaire) Profile Completion Engine (NEXT TASK)**
-  - Database Migration `002_add_piq_fields.sql`: add `gender`, `father_occupation`, `education_10th_12th_grad`, `ncc_details`, `sports_participation`, `achievements`.
-  - Full-screen PIQ wizard advancing profile completion from 30% to 100%.
-  - Unlocks gender-specific salutations (*"Good Morning, Gentleman" / "Good Morning, Lady"*).
+- [x] **Phase 3.5: PIQ (Personal Information Questionnaire) Analysis & AI Autofill UI (IN PROGRESS / UI BUILT)**
+  - **Comprehensive DIPR Form 107-A Analysis:** Analyzed official DIPR Questionnaire No. 107-A (Revised) structure across both Page 1 and Page 2 (14 distinct items, 4 complex nested matrices: Family, Education, Sports, Previous SSB attempts).
+  - **Sample Blank PIQ Delivery:** Added official DIPR 107-A blank PDF at `public/sample_piq.pdf` with direct 1-click download on candidate profile.
+  - **AI Smart Extraction UI ("Analyse & Fill Information using PIQ"):**
+    - Drag-and-drop / upload file intake for filled PIQ scans and PDFs.
+    - AI OCR simulation pipeline with real-time HUD scanning and instant field population.
+    - 1-click interactive demo auto-fill for frictionless testing.
+  - **Profile Page (`src/app/profile/page.tsx`) Deployed:**
+    - Locked email credential field (read-only with security padlock badge).
+    - 4 structured military tabbed panels:
+      1. *Identity & Demographics* (Items 1-3, 5: Name, Father's Name, DOB, Gender, Religion, Mother Tongue, Category, Marital Status).
+      2. *Residential History* (Item 4: Maximum, Present, Permanent residence with population & District HQ toggle).
+      3. *Family & Academics* (Items 6 & 7: Parents alive toggle, dynamic family members table, full 4-tier educational record table).
+      4. *Physical, NCC, Sports & SSB History* (Items 8-14: Height, Weight, Occupation, NCC Wing/Div/Cert, Sports, Hobbies, Responsibilities, Commission Nature & Service Preference, Previous SSB attempts table).
+    - Local storage state persistence + Supabase profile updates (saving advances completion to 100%).
+    - Seamless navigation links connected from Dashboard profile menu.
+  - **Next Step:** Finalize SQL schema fields with user before executing migration `supabase/002_add_piq_fields.sql`.
 - [ ] **Phase 4: Stage-1 Test Engine (CSSS + OPAM)**
   - Micro-timer runner (16-30s auto-advancing, no back button).
   - Web Audio API integration for tone and phonetic callouts.
