@@ -226,6 +226,9 @@ export default function ProfilePage() {
   const [intakeMode, setIntakeMode] = useState<"pdf" | "photos" | "camera">("pdf");
   const [isMobile, setIsMobile] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [hasUploadedData, setHasUploadedData] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const isInitialLoadedRef = useRef(false);
 
   // Staged Files for user review prior to analysis
   const [selectedPdf, setSelectedPdf] = useState<File | null>(null);
@@ -318,7 +321,14 @@ export default function ProfilePage() {
             // Restore from Supabase piq_assessment if present
             if (data.piq_assessment && typeof data.piq_assessment === "object") {
               setAssessment(data.piq_assessment as PiqAssessment);
+              setHasUploadedData(true);
               localStorage.setItem("ssb_candidate_piq_assessment", JSON.stringify(data.piq_assessment));
+            }
+            if (data.piq_data && typeof data.piq_data === "object" && Object.keys(data.piq_data).length > 0) {
+              setHasUploadedData(true);
+            }
+            if (data.last_piq_uploaded_at) {
+              setHasUploadedData(true);
             }
             setCompletionPct(data.profile_completion_pct || (data.piq_assessment ? 100 : 30));
           }
@@ -333,17 +343,16 @@ export default function ProfilePage() {
           }));
         }
 
-        // Restore any saved local PIQ draft & assessment (purging legacy mock demo artifacts)
+        // Restore any saved local PIQ draft & assessment
         const cachedPiq = localStorage.getItem("ssb_candidate_piq_data");
         if (cachedPiq) {
           try {
             const parsed = JSON.parse(cachedPiq);
-            // Purge legacy hardcoded demo entries if present in local storage
-            if (parsed.full_name === "ROHAN SHARMA" || parsed.hobbies?.includes("Aeromodelling")) {
-              localStorage.removeItem("ssb_candidate_piq_data");
-              localStorage.removeItem("ssb_candidate_piq_assessment");
-            } else {
+            if (parsed && typeof parsed === "object") {
               setFormData(prev => ({ ...prev, ...parsed, dob: normalizeDobForInput(parsed.dob) || prev.dob }));
+              if (parsed.full_name || parsed.father_name || (parsed.education_records && parsed.education_records.length > 0)) {
+                setHasUploadedData(true);
+              }
             }
           } catch {
             // ignore JSON parse error
@@ -354,25 +363,23 @@ export default function ProfilePage() {
         if (cachedAssessment) {
           try {
             const parsedAssessment = JSON.parse(cachedAssessment);
-            const assessmentStr = JSON.stringify(parsedAssessment);
-            // Purge legacy mock assessment referencing demo clubs/schools
-            if (
-              assessmentStr.includes("Robotics") ||
-              assessmentStr.includes("Kendriya Vidyalaya") ||
-              assessmentStr.includes("APS") ||
-              assessmentStr.includes("NDA 148")
-            ) {
-              localStorage.removeItem("ssb_candidate_piq_assessment");
-              setAssessment(null);
-            } else {
+            if (parsedAssessment && typeof parsedAssessment === "object") {
               setAssessment(parsedAssessment);
+              setHasUploadedData(true);
             }
           } catch {
             // ignore JSON parse error
           }
         }
+
+        const isUploadedCached = localStorage.getItem("ssb_candidate_piq_uploaded");
+        if (isUploadedCached === "true") {
+          setHasUploadedData(true);
+        }
       } catch (err) {
         console.error("Failed to load cadet profile:", err);
+      } finally {
+        isInitialLoadedRef.current = true;
       }
     }
     loadCandidate();
@@ -931,6 +938,8 @@ export default function ProfilePage() {
       }
 
       setMobileDrawerOpen(false);
+      setHasUploadedData(true);
+      localStorage.setItem("ssb_candidate_piq_uploaded", "true");
       setCompletionPct(100);
       setParseNotification(
         `✨ Successfully extracted DIPR Form 107-A data from ${optimizedFiles.length} optimized page(s) (${totalKb} KB) & generated Officer PIQ Score!`
@@ -999,10 +1008,55 @@ export default function ProfilePage() {
     }
   };
 
-  // Assess whether candidate has existing profile/PIQ data
-  const hasUploadedData = Boolean(
-    assessment || (formData.father_name && formData.father_name.trim().length > 0) || (formData.education_records && formData.education_records.length > 0)
-  );
+  // Real-Time Auto-Save on form updates (debounced by 800ms)
+  useEffect(() => {
+    if (!isInitialLoadedRef.current) return;
+    if (!hasUploadedData) return;
+
+    setIsAutoSaving(true);
+    const timer = setTimeout(async () => {
+      try {
+        localStorage.setItem("ssb_candidate_piq_data", JSON.stringify(formData));
+        if (assessment) {
+          localStorage.setItem("ssb_candidate_piq_assessment", JSON.stringify(assessment));
+        }
+
+        if (userId) {
+          try {
+            await supabase
+              .from("profiles")
+              .update({
+                full_name: formData.full_name,
+                target_entry: formData.target_entry,
+                dob: formData.dob ? normalizeDobForInput(formData.dob) : null,
+                profile_completion_pct: 100,
+                piq_data: formData,
+                piq_assessment: assessment,
+                updated_at: new Date().toISOString()
+              })
+              .eq("id", userId);
+          } catch (dbErr) {
+            await supabase
+              .from("profiles")
+              .update({
+                full_name: formData.full_name,
+                target_entry: formData.target_entry,
+                dob: formData.dob ? normalizeDobForInput(formData.dob) : null,
+                profile_completion_pct: 100,
+                updated_at: new Date().toISOString()
+              })
+              .eq("id", userId);
+          }
+        }
+      } catch (err) {
+        console.warn("[Auto-save]:", err);
+      } finally {
+        setIsAutoSaving(false);
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [formData, assessment, userId, hasUploadedData]);
 
   // Render the Intake Section (Blank form download + AI scan)
   // Supports hero layout (compact = false) or compact sidebar layout (compact = true)
@@ -2646,19 +2700,22 @@ export default function ProfilePage() {
               {/* Military Dual Theme Switcher */}
               <ThemeToggle compact />
 
-              {/* Save PIQ Button */}
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
-              >
-                {saving ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Save className="w-3.5 h-3.5" />
-                )}
-                <span className="hidden sm:inline">{saving ? "SAVING..." : "SAVE PIQ"}</span>
-              </button>
+              {/* Auto-Save Indicator */}
+              {hasUploadedData && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)]/85 backdrop-blur-md text-xs font-mono shadow-sm">
+                  {isAutoSaving ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-[var(--primary-accent)]" />
+                      <span className="text-[10px] text-[var(--primary-accent)] font-semibold hidden sm:inline">SAVING...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                      <span className="text-[10px] text-emerald-500 font-semibold hidden sm:inline">AUTO-SAVED</span>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </header>
@@ -2679,10 +2736,10 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* DYNAMIC VIEWPORT LAYOUT: Initial Hero Ingestion Deck vs. Post-Upload Left Sidebar */}
+          {/* DYNAMIC VIEWPORT LAYOUT */}
           {!hasUploadedData ? (
+            /* Initial Viewport: ONLY the 2 Intake Cards (Clean Hero Viewport) */
             <div className="space-y-6">
-              {/* Main Viewport Hero Intake Deck */}
               <motion.div
                 layout
                 layoutId="piq-intake-deck"
@@ -2691,10 +2748,19 @@ export default function ProfilePage() {
                 {renderIntakeSection(false)}
               </motion.div>
 
-              {/* Dossier Questionnaire Form */}
-              {renderDossierForm()}
+              {/* Discreet toggle to open manual questionnaire without upload */}
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => setHasUploadedData(true)}
+                  className="text-xs text-[var(--fg-muted)] hover:text-[var(--primary-accent)] font-bold transition-colors underline cursor-pointer"
+                >
+                  Or enter PIQ details manually without upload &rarr;
+                </button>
+              </div>
             </div>
           ) : (
+            /* Post-Upload Viewport: Left Sidebar (Intake) + Main Viewport (Assessment AT TOP + Details AT BOTTOM) */
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Desktop Left Sidebar: Compact Intake & Re-Scan Deck */}
               <aside className="hidden lg:block lg:col-span-4 lg:sticky lg:top-20 space-y-4">
@@ -2707,41 +2773,49 @@ export default function ProfilePage() {
                 </motion.div>
               </aside>
 
-              {/* Main Viewport: Assessment at TOP + Form below */}
+              {/* Main Viewport: Assessment at TOP + Form Details at BOTTOM */}
               <div className="col-span-12 lg:col-span-8 space-y-6">
-                {/* Top: PIQ Assessment & Insights */}
+                {/* 1. TOP: PIQ Assessment & Officer Readiness Radar */}
                 {renderAssessmentCard()}
 
-                {/* Dossier Questionnaire Form */}
-                {renderDossierForm()}
+                {/* 2. BOTTOM: Extracted Questionnaire Details (Name, Residence, Family, Academics, Sports) */}
+                <div className="space-y-4">
+                  <div className="border-b border-[var(--canvas-border)] pb-2 flex items-center justify-between">
+                    <span className="text-xs font-bold text-[var(--fg-secondary)] uppercase tracking-wider">
+                      Extracted PIQ Dossier Details (DIPR Form 107-A)
+                    </span>
+                    <span className="text-[10px] text-emerald-500 font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Auto-saved
+                    </span>
+                  </div>
+                  {renderDossierForm()}
+                </div>
               </div>
             </div>
           )}
 
-          {/* BOTTOM ACTION BAR */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)]">
-            <div className="text-xs text-[var(--fg-muted)]">
-              Cadet Profile: <strong className="text-[var(--fg-primary)]">{formData.full_name || "CADET ASPIRANT"}</strong> ({formData.target_entry}) • Completion: <span className="text-[var(--gold-accent)] font-bold">{completionPct}%</span>
-            </div>
+          {/* BOTTOM ACTION BAR (Shown after upload / when candidate data is present) */}
+          {hasUploadedData && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)] shadow-sm">
+              <div className="text-xs text-[var(--fg-muted)] leading-relaxed">
+                Cadet Profile: <strong className="text-[var(--fg-primary)] font-bold">{formData.full_name || "CADET ASPIRANT"}</strong> ({formData.target_entry}) • DOB: <span className="text-[var(--fg-primary)] font-bold">{formData.dob || "—"}</span> • Completion: <span className="text-[var(--gold-accent)] font-bold">{completionPct}%</span>
+              </div>
 
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <Link
-                href="/dashboard"
-                className="flex-1 sm:flex-initial text-center px-4 py-2 rounded-lg border border-[var(--canvas-border)] hover:border-[var(--primary-accent)] text-xs font-bold text-[var(--fg-secondary)] transition-all"
-              >
-                Back to Dashboard
-              </Link>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="flex items-center gap-1.5 text-xs text-emerald-500 font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>All changes auto-saved</span>
+                </div>
 
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
-              >
-                {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                <span>{saving ? "SAVING..." : "SAVE & COMPLETE PIQ"}</span>
-              </button>
+                <Link
+                  href="/dashboard"
+                  className="flex-1 sm:flex-initial text-center px-4 py-2 rounded-lg border border-[var(--canvas-border)] hover:border-[var(--primary-accent)] text-xs font-bold text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] transition-all"
+                >
+                  Back to Dashboard
+                </Link>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Mobile Slide-over Drawer for Intake / Re-Scan */}
           <AnimatePresence>
