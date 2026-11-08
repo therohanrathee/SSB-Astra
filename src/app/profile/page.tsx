@@ -362,92 +362,141 @@ export default function ProfilePage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Helper: Client-Side Image Compression using FileReader + Canvas
-  // Downscales any smartphone photo (10-25 MB) to max 1600px width/height & 80% JPEG quality (~200-350 KB)
+  // Helper: Bulletproof Client-Side Image Compression using Canvas
+  // Downscales any smartphone photo (5-25 MB) to max 1600px width/height and 80% JPEG (~200-350 KB)
   const compressImageClientSide = async (
     file: File,
     maxDimension = 1600,
     quality = 0.80
   ): Promise<File> => {
-    return new Promise((resolve) => {
-      const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|bmp|tiff)$/i.test(file.name);
-      if (!isImage) {
-        return resolve(file);
+    // If the file is already small (<= 400 KB), return as is
+    if (file.size <= 400 * 1024 && file.type === "image/jpeg") {
+      return file;
+    }
+
+    let imgSource: ImageBitmap | HTMLImageElement | null = null;
+    let objectUrl: string | null = null;
+
+    try {
+      // Strategy 1: createImageBitmap (Native, fast, low memory, handles EXIF)
+      if (typeof window !== "undefined" && typeof createImageBitmap === "function") {
+        try {
+          imgSource = await createImageBitmap(file);
+        } catch (bitmapErr) {
+          console.warn("[Compression] createImageBitmap fallback:", bitmapErr);
+        }
       }
 
-      const reader = new FileReader();
-      reader.onerror = () => {
-        console.warn("[Compression] FileReader error, proceeding with original file");
-        resolve(file);
-      };
-
-      reader.onload = () => {
+      // Strategy 2: Image element with URL.createObjectURL
+      if (!imgSource) {
+        objectUrl = URL.createObjectURL(file);
         const img = new Image();
-        img.onerror = () => {
-          console.warn("[Compression] Image decode error, proceeding with original file");
-          resolve(file);
-        };
+        img.crossOrigin = "anonymous";
+        
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = (e) => reject(new Error("Browser could not decode image format"));
+          img.src = objectUrl!;
+        });
+        imgSource = img;
+      }
 
-        img.onload = () => {
-          try {
-            let width = img.naturalWidth || img.width;
-            let height = img.naturalHeight || img.height;
+      // Step 2: Measure dimensions
+      const naturalWidth = "naturalWidth" in imgSource ? imgSource.naturalWidth : imgSource.width;
+      const naturalHeight = "naturalHeight" in imgSource ? imgSource.naturalHeight : imgSource.height;
 
-            if (!width || !height) {
-              return resolve(file);
-            }
+      if (!naturalWidth || !naturalHeight) {
+        throw new Error("Invalid image dimensions detected");
+      }
 
-            // Downscale to maxDimension
-            if (width > maxDimension || height > maxDimension) {
-              if (width > height) {
-                height = Math.round((height * maxDimension) / width);
-                width = maxDimension;
-              } else {
-                width = Math.round((width * maxDimension) / height);
-                height = maxDimension;
-              }
-            }
+      let width = naturalWidth;
+      let height = naturalHeight;
 
-            const canvas = document.createElement("canvas");
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext("2d");
-            if (!ctx) return resolve(file);
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+          height = Math.round((height * maxDimension) / width);
+          width = maxDimension;
+        } else {
+          width = Math.round((width * maxDimension) / height);
+          height = maxDimension;
+        }
+      }
 
-            // Clean white background for contrast and transparency handling
-            ctx.fillStyle = "#FFFFFF";
-            ctx.fillRect(0, 0, width, height);
-            ctx.drawImage(img, 0, 0, width, height);
+      // Step 3: Draw onto Canvas
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to initialize canvas 2D rendering context");
+      }
 
-            canvas.toBlob(
-              (blob) => {
-                if (!blob) return resolve(file);
+      // Fill solid white background (prevents transparent PNGs turning black)
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(imgSource, 0, 0, width, height);
 
-                const cleanBaseName = file.name.replace(/\.[^/.]+$/, "");
-                const compressedFile = new File([blob], `${cleanBaseName}.jpg`, {
-                  type: "image/jpeg",
-                  lastModified: Date.now()
-                });
+      // Clean up ImageBitmap if used
+      if ("close" in imgSource && typeof imgSource.close === "function") {
+        imgSource.close();
+      }
 
-                console.log(
-                  `[Client Compression] ${file.name} compressed: ${(file.size / 1024).toFixed(0)} KB → ${(compressedFile.size / 1024).toFixed(0)} KB (${width}x${height})`
-                );
-                resolve(compressedFile);
-              },
-              "image/jpeg",
-              quality
-            );
-          } catch (err) {
-            console.warn("[Compression] Canvas processing error:", err);
-            resolve(file);
-          }
-        };
+      // Step 4: Export to JPEG Blob (toBlob with synchronous toDataURL fallback)
+      let compressedBlob: Blob | null = null;
 
-        img.src = reader.result as string;
-      };
+      try {
+        compressedBlob = await new Promise<Blob | null>((resolve) => {
+          canvas.toBlob((b) => resolve(b), "image/jpeg", quality);
+        });
+      } catch (blobErr) {
+        console.warn("[Compression] canvas.toBlob fallback:", blobErr);
+      }
 
-      reader.readAsDataURL(file);
-    });
+      // Synchronous toDataURL fallback (guaranteed in all browsers if toBlob returns null)
+      if (!compressedBlob) {
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        const byteString = atob(dataUrl.split(",")[1]);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let j = 0; j < byteString.length; j++) {
+          ia[j] = byteString.charCodeAt(j);
+        }
+        compressedBlob = new Blob([ab], { type: "image/jpeg" });
+      }
+
+      if (!compressedBlob || compressedBlob.size === 0) {
+        throw new Error("Canvas output resulted in empty blob");
+      }
+
+      const cleanBaseName = (file.name || "scanned_page").replace(/\.[^/.]+$/, "");
+      const compressedFile = new File([compressedBlob], `${cleanBaseName}.jpg`, {
+        type: "image/jpeg",
+        lastModified: Date.now()
+      });
+
+      console.log(
+        `[SSB Client Compression] Success! ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB) compressed to ${(compressedFile.size / 1024).toFixed(0)} KB (${width}x${height})`
+      );
+
+      return compressedFile;
+    } catch (err: unknown) {
+      console.error("[SSB Client Compression Failure]:", err);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      
+      // If original file is small enough (<= 3.0 MB), allow it through
+      if (file.size <= 3 * 1024 * 1024) {
+        return file;
+      }
+      
+      // If it's a huge file (e.g. 5 MB) and compression failed, DO NOT silently send it!
+      throw new Error(
+        `Failed to compress ${file.name || "image"} (${(file.size / 1024 / 1024).toFixed(1)} MB): ${errMsg}. Please ensure the file is a standard JPEG/PNG photo.`
+      );
+    } finally {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    }
   };
 
   // Helper: Client-Side PDF Rasterization to Compressed Images
@@ -504,21 +553,35 @@ export default function ProfilePage() {
             viewport: scaledViewport,
           }).promise;
 
-          const blob = await new Promise<Blob | null>((resolve) => {
-            canvas.toBlob(resolve, "image/jpeg", 0.80);
-          });
-
-          if (blob) {
-            const cleanName = `${file.name.replace(/\.[^/.]+$/, "")}_page_${pageNum}.jpg`;
-            const compressedFile = new File([blob], cleanName, {
-              type: "image/jpeg",
-              lastModified: Date.now(),
+          let blob: Blob | null = null;
+          try {
+            blob = await new Promise<Blob | null>((resolve) => {
+              canvas.toBlob(resolve, "image/jpeg", 0.80);
             });
-            console.log(
-              `[PDF to Image] Page ${pageNum} converted: ${(compressedFile.size / 1024).toFixed(0)} KB (${canvas.width}x${canvas.height})`
-            );
-            compressedImages.push(compressedFile);
+          } catch {
+            // fallback to dataURL
           }
+
+          if (!blob) {
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.80);
+            const byteString = atob(dataUrl.split(",")[1]);
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let j = 0; j < byteString.length; j++) {
+              ia[j] = byteString.charCodeAt(j);
+            }
+            blob = new Blob([ab], { type: "image/jpeg" });
+          }
+
+          const cleanName = `${(file.name || "piq_doc").replace(/\.[^/.]+$/, "")}_page_${pageNum}.jpg`;
+          const compressedFile = new File([blob], cleanName, {
+            type: "image/jpeg",
+            lastModified: Date.now(),
+          });
+          console.log(
+            `[PDF to Image] Page ${pageNum} converted: ${(compressedFile.size / 1024).toFixed(0)} KB (${canvas.width}x${canvas.height})`
+          );
+          compressedImages.push(compressedFile);
         }
       }
 
@@ -569,7 +632,7 @@ export default function ProfilePage() {
       // Pre-flight check: Prevent Vercel 413 by rejecting payloads over 4.2 MB on the client
       if (totalPayloadBytes > 4.2 * 1024 * 1024) {
         throw new Error(
-          `Payload size (${(totalPayloadBytes / (1024 * 1024)).toFixed(1)} MB) exceeds Vercel's 4.5 MB limit. Please take photos using the Camera or upload standard JPG/PNG photos.`
+          `Total payload size (${(totalPayloadBytes / (1024 * 1024)).toFixed(1)} MB) exceeds the 4.5 MB transmission ceiling. Please ensure images are standard JPG/PNG or upload one page at a time.`
         );
       }
 
