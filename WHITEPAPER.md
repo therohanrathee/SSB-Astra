@@ -139,12 +139,19 @@ flowchart TD
   - **Officer Candidate Dossier Assessment & PIQ Scoring Engine:**
     - Evaluates candidates across the **4 Classical Assessment Pillars**: Academics & Consistency (25 pts), Sports, NCC & Physical Stamina (25 pts), Leadership & Positions of Responsibility (25 pts), and Hobbies & Drive (25 pts).
     - Emits: Composite **PIQ Score out of 100** with overall verdict badge, positive OLQ indicators (Strengths), vulnerabilities & red flags, **Predicted IO Rapid-Fire Questions**, and tactical recommendations.
-  - **UI Layout Overhaul & Morphing Architecture (`src/app/profile/page.tsx`):**
-    - **Initial / Empty State:** For first-time visitors (`!hasUploadedData`), the two intake options (*Download Official Blank PIQ* & *AI Smart Autofill*) are prominently centered in the main viewport hero deck, without distracting empty questionnaire tables at the bottom. An inline toggle allows candidates to manually enter data if desired.
-    - **Post-Upload State (`hasUploadedData`):** Using Framer Motion `layout` and `layoutId="piq-intake-deck"`, the intake cards smoothly morph to a compact, minimal-footprint **left sidebar** (`lg:col-span-4`), leaving the primary viewport (`lg:col-span-8`) dedicated to:
-      1. **At the Top:** Candidate's **PIQ Dossier Assessment & IO Insights** (Score, 4 Classical Pillars, Positive OLQs, Red Flags, Rapid-Fire Questions, Recommendations).
-      2. **At the Bottom:** Full extracted **PIQ Dossier Details** (DIPR Form 107-A tabbed sections: Identity, Demographics, Residence, Family, Education, Sports, SSB attempts).
-    - **Mobile Optimization:** On mobile devices, after upload, the intake deck is hidden from the main flow into a slide-over sheet drawer (`mobileDrawerOpen`) accessible via a floating top-bar trigger, ensuring 100% of the mobile viewport immediately surfaces the PIQ score and assessment radar.
+  - **UI Layout Overhaul: Full-Width Symmetrical Grid & Header-Tucked Intake Card (`src/app/profile/page.tsx`):**
+    - **Removal of Morph Animations & Desktop Sidebar:** Completely removed heavy Framer Motion layoutId morph animations and the restricted 4-column desktop sidebar to give candidate dossiers 100% full-width real estate across the screen (`max-w-7xl`).
+    - **Universal Header-Tucked Intake Modal Card:**
+      - Added a universal `"Upload / Re-Scan PIQ"` floating action button in the sticky top HUD on both desktop and mobile.
+      - Clicking opens an elegant, focused tactical modal card (`intakeModalOpen`) with backdrop blur, keyboard `Escape` dismissal, and backdrop click-to-close.
+      - Houses the two core intake actions: *Download Official Blank PIQ (PDF)* and *AI Smart Autofill / Re-Scan* (with 2-Page PDF drop, dual photo upload, and mobile camera).
+      - Auto-dismisses upon successful AI extraction.
+    - **Symmetrical 12-Column "Puzzle-Fit" Layout:**
+      - **Assessment Card Top Row:** Candidate PIQ Score (`lg:col-span-3`) + 4 Classical Pillars (`lg:col-span-9`) aligned in 4 uniform vertical cards (Academics, Sports & NCC, Leadership, Hobbies & Drive).
+      - **Assessment Card Middle Row:** Positive OLQ Strengths (6 cols) & Vulnerabilities/Red Flags (6 cols) side-by-side with equal-height matching styling.
+      - **Assessment Card Bottom Row:** Predicted IO Rapid-Fire Questions (6 cols) & Tactical Recommendations (6 cols) side-by-side with equal-height matching styling.
+      - **Segmented Full-Width Tab Control:** Replaced plain horizontal scroll tabs with a 4-column segmented control (`grid grid-cols-2 sm:grid-cols-4 gap-1.5`) spanning the full width of the questionnaire.
+      - **Full-Width Hero Banner (Initial State):** First-time candidates without previous uploads see a clean, full-width callout inviting them to upload or enter manually, seamlessly fitting the grid without displacing content.
     - **Header Clean-Up & Zero-Manual-Save Architecture:**
       - Removed manual save buttons (`SAVE PIQ` in header and `SAVE & COMPLETE PIQ` in bottom bar).
       - Implemented **Real-Time Auto-Save Engine**: debounced (800ms) updates immediately persist changes to `localStorage` and Supabase with live status badges (`AUTO-SAVED` / `SAVING...`).

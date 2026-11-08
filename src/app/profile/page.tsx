@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, 
   Download, 
@@ -33,8 +33,7 @@ import {
   ChevronDown,
   ChevronUp,
   TrendingUp,
-  X,
-  SlidersHorizontal
+  X
 } from "lucide-react";
 import CrossedSwords from "@/components/CrossedSwords";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -258,7 +257,7 @@ export default function ProfilePage() {
   // Intake mode & Device detection
   const [intakeMode, setIntakeMode] = useState<"pdf" | "photos" | "camera">("pdf");
   const [isMobile, setIsMobile] = useState(false);
-  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [intakeModalOpen, setIntakeModalOpen] = useState(false);
   const [hasUploadedData, setHasUploadedData] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const isInitialLoadedRef = useRef(false);
@@ -291,6 +290,19 @@ export default function ProfilePage() {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  // Listen for Escape key to close intake modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIntakeModalOpen(false);
+      }
+    };
+    if (intakeModalOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [intakeModalOpen]);
 
   // Helper to ensure dates strictly conform to YYYY-MM-DD for HTML5 date inputs
   const normalizeDobForInput = (dobStr?: string): string => {
@@ -1081,7 +1093,7 @@ export default function ProfilePage() {
         }
       }
 
-      setMobileDrawerOpen(false);
+      setIntakeModalOpen(false);
       setHasUploadedData(true);
       localStorage.setItem("ssb_candidate_piq_uploaded", "true");
       setCompletionPct(100);
@@ -1703,11 +1715,11 @@ export default function ProfilePage() {
         </div>
 
         {showAssessment && (
-          <div className="space-y-6">
-            {/* Top Row: Score Badge + 4 Pillars */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+          <div className="space-y-4">
+            {/* Top Row: Score Badge + 4 Pillars (Full-Width Symmetrical Grid) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
               {/* Score Big Display */}
-              <div className="md:col-span-4 p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] flex flex-col items-center justify-center text-center relative overflow-hidden">
+              <div className="lg:col-span-3 p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] flex flex-col items-center justify-center text-center relative overflow-hidden">
                 <div className="text-[10px] uppercase font-bold text-[var(--fg-muted)] tracking-wider mb-1">
                   Candidate PIQ Score
                 </div>
@@ -1726,76 +1738,84 @@ export default function ProfilePage() {
               </div>
 
               {/* 4 Pillars Progress Bars */}
-              <div className="md:col-span-8 space-y-3">
+              <div className="lg:col-span-9 p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-2.5 flex flex-col justify-between">
                 <div className="text-xs font-bold text-[var(--fg-secondary)] uppercase tracking-wider">
                   The 4 Classical Assessment Pillars
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {/* Academics */}
-                  <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
-                    <div className="flex justify-between text-[11px] font-bold">
-                      <span className="text-[var(--fg-secondary)]">Academics & Consistency</span>
-                      <span className="text-[var(--primary-accent)]">{assessment.score_breakdown.academics?.score ?? 0}/25</span>
+                  <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface)] space-y-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between text-[11px] font-bold">
+                        <span className="text-[var(--fg-secondary)]">Academics</span>
+                        <span className="text-[var(--primary-accent)]">{assessment.score_breakdown.academics?.score ?? 0}/25</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden mt-1">
+                        <div 
+                          className="h-full bg-[var(--primary-accent)] transition-all duration-500" 
+                          style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.academics?.score ?? 0) / 25) * 100)))}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-[var(--primary-accent)] transition-all duration-500" 
-                        style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.academics?.score ?? 0) / 25) * 100)))}%` }}
-                      />
-                    </div>
-                    <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
+                    <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-1 line-clamp-3">
                       {assessment.score_breakdown.academics?.assessment}
                     </p>
                   </div>
 
                   {/* Sports & NCC */}
-                  <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
-                    <div className="flex justify-between text-[11px] font-bold">
-                      <span className="text-[var(--fg-secondary)]">Sports, NCC & Physical</span>
-                      <span className="text-[var(--gold-accent)]">{assessment.score_breakdown.sports_and_ncc?.score ?? 0}/25</span>
+                  <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface)] space-y-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between text-[11px] font-bold">
+                        <span className="text-[var(--fg-secondary)]">Sports & NCC</span>
+                        <span className="text-[var(--gold-accent)]">{assessment.score_breakdown.sports_and_ncc?.score ?? 0}/25</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden mt-1">
+                        <div 
+                          className="h-full bg-[var(--gold-accent)] transition-all duration-500" 
+                          style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.sports_and_ncc?.score ?? 0) / 25) * 100)))}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-[var(--gold-accent)] transition-all duration-500" 
-                        style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.sports_and_ncc?.score ?? 0) / 25) * 100)))}%` }}
-                      />
-                    </div>
-                    <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
+                    <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-1 line-clamp-3">
                       {assessment.score_breakdown.sports_and_ncc?.assessment}
                     </p>
                   </div>
 
                   {/* Leadership */}
-                  <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
-                    <div className="flex justify-between text-[11px] font-bold">
-                      <span className="text-[var(--fg-secondary)]">Leadership & Responsibilities</span>
-                      <span className="text-[var(--military-olive,#16a34a)]">{assessment.score_breakdown.leadership_and_responsibility?.score ?? 0}/25</span>
+                  <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface)] space-y-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between text-[11px] font-bold">
+                        <span className="text-[var(--fg-secondary)]">Leadership</span>
+                        <span className="text-[var(--military-olive,#16a34a)]">{assessment.score_breakdown.leadership_and_responsibility?.score ?? 0}/25</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden mt-1">
+                        <div 
+                          className="h-full bg-[var(--military-olive,#16a34a)] transition-all duration-500" 
+                          style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.leadership_and_responsibility?.score ?? 0) / 25) * 100)))}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-[var(--military-olive,#16a34a)] transition-all duration-500" 
-                        style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.leadership_and_responsibility?.score ?? 0) / 25) * 100)))}%` }}
-                      />
-                    </div>
-                    <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
+                    <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-1 line-clamp-3">
                       {assessment.score_breakdown.leadership_and_responsibility?.assessment}
                     </p>
                   </div>
 
                   {/* Hobbies & Depth */}
-                  <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
-                    <div className="flex justify-between text-[11px] font-bold">
-                      <span className="text-[var(--fg-secondary)]">Hobbies & Drive</span>
-                      <span className="text-purple-400">{assessment.score_breakdown.hobbies_and_depth?.score ?? 0}/25</span>
+                  <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface)] space-y-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between text-[11px] font-bold">
+                        <span className="text-[var(--fg-secondary)]">Hobbies & Drive</span>
+                        <span className="text-purple-400">{assessment.score_breakdown.hobbies_and_depth?.score ?? 0}/25</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden mt-1">
+                        <div 
+                          className="h-full bg-purple-500 transition-all duration-500" 
+                          style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.hobbies_and_depth?.score ?? 0) / 25) * 100)))}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-purple-500 transition-all duration-500" 
-                        style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.hobbies_and_depth?.score ?? 0) / 25) * 100)))}%` }}
-                      />
-                    </div>
-                    <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
+                    <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-1 line-clamp-3">
                       {assessment.score_breakdown.hobbies_and_depth?.assessment}
                     </p>
                   </div>
@@ -1803,81 +1823,92 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Key Strengths & Vulnerabilities Radar */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Row 2: Key Strengths & Vulnerabilities Radar */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
               {/* Key Strengths */}
-              <div className="p-4 rounded-xl border border-[var(--military-olive)]/40 bg-[var(--military-olive)]/5 space-y-2.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-[var(--military-olive)] uppercase tracking-wider">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Positive OLQ Indicators in your PIQ</span>
+              <div className="p-4 sm:p-5 rounded-xl border border-[var(--military-olive)]/40 bg-[var(--military-olive)]/5 space-y-2.5 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--military-olive)] uppercase tracking-wider mb-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Positive OLQ Indicators in your PIQ</span>
+                  </div>
+                  <ul className="space-y-1.5 text-xs text-[var(--fg-primary)]">
+                    {assessment.key_strengths.map((str, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-[11px] leading-relaxed">
+                        <span className="text-[var(--military-olive)] font-bold mt-0.5">✓</span>
+                        <span>{str}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <ul className="space-y-1.5 text-xs text-[var(--fg-primary)]">
-                  {assessment.key_strengths.map((str, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-[11px] leading-relaxed">
-                      <span className="text-[var(--military-olive)] font-bold mt-0.5">✓</span>
-                      <span>{str}</span>
-                    </li>
-                  ))}
-                </ul>
               </div>
 
               {/* Vulnerabilities & Red Flags */}
-              <div className="p-4 rounded-xl border border-amber-500/40 bg-amber-500/5 space-y-2.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-amber-500 uppercase tracking-wider">
-                  <AlertTriangle className="w-4 h-4" />
-                  <span>Vulnerabilities / Red Flags IO Will Probe</span>
-                </div>
-                <ul className="space-y-1.5 text-xs text-[var(--fg-primary)]">
-                  {assessment.vulnerabilities_and_red_flags.map((vuln, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-[11px] leading-relaxed">
-                      <span className="text-amber-500 font-bold mt-0.5">⚠</span>
-                      <span>{vuln}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            {/* Interviewing Officer (IO) Question Forecast */}
-            <div className="p-4 rounded-xl border border-[var(--primary-accent)]/40 bg-[var(--primary-accent)]/5 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-bold text-[var(--primary-accent)] uppercase tracking-wider">
-                  <Zap className="w-4 h-4 text-[var(--gold-accent)]" />
-                  <span>Predicted Interviewing Officer (IO) Questions On Your PIQ</span>
-                </div>
-                <span className="text-[9px] px-2 py-0.5 rounded bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] font-semibold">
-                  RAPID-FIRE PREP
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                {assessment.io_probable_questions.map((q, idx) => (
-                  <div key={idx} className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface)] text-xs flex items-start gap-2.5 shadow-sm">
-                    <span className="w-5 h-5 rounded-full bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
-                      Q{idx + 1}
-                    </span>
-                    <p className="text-[11px] text-[var(--fg-primary)] italic leading-relaxed">
-                      &ldquo;{q}&rdquo;
-                    </p>
+              <div className="p-4 sm:p-5 rounded-xl border border-amber-500/40 bg-amber-500/5 space-y-2.5 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-500 uppercase tracking-wider mb-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span>Vulnerabilities / Red Flags IO Will Probe</span>
                   </div>
-                ))}
+                  <ul className="space-y-1.5 text-xs text-[var(--fg-primary)]">
+                    {assessment.vulnerabilities_and_red_flags.map((vuln, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-[11px] leading-relaxed">
+                        <span className="text-amber-500 font-bold mt-0.5">⚠</span>
+                        <span>{vuln}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </div>
 
-            {/* Tactical Recommendations */}
-            <div className="p-4 rounded-xl border border-[var(--gold-accent)]/40 bg-[var(--gold-accent)]/5 space-y-2.5">
-              <div className="flex items-center gap-2 text-xs font-bold text-[var(--gold-accent)] uppercase tracking-wider">
-                <Target className="w-4 h-4" />
-                <span>Tactical Recommendations To Strengthen Your Presentation</span>
+            {/* Row 3: IO Rapid-Fire Questions & Tactical Recommendations */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+              {/* Interviewing Officer (IO) Question Forecast */}
+              <div className="p-4 sm:p-5 rounded-xl border border-[var(--primary-accent)]/40 bg-[var(--primary-accent)]/5 space-y-3 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div className="flex items-center gap-2 text-xs font-bold text-[var(--primary-accent)] uppercase tracking-wider">
+                      <Zap className="w-4 h-4 text-[var(--gold-accent)]" />
+                      <span>Predicted IO Rapid-Fire Questions</span>
+                    </div>
+                    <span className="text-[9px] px-2 py-0.5 rounded bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] font-semibold">
+                      RAPID-FIRE PREP
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {assessment.io_probable_questions.map((q, idx) => (
+                      <div key={idx} className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface)] text-xs flex items-start gap-2.5 shadow-sm">
+                        <span className="w-5 h-5 rounded-full bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                          Q{idx + 1}
+                        </span>
+                        <p className="text-[11px] text-[var(--fg-primary)] italic leading-relaxed">
+                          &ldquo;{q}&rdquo;
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <ul className="space-y-1.5 text-xs text-[var(--fg-primary)]">
-                {assessment.recommendations_for_improvement.map((rec, idx) => (
-                  <li key={idx} className="flex items-start gap-2 text-[11px] leading-relaxed">
-                    <span className="text-[var(--gold-accent)] font-bold mt-0.5">&bull;</span>
-                    <span>{rec}</span>
-                  </li>
-                ))}
-              </ul>
+
+              {/* Tactical Recommendations */}
+              <div className="p-4 sm:p-5 rounded-xl border border-[var(--gold-accent)]/40 bg-[var(--gold-accent)]/5 space-y-2.5 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--gold-accent)] uppercase tracking-wider mb-2.5">
+                    <Target className="w-4 h-4" />
+                    <span>Tactical Recommendations For Interview</span>
+                  </div>
+                  <ul className="space-y-2 text-xs text-[var(--fg-primary)]">
+                    {assessment.recommendations_for_improvement.map((rec, idx) => (
+                      <li key={idx} className="flex items-start gap-2.5 text-[11px] leading-relaxed p-2.5 rounded-lg bg-[var(--canvas-surface)] border border-[var(--canvas-border)] shadow-sm">
+                        <span className="text-[var(--gold-accent)] font-bold mt-0.5">&bull;</span>
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1889,27 +1920,28 @@ export default function ProfilePage() {
   const renderDossierForm = () => (
     <div className="space-y-4">
         {/* SECTION NAVIGATION TABS */}
-        <div className="border-b border-[var(--canvas-border)] flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 rounded-xl bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)]">
           {[
             { id: "personal", label: "1. Identity & Demographics", icon: User },
             { id: "residence", label: "2. Residential History", icon: Home },
             { id: "family_edu", label: "3. Family & Academics", icon: GraduationCap },
-            { id: "activities", label: "4. NCC, Sports & SSB Record", icon: Trophy },
+            { id: "activities", label: "4. NCC, Sports & SSB", icon: Trophy },
           ].map(tab => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`flex items-center gap-2 px-3 py-2.5 text-xs font-bold whitespace-nowrap border-b-2 transition-all cursor-pointer ${
+                className={`flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   active
-                    ? "border-[var(--primary-accent)] text-[var(--primary-accent)] bg-[var(--canvas-surface)] rounded-t"
-                    : "border-transparent text-[var(--fg-muted)] hover:text-[var(--fg-primary)] hover:border-[var(--canvas-border)]"
+                    ? "bg-[var(--canvas-surface)] text-[var(--primary-accent)] shadow-sm border border-[var(--canvas-border)]"
+                    : "text-[var(--fg-muted)] hover:text-[var(--fg-primary)] hover:bg-[var(--canvas-surface)]/50"
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{tab.label}</span>
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{tab.label}</span>
               </button>
             );
           })}
@@ -2981,18 +3013,21 @@ export default function ProfilePage() {
 
             {/* Right: Floating Actions Pill */}
             <div className="pointer-events-auto flex items-center gap-2">
-              {/* Mobile Drawer Trigger (when candidate already has data uploaded) */}
-              {hasUploadedData && (
-                <button
-                  type="button"
-                  onClick={() => setMobileDrawerOpen(true)}
-                  className="lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--primary-accent)] bg-[var(--primary-accent)]/10 text-[var(--primary-accent)] text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer backdrop-blur-md"
-                  title="Upload or Re-Scan PIQ"
-                >
-                  <SlidersHorizontal className="w-3.5 h-3.5" />
-                  <span className="text-[11px]">Re-Scan PIQ</span>
-                </button>
-              )}
+              {/* Universal Intake / Re-Scan Trigger Button */}
+              <button
+                type="button"
+                onClick={() => setIntakeModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--primary-accent)] bg-[var(--primary-accent)]/15 hover:bg-[var(--primary-accent)]/25 text-[var(--primary-accent)] text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer backdrop-blur-md group"
+                title="Download Blank PIQ or Upload & Scan Form"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-[var(--gold-accent)] group-hover:rotate-12 transition-transform" />
+                <span className="hidden sm:inline">
+                  {hasUploadedData ? "Upload / Re-Scan PIQ" : "Upload & AI Autofill"}
+                </span>
+                <span className="sm:hidden text-[11px]">
+                  {hasUploadedData ? "Re-Scan" : "Upload"}
+                </span>
+              </button>
 
               {/* Profile Completion Meter */}
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)]/85 backdrop-blur-md shadow-sm text-right">
@@ -3048,63 +3083,75 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* DYNAMIC VIEWPORT LAYOUT */}
-          {!hasUploadedData ? (
-            /* Initial Viewport: ONLY the 2 Intake Cards (Clean Hero Viewport) */
-            <div className="space-y-6">
-              <motion.div
-                layout
-                layoutId="piq-intake-deck"
-                transition={{ type: "spring", stiffness: 300, damping: 28 }}
-              >
-                {renderIntakeSection(false)}
-              </motion.div>
+          {/* If Candidate Has NOT Uploaded Yet: Sleek Full-Width Hero Callout */}
+          {!hasUploadedData && (
+            <div className="p-4 sm:p-5 rounded-xl border border-[var(--primary-accent)]/40 bg-[var(--canvas-surface)] shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[var(--primary-accent)]/10 border border-[var(--primary-accent)]/30 flex items-center justify-center shrink-0 text-[var(--primary-accent)]">
+                  <Sparkles className="w-5 h-5 text-[var(--gold-accent)]" />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-bold text-[var(--fg-primary)] flex items-center gap-2">
+                    <span>Autofill your PIQ with AI in 10 seconds</span>
+                    <span className="text-[9px] px-2 py-0.5 rounded bg-[var(--gold-accent)]/15 text-[var(--gold-accent)] border border-[var(--gold-accent)]/30 font-bold uppercase">
+                      Recommended
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[var(--fg-muted)] mt-0.5">
+                    Upload your handwritten or typed DIPR Form 107-A scan (PDF or Images). AI will extract all 14 sections and evaluate your Officer PIQ score.
+                  </p>
+                </div>
+              </div>
 
-              {/* Discreet toggle to open manual questionnaire without upload */}
-              <div className="text-center pt-2">
+              <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0">
+                <a
+                  href="/sample_piq.pdf"
+                  download="DIPR_Questionnaire_107A_Blank_PIQ.pdf"
+                  className="flex-1 md:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--canvas-border)] hover:border-[var(--gold-accent)] bg-[var(--canvas-surface-subtle)] text-xs font-bold text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] transition-all"
+                >
+                  <Download className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
+                  <span>Blank PDF</span>
+                </a>
                 <button
                   type="button"
-                  onClick={() => setHasUploadedData(true)}
-                  className="text-xs text-[var(--fg-muted)] hover:text-[var(--primary-accent)] font-bold transition-colors underline cursor-pointer"
+                  onClick={() => setIntakeModalOpen(true)}
+                  className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold shadow-sm transition-all active:scale-95 cursor-pointer"
                 >
-                  Or enter PIQ details manually without upload &rarr;
+                  <UploadCloud className="w-3.5 h-3.5" />
+                  <span>Upload & Scan PIQ</span>
                 </button>
               </div>
             </div>
-          ) : (
-            /* Post-Upload Viewport: Left Sidebar (Intake) + Main Viewport (Assessment AT TOP + Details AT BOTTOM) */
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Desktop Left Sidebar: Compact Intake & Re-Scan Deck */}
-              <aside className="hidden lg:block lg:col-span-4 lg:sticky lg:top-20 space-y-4">
-                <motion.div
-                  layout
-                  layoutId="piq-intake-deck"
-                  transition={{ type: "spring", stiffness: 300, damping: 28 }}
-                >
-                  {renderIntakeSection(true)}
-                </motion.div>
-              </aside>
+          )}
 
-              {/* Main Viewport: Assessment at TOP + Form Details at BOTTOM */}
-              <div className="col-span-12 lg:col-span-8 space-y-6">
-                {/* 1. TOP: PIQ Assessment & Officer Readiness Radar */}
-                {renderAssessmentCard()}
+          {/* FULL-WIDTH UNIFORM DOSSIER LAYOUT (NO MORPH, NO SIDEBAR) */}
+          <div className="w-full space-y-6">
+            {/* 1. TOP: PIQ Assessment & Officer Readiness Radar (Full Width) */}
+            {assessment && renderAssessmentCard()}
 
-                {/* 2. BOTTOM: Extracted Questionnaire Details (Name, Residence, Family, Academics, Sports) */}
-                <div className="space-y-4">
-                  <div className="border-b border-[var(--canvas-border)] pb-2 flex items-center justify-between">
-                    <span className="text-xs font-bold text-[var(--fg-secondary)] uppercase tracking-wider">
-                      Extracted PIQ Dossier Details (DIPR Form 107-A)
-                    </span>
-                    <span className="text-[10px] text-emerald-500 font-semibold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Auto-saved
-                    </span>
-                  </div>
-                  {renderDossierForm()}
+            {/* 2. Extracted Questionnaire Details (Sections 1-4) (Full Width) */}
+            <div className="space-y-4">
+              <div className="border-b border-[var(--canvas-border)] pb-2 flex items-center justify-between">
+                <span className="text-xs font-bold text-[var(--fg-secondary)] uppercase tracking-wider">
+                  Extracted PIQ Dossier Details (DIPR Form 107-A)
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-emerald-500 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Auto-saved
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIntakeModalOpen(true)}
+                    className="text-[10px] font-bold text-[var(--primary-accent)] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>Re-Scan PIQ</span>
+                  </button>
                 </div>
               </div>
+              {renderDossierForm()}
             </div>
-          )}
+          </div>
 
           {/* BOTTOM ACTION BAR (Shown after upload / when candidate data is present) */}
           {hasUploadedData && (
@@ -3129,40 +3176,46 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* Mobile Slide-over Drawer for Intake / Re-Scan */}
+          {/* UNIVERSAL INTAKE & RE-SCAN MODAL CARD (DESKTOP & MOBILE) */}
           <AnimatePresence>
-            {mobileDrawerOpen && hasUploadedData && (
-              <>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setMobileDrawerOpen(false)}
-                  className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 lg:hidden"
+            {intakeModalOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-md animate-in fade-in duration-150">
+                <div
+                  className="fixed inset-0"
+                  onClick={() => setIntakeModalOpen(false)}
                 />
-                <motion.div
-                  initial={{ y: "100%" }}
-                  animate={{ y: 0 }}
-                  exit={{ y: "100%" }}
-                  transition={{ type: "spring", damping: 28, stiffness: 300 }}
-                  className="fixed inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto bg-[var(--canvas-surface)] border-t-2 border-[var(--primary-accent)] rounded-t-2xl z-50 p-4 sm:p-6 shadow-2xl lg:hidden font-mono"
+                <div
+                  className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-[var(--canvas-surface)] border-2 border-[var(--primary-accent)]/50 rounded-2xl shadow-2xl p-4 sm:p-6 font-mono space-y-4"
                 >
-                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-[var(--canvas-border)]">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-[var(--gold-accent)]" />
-                      <span className="text-xs font-bold tracking-wider">RE-SCAN OR DOWNLOAD PIQ</span>
+                  <div className="flex items-center justify-between pb-3 border-b border-[var(--canvas-border)]">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg border border-[var(--primary-accent)]/50 bg-[var(--primary-accent)]/10 flex items-center justify-center text-[var(--primary-accent)]">
+                        <Sparkles className="w-4 h-4 text-[var(--gold-accent)]" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs sm:text-sm font-extrabold tracking-wider">
+                          PIQ DOSSIER INTAKE & AI MULTIMODAL SCAN
+                        </h3>
+                        <p className="text-[10px] text-[var(--fg-muted)]">
+                          Download standardized DIPR 107-A blank PDF or upload your scan for AI autofill & scoring
+                        </p>
+                      </div>
                     </div>
+
                     <button
                       type="button"
-                      onClick={() => setMobileDrawerOpen(false)}
+                      onClick={() => setIntakeModalOpen(false)}
                       className="p-1.5 rounded-lg border border-[var(--canvas-border)] hover:border-red-500 text-[var(--fg-muted)] hover:text-red-500 transition-colors cursor-pointer"
+                      title="Close modal"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  {renderIntakeSection(true)}
-                </motion.div>
-              </>
+
+                  {/* The 2 Intake Cards */}
+                  {renderIntakeSection(false)}
+                </div>
+              </div>
             )}
           </AnimatePresence>
 
