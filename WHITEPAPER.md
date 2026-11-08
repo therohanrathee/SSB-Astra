@@ -133,6 +133,11 @@ flowchart TD
       - Guarded `analyzePiqWithGemini`: state `assessment` is immediately reset to `null` before each scan and upon any error, preventing ghost assessments from persisting on failure.
       - Added header `RESET` button for instant candidate cache and form purge.
       - Hardened Gemini prompt with strict factual extraction constraints: forbids hallucinating or inventing imaginary extracurriculars when sections are blank.
+    - **Physical Form Field Normalization & Sibling Logic:**
+      - *Residence Auto-Resolution (Item 4):* Form 107-A candidates often write "Same as above", "Do", or "-do-" in 4(b) (Present Residence) or 4(c) (Permanent Residence). The system automatically resolves and copies the real place name, district, state, and approximate population from 4(a) (or 4(b)) into 4(b) and 4(c) on both backend and client side, ensuring no literal "Same as above" text is saved.
+      - *Family Sibling Normalization (Item 6):* In the family table, brothers and sisters are automatically normalized to "Sibling" (or "Younger Sibling" / "Elder Sibling"), avoiding unilateral gendered assumptions.
+      - *Leadership & Responsibility Progress Bar Fixed:* Resolved undeclared `--military-olive` CSS variable in `globals.css` (added `#16a34a` for light mode and `#84cc16` for dark mode) which caused the progress bar to render transparent; added smooth 500ms transitions and clamped percentage boundaries across all 4 pillars.
+      - *In-Memory PDF Rasterizer & JS MIME Headers:* Bound `globalThis.pdfjsWorker` in-memory to prevent Web Worker cross-origin and MIME-type blocks, configured explicit JS headers in `next.config.ts`, and established a $\le 3.5\text{ MB}$ direct transmission fallback under Vercel's payload ceiling.
     - Resolved WebKit/Safari `DOMException: The string did not match the expected pattern` by standardizing file `accept` MIME types, implementing safe response text parsing, and auto-normalizing extracted dates to `YYYY-MM-DD`.
   - **Officer Candidate Dossier Assessment & PIQ Scoring Engine:**
     - Refined system prompt to perform dual-action processing: strict JSON transcription + Senior Interviewing Officer (IO) evaluation.

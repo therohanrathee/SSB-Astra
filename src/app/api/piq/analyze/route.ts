@@ -156,7 +156,9 @@ Important Instructions:
 2. Handwriting & Abbreviations: Accurately read handwritten or printed text. Expand standard defense/educational abbreviations only when clearly written (e.g. "CBSE", "ICSE", "B.Tech").
 3. Blank or Partial Forms: If the uploaded form is partially filled or unreadable in some sections, extract only the valid sections and evaluate the score strictly on the verified facts provided.
 4. Officer Assessment Accuracy: The PIQ score and Interviewing Officer assessment must be 100% grounded in the extracted form data. If the candidate has few extracurriculars or achievements, reflect that objectively in the breakdown and recommendations rather than fabricating imaginary activities.
-5. Output strictly valid JSON with no markdown formatting or commentary.`;
+5. RESIDENCE RESOLUTION (Item 4): Candidates frequently write "Same as above", "Do", "-do-", or "as above" in 4(b) (Present Residence) or 4(c) (Permanent Residence). When this occurs, DO NOT output literal "Same as above". Instead, COPY the actual place name, district, state, and approximate population from 4(a) (or 4(b)) into 4(b) and 4(c) so that all fields contain the full geographic data.
+6. FAMILY DETAILS (Item 6): In the family table, use "Father", "Mother", and for any brothers or sisters, use "Sibling" (or "Elder Sibling" / "Younger Sibling", or "Brother" / "Sister" as indicated by candidate). Do not assume brother if it is a sister.
+7. Output strictly valid JSON with no markdown formatting or commentary.`;
 
     parts.push({ text: systemPrompt });
 
@@ -253,6 +255,89 @@ Important Instructions:
     // If model wrapped in { form_data, assessment }, return both.
     const formDataOut = parsedJson.form_data || parsedJson;
     const assessmentOut = parsedJson.assessment || null;
+
+    // 1. Residence Auto-Resolution (Item 4)
+    // If candidate wrote "Same as above", "Do", "-do-", or "as above" in 4(b) or 4(c),
+    // copy the actual geographic data from 4(a) (or 4(b)) so no literal "Same as above" is stored.
+    const isSameAsAbove = (val?: string) => {
+      if (!val) return false;
+      const clean = val.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+      return (
+        clean === "sameasabove" ||
+        clean === "same" ||
+        clean === "do" ||
+        clean === "ditto" ||
+        clean === "asabove" ||
+        clean === "sameas4a" ||
+        clean === "sameas4b" ||
+        val.toLowerCase().includes("same as") ||
+        val.toLowerCase().includes("as above") ||
+        val.trim() === "-" ||
+        val.trim() === "--" ||
+        val.trim() === '""'
+      );
+    };
+
+    if (formDataOut && typeof formDataOut === "object") {
+      // 4(b) Present Residence resolution
+      if (isSameAsAbove(formDataOut.present_residence_place)) {
+        formDataOut.present_residence_place = formDataOut.max_residence_place || "";
+      }
+      if (isSameAsAbove(formDataOut.present_residence_district) || (!formDataOut.present_residence_district && formDataOut.present_residence_place === formDataOut.max_residence_place)) {
+        formDataOut.present_residence_district = formDataOut.max_residence_district || formDataOut.present_residence_district || "";
+      }
+      if (isSameAsAbove(formDataOut.present_residence_state) || (!formDataOut.present_residence_state && formDataOut.present_residence_place === formDataOut.max_residence_place)) {
+        formDataOut.present_residence_state = formDataOut.max_residence_state || formDataOut.present_residence_state || "";
+      }
+      if (isSameAsAbove(formDataOut.present_residence_population) || (!formDataOut.present_residence_population && formDataOut.present_residence_place === formDataOut.max_residence_place)) {
+        formDataOut.present_residence_population = formDataOut.max_residence_population || formDataOut.present_residence_population || "";
+      }
+
+      // 4(c) Permanent Residence resolution
+      const sourcePlace = (!isSameAsAbove(formDataOut.present_residence_place) && formDataOut.present_residence_place)
+        ? formDataOut.present_residence_place
+        : formDataOut.max_residence_place;
+      const sourceDistrict = (!isSameAsAbove(formDataOut.present_residence_district) && formDataOut.present_residence_district)
+        ? formDataOut.present_residence_district
+        : formDataOut.max_residence_district;
+      const sourceState = (!isSameAsAbove(formDataOut.present_residence_state) && formDataOut.present_residence_state)
+        ? formDataOut.present_residence_state
+        : formDataOut.max_residence_state;
+      const sourcePop = (!isSameAsAbove(formDataOut.present_residence_population) && formDataOut.present_residence_population)
+        ? formDataOut.present_residence_population
+        : formDataOut.max_residence_population;
+
+      if (isSameAsAbove(formDataOut.perm_residence_place)) {
+        formDataOut.perm_residence_place = sourcePlace || "";
+      }
+      if (isSameAsAbove(formDataOut.perm_residence_district) || (!formDataOut.perm_residence_district && formDataOut.perm_residence_place === sourcePlace)) {
+        formDataOut.perm_residence_district = sourceDistrict || formDataOut.perm_residence_district || "";
+      }
+      if (isSameAsAbove(formDataOut.perm_residence_state) || (!formDataOut.perm_residence_state && formDataOut.perm_residence_place === sourcePlace)) {
+        formDataOut.perm_residence_state = sourceState || formDataOut.perm_residence_state || "";
+      }
+      if (isSameAsAbove(formDataOut.perm_residence_population) || (!formDataOut.perm_residence_population && formDataOut.perm_residence_place === sourcePlace)) {
+        formDataOut.perm_residence_population = sourcePop || formDataOut.perm_residence_population || "";
+      }
+
+      // 2. Family Details (Item 6): Normalize brother/sister to Sibling
+      if (formDataOut.family_members && Array.isArray(formDataOut.family_members)) {
+        formDataOut.family_members = formDataOut.family_members.map((member: { relation?: string }) => {
+          let rel = (member.relation || "").trim();
+          if (/younger\s*(brother|sister)/i.test(rel)) {
+            rel = "Younger Sibling";
+          } else if (/elder\s*(brother|sister)/i.test(rel)) {
+            rel = "Elder Sibling";
+          } else if (/^(brother|sister)$/i.test(rel)) {
+            rel = "Sibling";
+          }
+          return {
+            ...member,
+            relation: rel
+          };
+        });
+      }
+    }
 
     return NextResponse.json({
       success: true,

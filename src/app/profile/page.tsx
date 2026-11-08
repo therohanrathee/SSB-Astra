@@ -513,9 +513,15 @@ export default function ProfilePage() {
       onProgress?.("⚡ Loading PDF rasterizer on device...");
       const pdfjsLib = await import("pdfjs-dist");
 
-      if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
+      // Attach in-memory worker handler to avoid any Web Worker cross-origin or MIME-type blocks
+      try {
+        // @ts-expect-error global worker binding
+        globalThis.pdfjsWorker = await import("pdfjs-dist/build/pdf.worker.min.mjs");
+      } catch (attachErr) {
+        console.warn("[PDF Worker in-memory attach]:", attachErr);
       }
+
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.js`;
 
       onProgress?.("⚡ Reading PDF document...");
       const arrayBuffer = await file.arrayBuffer();
@@ -590,8 +596,13 @@ export default function ProfilePage() {
       }
     } catch (err: unknown) {
       console.error("[PDF Rasterization Failure]:", err);
+      // Safety net: If the PDF is <= 3.5 MB, transmit directly to Gemini Vision rather than failing
+      if (file.size <= 3.5 * 1024 * 1024) {
+        console.log(`[PDF Fallback] Transmitting ${file.name} (${(file.size / 1024).toFixed(0)} KB) directly as application/pdf`);
+        return [file];
+      }
       const errMsg = err instanceof Error ? err.message : String(err);
-      throw new Error(`Could not convert PDF to images on device: ${errMsg}. Please upload JPG/PNG photos instead.`);
+      throw new Error(`Could not convert PDF (${(file.size / (1024 * 1024)).toFixed(1)} MB) to images on device: ${errMsg}. Please upload JPG/PNG photos instead.`);
     }
 
     throw new Error("No pages could be extracted from this PDF. Please check the file or upload photos of Page 1 & Page 2.");
@@ -665,6 +676,88 @@ export default function ProfilePage() {
 
       // Merge extracted fields into state
       const ext = json.data;
+
+      // 1. Residence Auto-Resolution (Item 4):
+      // If candidate wrote "Same as above", "Do", "-do-", or "as above" in 4(b) or 4(c),
+      // replace it with the actual location data from 4(a) (or 4(b)).
+      const isSameAsAbove = (val?: string) => {
+        if (!val) return false;
+        const clean = val.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+        return (
+          clean === "sameasabove" ||
+          clean === "same" ||
+          clean === "do" ||
+          clean === "ditto" ||
+          clean === "asabove" ||
+          clean === "sameas4a" ||
+          clean === "sameas4b" ||
+          val.toLowerCase().includes("same as") ||
+          val.toLowerCase().includes("as above") ||
+          val.trim() === "-" ||
+          val.trim() === "--" ||
+          val.trim() === '""'
+        );
+      };
+
+      // 4(b) Present Residence resolution
+      if (isSameAsAbove(ext.present_residence_place)) {
+        ext.present_residence_place = ext.max_residence_place || "";
+      }
+      if (isSameAsAbove(ext.present_residence_district) || (!ext.present_residence_district && ext.present_residence_place === ext.max_residence_place)) {
+        ext.present_residence_district = ext.max_residence_district || ext.present_residence_district || "";
+      }
+      if (isSameAsAbove(ext.present_residence_state) || (!ext.present_residence_state && ext.present_residence_place === ext.max_residence_place)) {
+        ext.present_residence_state = ext.max_residence_state || ext.present_residence_state || "";
+      }
+      if (isSameAsAbove(ext.present_residence_population) || (!ext.present_residence_population && ext.present_residence_place === ext.max_residence_place)) {
+        ext.present_residence_population = ext.max_residence_population || ext.present_residence_population || "";
+      }
+
+      // 4(c) Permanent Residence resolution
+      const sourcePlace = (!isSameAsAbove(ext.present_residence_place) && ext.present_residence_place)
+        ? ext.present_residence_place
+        : ext.max_residence_place;
+      const sourceDistrict = (!isSameAsAbove(ext.present_residence_district) && ext.present_residence_district)
+        ? ext.present_residence_district
+        : ext.max_residence_district;
+      const sourceState = (!isSameAsAbove(ext.present_residence_state) && ext.present_residence_state)
+        ? ext.present_residence_state
+        : ext.max_residence_state;
+      const sourcePop = (!isSameAsAbove(ext.present_residence_population) && ext.present_residence_population)
+        ? ext.present_residence_population
+        : ext.max_residence_population;
+
+      if (isSameAsAbove(ext.perm_residence_place)) {
+        ext.perm_residence_place = sourcePlace || "";
+      }
+      if (isSameAsAbove(ext.perm_residence_district) || (!ext.perm_residence_district && ext.perm_residence_place === sourcePlace)) {
+        ext.perm_residence_district = sourceDistrict || ext.perm_residence_district || "";
+      }
+      if (isSameAsAbove(ext.perm_residence_state) || (!ext.perm_residence_state && ext.perm_residence_place === sourcePlace)) {
+        ext.perm_residence_state = sourceState || ext.perm_residence_state || "";
+      }
+      if (isSameAsAbove(ext.perm_residence_population) || (!ext.perm_residence_population && ext.perm_residence_place === sourcePlace)) {
+        ext.perm_residence_population = sourcePop || ext.perm_residence_population || "";
+      }
+
+      // 2. Family Details (Item 6): Normalize brother/sister to "Sibling"
+      if (ext.family_members && Array.isArray(ext.family_members)) {
+        ext.family_members = ext.family_members.map(member => {
+          let rel = (member.relation || "").trim();
+          if (/younger\s*(brother|sister)/i.test(rel)) {
+            rel = "Younger Sibling";
+          } else if (/elder\s*(brother|sister)/i.test(rel)) {
+            rel = "Elder Sibling";
+          } else if (/^(brother|sister)$/i.test(rel)) {
+            rel = "Sibling";
+          }
+          return {
+            ...member,
+            relation: rel
+          };
+        });
+      }
+
       setFormData(prev => ({
         ...prev,
         ...ext,
@@ -1363,16 +1456,16 @@ export default function ProfilePage() {
                       <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
                         <div className="flex justify-between text-[11px] font-bold">
                           <span className="text-[var(--fg-secondary)]">Academics & Consistency</span>
-                          <span className="text-[var(--primary-accent)]">{assessment.score_breakdown.academics.score}/25</span>
+                          <span className="text-[var(--primary-accent)]">{assessment.score_breakdown.academics?.score ?? 0}/25</span>
                         </div>
                         <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-[var(--primary-accent)]" 
-                            style={{ width: `${(assessment.score_breakdown.academics.score / 25) * 100}%` }}
+                            className="h-full bg-[var(--primary-accent)] transition-all duration-500" 
+                            style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.academics?.score ?? 0) / 25) * 100)))}%` }}
                           />
                         </div>
                         <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
-                          {assessment.score_breakdown.academics.assessment}
+                          {assessment.score_breakdown.academics?.assessment}
                         </p>
                       </div>
 
@@ -1380,16 +1473,16 @@ export default function ProfilePage() {
                       <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
                         <div className="flex justify-between text-[11px] font-bold">
                           <span className="text-[var(--fg-secondary)]">Sports, NCC & Physical</span>
-                          <span className="text-[var(--gold-accent)]">{assessment.score_breakdown.sports_and_ncc.score}/25</span>
+                          <span className="text-[var(--gold-accent)]">{assessment.score_breakdown.sports_and_ncc?.score ?? 0}/25</span>
                         </div>
                         <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-[var(--gold-accent)]" 
-                            style={{ width: `${(assessment.score_breakdown.sports_and_ncc.score / 25) * 100}%` }}
+                            className="h-full bg-[var(--gold-accent)] transition-all duration-500" 
+                            style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.sports_and_ncc?.score ?? 0) / 25) * 100)))}%` }}
                           />
                         </div>
                         <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
-                          {assessment.score_breakdown.sports_and_ncc.assessment}
+                          {assessment.score_breakdown.sports_and_ncc?.assessment}
                         </p>
                       </div>
 
@@ -1397,16 +1490,16 @@ export default function ProfilePage() {
                       <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
                         <div className="flex justify-between text-[11px] font-bold">
                           <span className="text-[var(--fg-secondary)]">Leadership & Responsibilities</span>
-                          <span className="text-[var(--military-olive)]">{assessment.score_breakdown.leadership_and_responsibility.score}/25</span>
+                          <span className="text-[var(--military-olive,#16a34a)]">{assessment.score_breakdown.leadership_and_responsibility?.score ?? 0}/25</span>
                         </div>
                         <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-[var(--military-olive)]" 
-                            style={{ width: `${(assessment.score_breakdown.leadership_and_responsibility.score / 25) * 100}%` }}
+                            className="h-full bg-[var(--military-olive,#16a34a)] transition-all duration-500" 
+                            style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.leadership_and_responsibility?.score ?? 0) / 25) * 100)))}%` }}
                           />
                         </div>
                         <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
-                          {assessment.score_breakdown.leadership_and_responsibility.assessment}
+                          {assessment.score_breakdown.leadership_and_responsibility?.assessment}
                         </p>
                       </div>
 
@@ -1414,16 +1507,16 @@ export default function ProfilePage() {
                       <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
                         <div className="flex justify-between text-[11px] font-bold">
                           <span className="text-[var(--fg-secondary)]">Hobbies & Drive</span>
-                          <span className="text-purple-400">{assessment.score_breakdown.hobbies_and_depth.score}/25</span>
+                          <span className="text-purple-400">{assessment.score_breakdown.hobbies_and_depth?.score ?? 0}/25</span>
                         </div>
                         <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-purple-500" 
-                            style={{ width: `${(assessment.score_breakdown.hobbies_and_depth.score / 25) * 100}%` }}
+                            className="h-full bg-purple-500 transition-all duration-500" 
+                            style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.hobbies_and_depth?.score ?? 0) / 25) * 100)))}%` }}
                           />
                         </div>
                         <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
-                          {assessment.score_breakdown.hobbies_and_depth.assessment}
+                          {assessment.score_breakdown.hobbies_and_depth?.assessment}
                         </p>
                       </div>
                     </div>

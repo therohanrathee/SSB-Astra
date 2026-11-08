@@ -23,6 +23,7 @@
 
     --secondary-accent: #0f172a; /* Deep Navy */
     --gold-accent: #d97706; /* Golden Crest Gold */
+    --military-olive: #16a34a; /* Indian Army Olive Green */
 
     --radar-grid: rgba(2, 132, 199, 0.12);
     --hud-border: #94a3b8;
@@ -50,6 +51,7 @@
 
     --secondary-accent: #ca8a04; /* Desert Field Tan */
     --gold-accent: #eab308;
+    --military-olive: #84cc16; /* Combat Olive Green */
 
     --radar-grid: rgba(101, 163, 13, 0.15);
     --hud-border: #3f523b;
