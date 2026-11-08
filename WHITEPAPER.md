@@ -125,7 +125,7 @@ flowchart TD
     - **Client-Side Pre-Compression Engine (Eliminating Vercel HTTP 413 Payload Limit):**
       - Resolved Vercel Serverless Function 4.5 MB hard limit (`FUNCTION_PAYLOAD_TOO_LARGE` / `bom1`) where raw smartphone camera photos (5-15 MB each) or scanned PDFs were rejected before hitting route handlers.
       - Implemented robust `FileReader.readAsDataURL` + HTML5 Canvas downsampling (`compressImageClientSide`): auto-scales image dimensions to max 1600px maintaining aspect ratio with 80% JPEG quality and white background contrast. Reduces 8-15 MB photos down to ~250-350 KB (96% bandwidth reduction) while retaining razor-sharp handwriting legibility.
-      - Smart PDF Handling: multi-page PDFs $\le$ 3.5 MB pass directly to Gemini's native multi-page vision engine without worker overhead; large scanned PDFs are rasterized client-side via `pdfjs-dist`. Pre-flight client guard prevents any payload over 4.2 MB from reaching Vercel.
+      - 100% Client-Side PDF Rasterization: ALL PDFs (scanned or digital) are rasterized on-device into compressed 1600px JPEG page images via `pdfjs-dist` and HTML5 Canvas, completely standardizing the ingestion pipeline so the backend and Gemini Vision ALWAYS receive identical, optimized ~250 KB images.
       - Real-time client status streaming: dynamically informs cadet of compression progress, bandwidth savings, and transmission stages before scoring.
     - **Scrubbing Legacy Mock Data & Ghost Assessment Prevention:**
       - Purged all hardcoded placeholder data from `INITIAL_PIQ_DATA` (Kendriya Vidyalaya, APS, NIT B.Tech, Football, Robotics Club, NDA 148 Conference Out) so all fields start completely blank.

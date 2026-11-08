@@ -450,31 +450,25 @@ export default function ProfilePage() {
     });
   };
 
-  // Helper: Client-Side PDF Handling
-  // If PDF <= 3.5 MB, transmit directly (Gemini natively parses multi-page PDFs with high accuracy).
-  // If PDF > 3.5 MB, attempt client-side page rasterization or advise cadet.
+  // Helper: Client-Side PDF Rasterization to Compressed Images
+  // Converts every PDF into crisp, compressed JPEG page images (~200-350 KB each) directly in the browser
   const convertPdfToCompressedImages = async (
     file: File,
     onProgress?: (msg: string) => void
   ): Promise<File[]> => {
-    // If PDF is already under 3.5 MB, send directly as application/pdf!
-    // Vercel serverless limit is 4.5 MB, so a <= 3.5 MB PDF passes effortlessly with zero worker issues.
-    if (file.size <= 3.5 * 1024 * 1024) {
-      onProgress?.(`⚡ Preparing ${file.name} (${(file.size / 1024).toFixed(0)} KB) for AI analysis...`);
-      return [file];
+    if (typeof window === "undefined") {
+      throw new Error("PDF rasterization must run in browser");
     }
-
-    if (typeof window === "undefined") return [file];
 
     try {
       onProgress?.("⚡ Loading PDF rasterizer on device...");
       const pdfjsLib = await import("pdfjs-dist");
 
       if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
       }
 
-      onProgress?.("⚡ Reading multi-page scanned PDF...");
+      onProgress?.("⚡ Reading PDF document...");
       const arrayBuffer = await file.arrayBuffer();
       const loadingTask = pdfjsLib.getDocument({
         data: new Uint8Array(arrayBuffer),
@@ -487,13 +481,13 @@ export default function ProfilePage() {
       const compressedImages: File[] = [];
 
       for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-        onProgress?.(`⚡ Compressing Page ${pageNum} of ${numPages} on device...`);
+        onProgress?.(`⚡ Converting Page ${pageNum} of ${numPages} to compressed image...`);
         const page = await pdf.getPage(pageNum);
         const viewport = page.getViewport({ scale: 1.0 });
 
         const maxDim = Math.max(viewport.width, viewport.height);
-        const targetScale = Math.min(1600 / maxDim, 2.0);
-        const scaledViewport = page.getViewport({ scale: Math.max(targetScale, 1.2) });
+        const targetScale = maxDim > 0 ? 1600 / maxDim : 1.5;
+        const scaledViewport = page.getViewport({ scale: Math.min(Math.max(targetScale, 1.0), 2.5) });
 
         const canvas = document.createElement("canvas");
         canvas.width = Math.round(scaledViewport.width);
@@ -515,13 +509,15 @@ export default function ProfilePage() {
           });
 
           if (blob) {
-            const cleanName = `${file.name.replace(/\.[^/.]+$/, "")}_p${pageNum}.jpg`;
-            compressedImages.push(
-              new File([blob], cleanName, {
-                type: "image/jpeg",
-                lastModified: Date.now(),
-              })
+            const cleanName = `${file.name.replace(/\.[^/.]+$/, "")}_page_${pageNum}.jpg`;
+            const compressedFile = new File([blob], cleanName, {
+              type: "image/jpeg",
+              lastModified: Date.now(),
+            });
+            console.log(
+              `[PDF to Image] Page ${pageNum} converted: ${(compressedFile.size / 1024).toFixed(0)} KB (${canvas.width}x${canvas.height})`
             );
+            compressedImages.push(compressedFile);
           }
         }
       }
@@ -529,13 +525,13 @@ export default function ProfilePage() {
       if (compressedImages.length > 0) {
         return compressedImages;
       }
-    } catch (err) {
-      console.warn("Client-side PDF rasterization fallback:", err);
+    } catch (err: unknown) {
+      console.error("[PDF Rasterization Failure]:", err);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      throw new Error(`Could not convert PDF to images on device: ${errMsg}. Please upload JPG/PNG photos instead.`);
     }
 
-    throw new Error(
-      `Your scanned PDF is ${(file.size / (1024 * 1024)).toFixed(1)} MB, which exceeds Vercel's 4.5 MB serverless limit. Please snap or upload photos of Page 1 & Page 2 directly (photos are auto-compressed on your device to ~250 KB).`
-    );
+    throw new Error("No pages could be extracted from this PDF. Please check the file or upload photos of Page 1 & Page 2.");
   };
 
   // 2. Real AI Analysis using Google Gemini API (/api/piq/analyze) with Client-Side Compression
