@@ -114,10 +114,14 @@ flowchart TD
 - [x] **Phase 3.5: PIQ (Personal Information Questionnaire) Analysis & AI Autofill UI (IN PROGRESS / UI BUILT)**
   - **Comprehensive DIPR Form 107-A Analysis:** Analyzed official DIPR Questionnaire No. 107-A (Revised) structure across both Page 1 and Page 2 (14 distinct items, 4 complex nested matrices: Family, Education, Sports, Previous SSB attempts).
   - **Sample Blank PIQ Delivery:** Added official DIPR 107-A blank PDF at `public/sample_piq.pdf` with direct 1-click download on candidate profile.
-  - **AI Smart Extraction UI ("Analyse & Fill Information using PIQ"):**
-    - Drag-and-drop / upload file intake for filled PIQ scans and PDFs.
-    - AI OCR simulation pipeline with real-time HUD scanning and instant field population.
-    - 1-click interactive demo auto-fill for frictionless testing.
+  - **AI Smart Extraction Backend & UI ("Analyse & Fill Information using PIQ"):**
+    - Configured dedicated Google Gemini API key (`GEMINI_PIQ_API_KEY`) isolated strictly for PIQ document analysis.
+    - Implemented live backend endpoint `/api/piq/analyze` using **`gemini-3.5-flash-lite`** (500 free daily scans quota, ~15,000/month) with automatic fallback to `gemini-3.8-flash`.
+    - Native multimodal intake supporting 3 distinct acquisition flows:
+      1. *2-Page PDF* (`application/pdf`)
+      2. *2 Photos (Page 1 Front & Page 2 Back)* (`image/png, image/jpeg`)
+      3. *Live Camera Capture* (`accept="image/*" capture="environment"`)
+    - Added offline 1-click demo auto-fill for rapid testing.
   - **Profile Page (`src/app/profile/page.tsx`) Deployed:**
     - Locked email credential field (read-only with security padlock badge).
     - 4 structured military tabbed panels:

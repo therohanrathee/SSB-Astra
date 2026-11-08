@@ -23,7 +23,10 @@ import {
   Trash2, 
   RefreshCw,
   FileCheck,
-  Compass
+  Compass,
+  Camera,
+  Images,
+  AlertTriangle
 } from "lucide-react";
 import CrossedSwords from "@/components/CrossedSwords";
 import { supabase } from "@/lib/supabaseClient";
@@ -204,7 +207,12 @@ export default function ProfilePage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isParsingPiq, setIsParsingPiq] = useState(false);
   const [parseNotification, setParseNotification] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [parseError, setParseError] = useState<string | null>(null);
+
+  // Dedicated refs for the 3 upload methods
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+  const photosInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   // 1. Load User Profile from Supabase & Local Cache
   useEffect(() => {
@@ -265,18 +273,57 @@ export default function ProfilePage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // 2. Handle AI Analysis & Autofill of Uploaded PIQ
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    simulateAiPiqParsing(file.name);
+  // 2. Real AI Analysis using Google Gemini API (/api/piq/analyze)
+  const analyzePiqWithGemini = async (files: File[]) => {
+    if (!files || files.length === 0) return;
+    setIsParsingPiq(true);
+    setParseNotification(null);
+    setParseError(null);
+
+    try {
+      const dataPayload = new FormData();
+      for (const f of files) {
+        dataPayload.append("files", f);
+      }
+
+      const res = await fetch("/api/piq/analyze", {
+        method: "POST",
+        body: dataPayload
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || json.details || "Failed to analyze document");
+      }
+
+      // Merge extracted fields into state
+      const ext = json.data;
+      setFormData(prev => ({
+        ...prev,
+        ...ext,
+        family_members: ext.family_members && ext.family_members.length > 0 ? ext.family_members : prev.family_members,
+        education_records: ext.education_records && ext.education_records.length > 0 ? ext.education_records : prev.education_records,
+        sports_records: ext.sports_records && ext.sports_records.length > 0 ? ext.sports_records : prev.sports_records,
+        ssb_attempts: ext.ssb_attempts && ext.ssb_attempts.length > 0 ? ext.ssb_attempts : prev.ssb_attempts,
+      }));
+
+      setCompletionPct(100);
+      setParseNotification(`✨ Successfully extracted DIPR Form 107-A data from ${files.length} document(s) via Gemini AI! All 4 sections populated for your review.`);
+    } catch (err: unknown) {
+      console.error("Gemini PIQ Analysis error:", err);
+      const msg = err instanceof Error ? err.message : "Error analyzing document";
+      setParseError(msg);
+    } finally {
+      setIsParsingPiq(false);
+    }
   };
 
   const simulateAiPiqParsing = (filename: string) => {
     setIsParsingPiq(true);
     setParseNotification(null);
+    setParseError(null);
 
-    // Realistic scanning simulation for DIPR 107-A parsing
+    // Instant offline simulation for testing UI without real upload
     setTimeout(() => {
       setIsParsingPiq(false);
       setFormData(prev => ({
@@ -316,9 +363,9 @@ export default function ProfilePage() {
         service_preference: "1. Army (Infantry / Armoured)  2. Air Force  3. Navy",
         total_chances_availed: "1",
       }));
-      setParseNotification(`✨ Successfully parsed "${filename}"! DIPR Form 107-A data auto-filled across all 4 sections for your review.`);
+      setParseNotification(`✨ Loaded sample data for "${filename}". All 4 sections populated for demonstration.`);
       setCompletionPct(100);
-    }, 2000);
+    }, 1500);
   };
 
   // 3. Save PIQ Data
@@ -483,51 +530,112 @@ export default function ProfilePage() {
             </div>
 
             {/* Upload Zone / Triggers */}
-            <div className="space-y-2">
+            <div className="space-y-2.5">
+              {/* Hidden specialized input fields */}
               <input
-                ref={fileInputRef}
+                ref={pdfInputRef}
                 type="file"
-                accept=".pdf,image/png,image/jpeg,image/jpg"
+                accept="application/pdf"
                 className="hidden"
-                onChange={handleFileUpload}
+                onChange={e => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    analyzePiqWithGemini(Array.from(e.target.files));
+                  }
+                }}
+              />
+              <input
+                ref={photosInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                multiple
+                className="hidden"
+                onChange={e => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    analyzePiqWithGemini(Array.from(e.target.files));
+                  }
+                }}
+              />
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={e => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    analyzePiqWithGemini(Array.from(e.target.files));
+                  }
+                }}
               />
 
-              <div className="flex flex-col sm:flex-row items-center gap-2">
+              {/* 3 Upload Intake Action Buttons */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => pdfInputRef.current?.click()}
                   disabled={isParsingPiq}
-                  className="w-full sm:flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-60"
+                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-60"
+                  title="Upload a single 2-page PDF document"
                 >
-                  {isParsingPiq ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>PARSING PIQ DOCUMENT...</span>
-                    </>
-                  ) : (
-                    <>
-                      <UploadCloud className="w-3.5 h-3.5" />
-                      <span>UPLOAD FILLED PIQ (PDF / IMAGE)</span>
-                    </>
-                  )}
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>2-Page PDF</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => photosInputRef.current?.click()}
+                  disabled={isParsingPiq}
+                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-60"
+                  title="Select 2 photos (Page 1 Front & Page 2 Back)"
+                >
+                  <Images className="w-3.5 h-3.5" />
+                  <span>2 Photos (P1 & P2)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => cameraInputRef.current?.click()}
+                  disabled={isParsingPiq}
+                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg border border-[var(--primary-accent)] hover:bg-[var(--primary-accent)]/10 text-[var(--primary-accent)] text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-60"
+                  title="Open device camera to snap your PIQ form"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Scan with Camera</span>
+                </button>
+              </div>
+
+              {/* 1-Click Offline Demo Button & Status Indicator */}
+              <div className="flex items-center justify-between pt-1">
+                <div className="text-[10px] text-[var(--fg-muted)] flex items-center gap-1">
+                  {isParsingPiq && <RefreshCw className="w-3 h-3 animate-spin text-[var(--primary-accent)]" />}
+                  <span>{isParsingPiq ? "Gemini AI is analyzing document & tables..." : "Supports PDF, JPG, PNG & Live Camera"}</span>
+                </div>
 
                 <button
                   type="button"
                   onClick={() => simulateAiPiqParsing("Sample_Cadet_PIQ_107A.pdf")}
                   disabled={isParsingPiq}
-                  className="w-full sm:w-auto px-3 py-2 rounded-lg border border-[var(--canvas-border)] hover:border-[var(--primary-accent)] bg-[var(--canvas-surface-subtle)] text-[11px] font-bold text-[var(--fg-secondary)] hover:text-[var(--primary-accent)] transition-all whitespace-nowrap active:scale-95"
-                  title="Test auto-population with sample candidate dossier"
+                  className="text-[10px] font-bold text-[var(--gold-accent)] hover:underline flex items-center gap-1 cursor-pointer"
+                  title="Populate with sample cadet data without uploading"
                 >
-                  <Sparkles className="w-3 h-3 inline mr-1 text-[var(--gold-accent)]" />
-                  Try 1-Click Demo Auto-Fill
+                  <Sparkles className="w-3 h-3" />
+                  <span>Try 1-Click Demo Fill</span>
                 </button>
               </div>
 
+              {/* Success Notification */}
               {parseNotification && (
-                <div className="p-2.5 rounded bg-[var(--primary-accent)]/10 border border-[var(--primary-accent)]/30 text-[11px] text-[var(--primary-accent)] flex items-center gap-2 animate-in fade-in duration-200">
-                  <FileCheck className="w-4 h-4 shrink-0" />
+                <div className="p-2.5 rounded bg-[var(--military-olive)]/15 border border-[var(--military-olive)] text-[11px] text-[var(--fg-primary)] flex items-center gap-2 animate-in fade-in duration-200">
+                  <FileCheck className="w-4 h-4 text-[var(--military-olive)] shrink-0" />
                   <span>{parseNotification}</span>
+                </div>
+              )}
+
+              {/* Error Notification */}
+              {parseError && (
+                <div className="p-2.5 rounded bg-red-500/10 border border-red-500/30 text-[11px] text-red-500 flex items-center gap-2 animate-in fade-in duration-200">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>{parseError}</span>
                 </div>
               )}
             </div>
