@@ -500,7 +500,10 @@ export default function ProfilePage() {
   };
 
   // Helper: Client-Side PDF Rasterization to Compressed Images
-  // Converts every PDF into crisp, compressed JPEG page images (~200-350 KB each) directly in the browser
+  // 3-Tier Multi-Strategy Pipeline:
+  // Tier 1: Direct Scanned JPEG Stream Extraction (<10ms, 100% native Safari iOS safe, zero WebWorker/WASM limits).
+  // Tier 2: Canvas Rasterizer using pdfjs-dist/legacy (with Promise.withResolvers polyfill for Safari iOS).
+  // Tier 3: Direct transmission fallback for compact PDFs <= 3.5 MB.
   const convertPdfToCompressedImages = async (
     file: File,
     onProgress?: (msg: string) => void
@@ -509,22 +512,117 @@ export default function ProfilePage() {
       throw new Error("PDF rasterization must run in browser");
     }
 
-    try {
-      onProgress?.("⚡ Loading PDF rasterizer on device...");
-      const pdfjsLib = await import("pdfjs-dist");
+    onProgress?.("⚡ Reading PDF document on device...");
+    const arrayBuffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
 
-      // Attach in-memory worker handler to avoid any Web Worker cross-origin or MIME-type blocks
-      try {
-        // @ts-expect-error global worker binding
-        globalThis.pdfjsWorker = await import("pdfjs-dist/build/pdf.worker.min.mjs");
-      } catch (attachErr) {
-        console.warn("[PDF Worker in-memory attach]:", attachErr);
+    // =========================================================================
+    // TIER 1: Direct Scanned JPEG Extraction (<10ms, Native Safari iOS Safe)
+    // Mobile scanning apps (Apple Notes, iOS Files Scan, CamScanner, Adobe Scan, etc.)
+    // store the high-res document page scans as embedded DCT/JPEG streams.
+    // =========================================================================
+    try {
+      onProgress?.("⚡ Scanning PDF for embedded high-res page photos...");
+      const text = new TextDecoder("latin1").decode(bytes);
+      const regex = /\/Filter\s*(?:\[\s*)?\/DCTDecode[\s\S]*?stream\r?\n/gi;
+      let match: RegExpExecArray | null;
+      const extractedSlices: Uint8Array[] = [];
+
+      while ((match = regex.exec(text)) !== null && extractedSlices.length < 2) {
+        const streamStart = match.index + match[0].length;
+        const endstreamIdx = text.indexOf("endstream", streamStart);
+        if (endstreamIdx > streamStart) {
+          let slice = bytes.subarray(streamStart, endstreamIdx);
+          while (slice.length > 0 && (slice[slice.length - 1] === 10 || slice[slice.length - 1] === 13)) {
+            slice = slice.subarray(0, slice.length - 1);
+          }
+          // Validate minimum size (>25KB) and JPEG SOI marker (0xFF, 0xD8)
+          if (slice.length > 25 * 1024 && slice[0] === 0xFF && slice[1] === 0xD8) {
+            extractedSlices.push(slice);
+          }
+        }
       }
 
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.js`;
+      // Binary scan fallback if regex didn't catch object streams
+      if (extractedSlices.length === 0) {
+        let i = 0;
+        const len = bytes.length;
+        while (i < len - 3 && extractedSlices.length < 2) {
+          if (bytes[i] === 0xFF && bytes[i + 1] === 0xD8 && bytes[i + 2] === 0xFF) {
+            const start = i;
+            i += 3;
+            while (i < len - 1) {
+              if (bytes[i] === 0xFF && bytes[i + 1] === 0xD9) {
+                const end = i + 2;
+                const slice = bytes.subarray(start, end);
+                if (slice.length > 25 * 1024) {
+                  extractedSlices.push(slice);
+                }
+                i = end;
+                break;
+              }
+              i++;
+            }
+          } else {
+            i++;
+          }
+        }
+      }
 
-      onProgress?.("⚡ Reading PDF document...");
-      const arrayBuffer = await file.arrayBuffer();
+      if (extractedSlices.length > 0) {
+        console.log(`[Tier 1 PDF Scan] Found ${extractedSlices.length} embedded JPEG page(s) in PDF.`);
+        const compressedPages: File[] = [];
+        for (let idx = 0; idx < extractedSlices.length; idx++) {
+          onProgress?.(`⚡ Compressing extracted Page ${idx + 1} of ${extractedSlices.length} on device...`);
+          const rawSlice = extractedSlices[idx];
+          const rawBlob = new Blob([rawSlice as BlobPart], { type: "image/jpeg" });
+          const rawFile = new File([rawBlob], `${(file.name || "piq_page").replace(/\.[^/.]+$/, "")}_page_${idx + 1}.jpg`, {
+            type: "image/jpeg",
+            lastModified: Date.now()
+          });
+          const compressed = await compressImageClientSide(rawFile, 1600, 0.80);
+          console.log(`[Tier 1 Page ${idx + 1}] Compressed from ${(rawFile.size / 1024).toFixed(0)} KB to ${(compressed.size / 1024).toFixed(0)} KB`);
+          compressedPages.push(compressed);
+        }
+        return compressedPages;
+      }
+    } catch (tier1Err) {
+      console.warn("[Tier 1 Scanned Extraction Fallback]:", tier1Err);
+    }
+
+    // =========================================================================
+    // TIER 2: Legacy Canvas Rasterizer (for digitally generated/vector PDFs)
+    // Uses pdfjs-dist legacy build with Promise.withResolvers polyfill for Safari iOS.
+    // =========================================================================
+    try {
+      onProgress?.("⚡ Loading PDF document rasterizer on device...");
+
+      // Safari iOS < 17.4 Polyfill
+      const P = Promise as unknown as { withResolvers?: () => { promise: Promise<unknown>; resolve: unknown; reject: unknown } };
+      if (typeof Promise !== "undefined" && !P.withResolvers) {
+        P.withResolvers = function () {
+          let resolve: unknown, reject: unknown;
+          const promise = new Promise((res, rej) => {
+            resolve = res;
+            reject = rej;
+          });
+          return { promise, resolve, reject };
+        };
+      }
+
+      try {
+        // @ts-expect-error global worker binding
+        globalThis.pdfjsWorker = await import("pdfjs-dist/legacy/build/pdf.worker.min.mjs");
+      } catch (attachErr) {
+        console.warn("[PDF Legacy Worker in-memory attach]:", attachErr);
+      }
+
+      const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+      if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
+      }
+
+      onProgress?.("⚡ Rasterizing PDF vector pages...");
       const loadingTask = pdfjsLib.getDocument({
         data: new Uint8Array(arrayBuffer),
         useSystemFonts: true,
@@ -565,7 +663,7 @@ export default function ProfilePage() {
               canvas.toBlob(resolve, "image/jpeg", 0.80);
             });
           } catch {
-            // fallback to dataURL
+            // fallback
           }
 
           if (!blob) {
@@ -585,7 +683,7 @@ export default function ProfilePage() {
             lastModified: Date.now(),
           });
           console.log(
-            `[PDF to Image] Page ${pageNum} converted: ${(compressedFile.size / 1024).toFixed(0)} KB (${canvas.width}x${canvas.height})`
+            `[Tier 2 Canvas] Page ${pageNum} converted: ${(compressedFile.size / 1024).toFixed(0)} KB (${canvas.width}x${canvas.height})`
           );
           compressedImages.push(compressedFile);
         }
@@ -594,18 +692,22 @@ export default function ProfilePage() {
       if (compressedImages.length > 0) {
         return compressedImages;
       }
-    } catch (err: unknown) {
-      console.error("[PDF Rasterization Failure]:", err);
-      // Safety net: If the PDF is <= 3.5 MB, transmit directly to Gemini Vision rather than failing
-      if (file.size <= 3.5 * 1024 * 1024) {
-        console.log(`[PDF Fallback] Transmitting ${file.name} (${(file.size / 1024).toFixed(0)} KB) directly as application/pdf`);
-        return [file];
-      }
-      const errMsg = err instanceof Error ? err.message : String(err);
-      throw new Error(`Could not convert PDF (${(file.size / (1024 * 1024)).toFixed(1)} MB) to images on device: ${errMsg}. Please upload JPG/PNG photos instead.`);
+    } catch (tier2Err: unknown) {
+      console.warn("[Tier 2 Canvas Rasterization Failed]:", tier2Err);
     }
 
-    throw new Error("No pages could be extracted from this PDF. Please check the file or upload photos of Page 1 & Page 2.");
+    // =========================================================================
+    // TIER 3: Direct Safe Transmission Fallback for Compact PDFs (<= 3.5 MB)
+    // =========================================================================
+    if (file.size <= 3.5 * 1024 * 1024) {
+      console.log(`[Tier 3 Fallback] Transmitting ${file.name} (${(file.size / 1024).toFixed(0)} KB) directly as application/pdf`);
+      return [file];
+    }
+
+    const mb = (file.size / (1024 * 1024)).toFixed(1);
+    throw new Error(
+      `Could not compress this scanned PDF (${mb} MB) directly on your device. Please upload standard JPG/PNG photos of Page 1 & Page 2.`
+    );
   };
 
   // 2. Real AI Analysis using Google Gemini API (/api/piq/analyze) with Client-Side Compression
