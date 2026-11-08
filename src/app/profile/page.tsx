@@ -748,7 +748,7 @@ export default function ProfilePage() {
         console.log(`[Tier 1 PDF Scan] Found ${extractedSlices.length} embedded JPEG page(s) in PDF.`);
         const compressedPages: File[] = [];
         for (let idx = 0; idx < extractedSlices.length; idx++) {
-          onProgress?.(`⚡ Compressing extracted Page ${idx + 1} of ${extractedSlices.length} on device...`);
+          onProgress?.(`⚡ Processing Page ${idx + 1}...`);
           const rawSlice = extractedSlices[idx];
           const rawBlob = new Blob([rawSlice as BlobPart], { type: "image/jpeg" });
           const rawFile = new File([rawBlob], `${(file.name || "piq_page").replace(/\.[^/.]+$/, "")}_page_${idx + 1}.jpg`, {
@@ -770,7 +770,7 @@ export default function ProfilePage() {
     // Uses pdfjs-dist legacy build with Promise.withResolvers polyfill for Safari iOS.
     // =========================================================================
     try {
-      onProgress?.("⚡ Loading PDF document rasterizer on device...");
+      onProgress?.("⚡ Reading document pages...");
 
       // Safari iOS < 17.4 Polyfill
       const P = Promise as unknown as { withResolvers?: () => { promise: Promise<unknown>; resolve: unknown; reject: unknown } };
@@ -797,7 +797,7 @@ export default function ProfilePage() {
         pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
       }
 
-      onProgress?.("⚡ Rasterizing PDF vector pages...");
+      onProgress?.("⚡ Preparing document pages...");
       const loadingTask = pdfjsLib.getDocument({
         data: new Uint8Array(arrayBuffer),
         useSystemFonts: true,
@@ -809,7 +809,7 @@ export default function ProfilePage() {
       const compressedImages: File[] = [];
 
       for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-        onProgress?.(`⚡ Converting Page ${pageNum} of ${numPages} to compressed image...`);
+        onProgress?.(`⚡ Processing Page ${pageNum} of ${numPages}...`);
         const page = await pdf.getPage(pageNum);
         const viewport = page.getViewport({ scale: 1.0 });
 
@@ -879,9 +879,8 @@ export default function ProfilePage() {
       return [file];
     }
 
-    const mb = (file.size / (1024 * 1024)).toFixed(1);
     throw new Error(
-      `Could not compress this scanned PDF (${mb} MB) directly on your device. Please upload standard JPG/PNG photos of Page 1 & Page 2.`
+      "Could not process this scanned PDF. Please upload standard JPG/PNG photos of Page 1 & Page 2."
     );
   };
 
@@ -892,7 +891,7 @@ export default function ProfilePage() {
     setParseNotification(null);
     setParseError(null);
     setAssessment(null); // CRITICAL: Clear any stale/ghost assessment immediately
-    setParseStatusMessage("⚡ Inspecting document files on device...");
+    setParseStatusMessage("⚡ Reading PIQ document...");
 
     try {
       const optimizedFiles: File[] = [];
@@ -905,9 +904,9 @@ export default function ProfilePage() {
           const pdfImages = await convertPdfToCompressedImages(f, (msg) => setParseStatusMessage(msg));
           optimizedFiles.push(...pdfImages);
         } else {
-          const origMb = (f.size / (1024 * 1024)).toFixed(1);
-          setParseStatusMessage(`⚡ Compressing photo ${i + 1} on device (${origMb} MB)...`);
+          setParseStatusMessage(`⚡ Processing Page ${i + 1}...`);
           const compressed = await compressImageClientSide(f, 1600, 0.80);
+          const origMb = (f.size / (1024 * 1024)).toFixed(1);
           const compKb = (compressed.size / 1024).toFixed(0);
           console.log(`[SSB Client Compression] Compressed ${f.name} from ${origMb} MB to ${compKb} KB`);
           optimizedFiles.push(compressed);
@@ -915,23 +914,22 @@ export default function ProfilePage() {
       }
 
       const totalPayloadBytes = optimizedFiles.reduce((acc, file) => acc + file.size, 0);
-      const totalKb = (totalPayloadBytes / 1024).toFixed(0);
 
       // Pre-flight check: Prevent Vercel 413 by rejecting payloads over 4.2 MB on the client
       if (totalPayloadBytes > 4.2 * 1024 * 1024) {
         throw new Error(
-          `Total payload size (${(totalPayloadBytes / (1024 * 1024)).toFixed(1)} MB) exceeds the 4.5 MB transmission ceiling. Please ensure images are standard JPG/PNG or upload one page at a time.`
+          "File size is too large. Please upload standard photos of Page 1 & Page 2."
         );
       }
 
-      setParseStatusMessage(`⚡ Transmitting optimized payload (${totalKb} KB) to Gemini AI...`);
+      setParseStatusMessage("⚡ Senior Interviewing Officer AI evaluating dossier...");
 
       const dataPayload = new FormData();
       for (const f of optimizedFiles) {
         dataPayload.append("files", f);
       }
 
-      setParseStatusMessage("⚡ Senior Interviewing Officer AI evaluating PIQ dossier & scoring OLQs...");
+      setParseStatusMessage("⚡ Formulating OLQ scores & predicting interview questions...");
 
       const res = await fetch("/api/piq/analyze", {
         method: "POST",
@@ -1098,7 +1096,7 @@ export default function ProfilePage() {
       localStorage.setItem("ssb_candidate_piq_uploaded", "true");
       setCompletionPct(100);
       setParseNotification(
-        `✨ Successfully extracted DIPR Form 107-A data from ${optimizedFiles.length} optimized page(s) (${totalKb} KB) & generated Officer PIQ Score!`
+        "✨ Successfully extracted PIQ dossier, evaluated OLQ scores, and generated Interviewing Officer questions!"
       );
     } catch (err: unknown) {
       console.error("Gemini PIQ Analysis error:", err);
@@ -1276,56 +1274,56 @@ export default function ProfilePage() {
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[var(--primary-accent)] animate-pulse" />
                 <span className="text-xs font-bold text-[var(--primary-accent)] tracking-wider">
-                  {compact ? "RE-SCAN PIQ (AI OCR)" : "ANALYSE & AUTOFILL USING PIQ (AI OCR)"}
+                  {compact ? "AI DOSSIER INSIGHTS" : "AI DOSSIER INSIGHTS & INTERVIEW QUESTIONS"}
                 </span>
               </div>
               <span className="text-[9px] px-2 py-0.5 rounded bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] font-semibold border border-[var(--primary-accent)]/30">
-                {compact ? "AUTO-RESET" : "FASTEST METHOD"}
+                {compact ? "AUTO-RESET" : "OFFICER EVALUATION"}
               </span>
             </div>
             <p className="text-[11px] text-[var(--fg-muted)] leading-relaxed mb-3">
               {compact
-                ? "Upload a new scan to refresh your profile fields and recalculate your Officer PIQ score."
-                : "Don't want to type 14 sections manually? Upload your handwritten or filled PIQ scan (PDF/Image). Our AI model extracts all tables and autofills your profile in seconds."}
+                ? "Upload your PIQ to autofill 14 sections, calculate your Officer Score, and predict Interviewing Officer questions."
+                : "Upload your handwritten or printed PIQ scan. Senior Interviewing Officer (IO) AI will autofill all 14 dossier sections, calculate your Officer PIQ Score, and generate probable rapid-fire interview questions & red flags tailored specifically to your background."}
             </p>
           </div>
 
-          {/* Mode Switcher Tabs */}
-          <div className="flex items-center gap-2 border-b border-[var(--canvas-border)] pb-2 mb-2">
+          {/* Mode Switcher Tabs - Full Width Grid */}
+          <div className={`grid ${isMobile ? "grid-cols-3" : "grid-cols-2"} gap-1.5 p-1 rounded-xl bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)] w-full mb-3`}>
             <button
               type="button"
               onClick={() => setIntakeMode("pdf")}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 intakeMode === "pdf"
                   ? "bg-[var(--primary-accent)] text-white shadow-sm"
-                  : "bg-[var(--canvas-surface-subtle)] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
+                  : "text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] hover:bg-[var(--canvas-surface)]"
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
-              <span>2-Page PDF</span>
+              <span>PDF</span>
             </button>
 
             <button
               type="button"
               onClick={() => setIntakeMode("photos")}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 intakeMode === "photos"
                   ? "bg-[var(--primary-accent)] text-white shadow-sm"
-                  : "bg-[var(--canvas-surface-subtle)] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
+                  : "text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] hover:bg-[var(--canvas-surface)]"
               }`}
             >
               <Images className="w-3.5 h-3.5" />
-              <span>Photos (P1 & P2)</span>
+              <span>Image</span>
             </button>
 
             {isMobile && (
               <button
                 type="button"
                 onClick={() => setIntakeMode("camera")}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   intakeMode === "camera"
                     ? "bg-[var(--primary-accent)] text-white shadow-sm"
-                    : "bg-[var(--canvas-surface-subtle)] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
+                    : "text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] hover:bg-[var(--canvas-surface)]"
                 }`}
               >
                 <Camera className="w-3.5 h-3.5" />
@@ -1368,7 +1366,7 @@ export default function ProfilePage() {
                     </div>
                     <span className="text-xs font-bold text-[var(--fg-primary)] truncate max-w-[200px]">{selectedPdf.name}</span>
                     <span className="text-[10px] text-[var(--fg-muted)]">
-                      {(selectedPdf.size / 1024).toFixed(1)} KB • Click to change PDF
+                      Click to change PDF
                     </span>
                   </div>
                 ) : (
@@ -1378,10 +1376,10 @@ export default function ProfilePage() {
                     </div>
                     <div>
                       <span className="text-xs font-bold text-[var(--fg-primary)] block">
-                        Drop 2-Page PIQ PDF here, or click to browse
+                        Drop PIQ PDF here, or click to browse
                       </span>
                       <span className="text-[10px] text-[var(--fg-muted)]">
-                        Official scanned DIPR 107-A (.pdf)
+                        Standard scanned DIPR 107-A (.pdf)
                       </span>
                     </div>
                   </div>
@@ -1397,12 +1395,12 @@ export default function ProfilePage() {
                 {isParsingPiq ? (
                   <>
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span className="truncate max-w-[240px]">{parseStatusMessage || "ANALYZING PDF..."}</span>
+                    <span className="truncate max-w-[240px]">{parseStatusMessage || "EVALUATING PIQ..."}</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
-                    <span>{selectedPdf ? "ANALYSE SELECTED PDF WITH AI" : "SELECT PDF TO ANALYSE"}</span>
+                    <span>{selectedPdf ? "ANALYZE PIQ & GENERATE INSIGHTS" : "SELECT PDF TO ANALYZE"}</span>
                   </>
                 )}
               </button>
@@ -1522,17 +1520,17 @@ export default function ProfilePage() {
                 {isParsingPiq ? (
                   <>
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span className="truncate max-w-[240px]">{parseStatusMessage || "ANALYZING PHOTOS..."}</span>
+                    <span className="truncate max-w-[240px]">{parseStatusMessage || "EVALUATING PIQ..."}</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
                     <span>
                       {photoP1 && photoP2
-                        ? "ANALYSE BOTH PAGES WITH AI"
+                        ? "ANALYZE PIQ & GENERATE INSIGHTS"
                         : photoP1 || photoP2
-                        ? "ANALYSE SELECTED PHOTO WITH AI"
-                        : "SELECT PAGE 1 & 2 PHOTOS"}
+                        ? "ANALYZE SELECTED PAGE"
+                        : "SELECT PAGE 1 & 2 IMAGES"}
                     </span>
                   </>
                 )}
@@ -1629,16 +1627,16 @@ export default function ProfilePage() {
                 {isParsingPiq ? (
                   <>
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span className="truncate max-w-[240px]">{parseStatusMessage || "ANALYZING..."}</span>
+                    <span className="truncate max-w-[240px]">{parseStatusMessage || "EVALUATING PIQ..."}</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
                     <span>
                       {photoP1 && photoP2
-                        ? "ANALYSE BOTH CAPTURED PAGES"
+                        ? "ANALYZE PIQ & GENERATE INSIGHTS"
                         : photoP1 || photoP2
-                        ? "ANALYSE CAPTURED PAGE"
+                        ? "ANALYZE CAPTURED PAGE"
                         : "CAPTURE PAGE 1 & 2"}
                     </span>
                   </>
@@ -1647,15 +1645,15 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* Compression & Privacy Indicator */}
-          <div className="pt-1 text-[10px] text-[var(--fg-muted)] flex items-center gap-1.5">
-            {isParsingPiq && <RefreshCw className="w-3 h-3 animate-spin text-[var(--primary-accent)] shrink-0" />}
-            <span className="font-medium text-[var(--fg-secondary)] text-[10px]">
-              {isParsingPiq
-                ? (parseStatusMessage || "Gemini AI is analyzing document & tables...")
-                : "Local on-device compression: fast, private & secure"}
-            </span>
-          </div>
+          {/* Active Parsing Status Indicator */}
+          {isParsingPiq && (
+            <div className="pt-2 text-xs text-[var(--primary-accent)] flex items-center gap-2 animate-pulse">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />
+              <span className="font-semibold text-xs truncate">
+                {parseStatusMessage || "Senior Interviewing Officer AI evaluating PIQ dossier..."}
+              </span>
+            </div>
+          )}
 
           {/* Success Alert */}
           {parseNotification && (
@@ -3194,10 +3192,10 @@ export default function ProfilePage() {
                       </div>
                       <div>
                         <h3 className="text-xs sm:text-sm font-extrabold tracking-wider">
-                          PIQ DOSSIER INTAKE & AI MULTIMODAL SCAN
+                          PIQ DOSSIER INTAKE, AI OLQ INSIGHTS & INTERVIEW FORECAST
                         </h3>
                         <p className="text-[10px] text-[var(--fg-muted)]">
-                          Download standardized DIPR 107-A blank PDF or upload your scan for AI autofill & scoring
+                          Autofill your 14 dossier sections, calculate Officer PIQ Score, and unlock predicted SSB interview questions
                         </p>
                       </div>
                     </div>

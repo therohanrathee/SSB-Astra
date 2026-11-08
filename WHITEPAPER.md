@@ -176,6 +176,12 @@ flowchart TD
       - Added official DIPR Column 6 `Medium of Instruction` (English, Hindi, etc.) input.
       - Made `Qualification / Degree` fully editable across all rows with individual delete/remove buttons.
       - Updated Gemini extraction prompt in `src/app/api/piq/analyze/route.ts` (Instruction 7) to explicitly capture Post Graduation (M.Tech, M.Sc, MBA, M.A) whenever written by candidates on physical Form 107-A.
+    - **PIQ Intake Modal UI Polish & Value Proposition Realignment:**
+      - **Zero Technical Clutter:** Removed internal compression telemetry ("Local on-device compression: fast, private & secure", file size KB/MB metrics, and rasterizer debug strings) from user-facing surfaces.
+      - **Emphasis on AI Insights & Interview Questions:** Realigned modal header and AI card copy to highlight candidate outcomes: 14 sections autofilled, Officer PIQ Score & 15 OLQ breakdown, and tailored rapid-fire Interviewing Officer (IO) questions and red flags.
+      - **Full-Width Segmented Tab Control:** Replaced uneven left-aligned buttons with a responsive grid (`grid-cols-2` on desktop, `grid-cols-3` on mobile) spanning 100% of the intake card width with zero empty space.
+      - **Simplified Military Button Labels:** Standardized tab and action labels to concise, clean terms (`PDF`, `Image`, `Camera`), and updated action buttons to `ANALYZE PIQ & GENERATE INSIGHTS`.
+      - **Clean Officer Status Messages:** Replaced low-level device strings with high-level military progress indicators (`⚡ Reading PIQ document...`, `⚡ Processing Page scans...`, `⚡ Senior Interviewing Officer AI evaluating dossier...`, `⚡ Formulating OLQ scores & predicting interview questions...`).
   - **Next Step (Phase 4):** Next developer/agent should launch the Stage-1 Computerised Cognitive & Psychometric Screening System (CSSS + OPAM engines), utilizing the Web Audio API synthesizer and micro-timers.
 - [ ] **Phase 4: Stage-1 Test Engine (CSSS + OPAM)**
   - Micro-timer runner (16-30s auto-advancing, no back button).
