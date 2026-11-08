@@ -152,10 +152,11 @@ Output ONLY valid JSON matching this exact structure:
 }
 
 Important Instructions:
-1. Handwriting & Abbreviations: Gracefully expand defense abbreviations ("KV", "APS", "CBSE", "SUO", "NDA 148", "CO").
-2. Blank or Partial Forms: If the uploaded form is blank or partially filled, transcribe what is visible and score accordingly (e.g. baseline score with advice to complete key sections).
-3. If gender is not explicitly checked, infer from Cadet salutations ("Shri/Mr" vs "Kumari/Ms", or boy/girl school contexts). If unknown, leave empty.
-4. Output strictly valid JSON with no markdown formatting or commentary.`;
+1. STRICT FACTUAL EXTRACTION: Transcribe ONLY what is physically written or visible in the uploaded document. Never invent, hallucinate, or assume schools, family members, sports, marks, or previous attempts. If a field or table is empty or unreadable in the user's form, return "" or [].
+2. Handwriting & Abbreviations: Accurately read handwritten or printed text. Expand standard defense/educational abbreviations only when clearly written (e.g. "CBSE", "ICSE", "B.Tech").
+3. Blank or Partial Forms: If the uploaded form is partially filled or unreadable in some sections, extract only the valid sections and evaluate the score strictly on the verified facts provided.
+4. Officer Assessment Accuracy: The PIQ score and Interviewing Officer assessment must be 100% grounded in the extracted form data. If the candidate has few extracurriculars or achievements, reflect that objectively in the breakdown and recommendations rather than fabricating imaginary activities.
+5. Output strictly valid JSON with no markdown formatting or commentary.`;
 
     parts.push({ text: systemPrompt });
 

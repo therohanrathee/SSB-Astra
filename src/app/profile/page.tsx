@@ -32,7 +32,8 @@ import {
   Zap,
   ChevronDown,
   ChevronUp,
-  TrendingUp
+  TrendingUp,
+  RotateCcw
 } from "lucide-react";
 import CrossedSwords from "@/components/CrossedSwords";
 import { supabase } from "@/lib/supabaseClient";
@@ -177,43 +178,30 @@ const INITIAL_PIQ_DATA: PiqFormData = {
 
   parents_alive: true,
   father_mother_death_age: "",
-  family_members: [
-    { relation: "Father", education: "Post Graduate", occupation: "Govt Service (Defense)", monthly_income: "85,000" },
-    { relation: "Mother", education: "Graduate", occupation: "Teacher", monthly_income: "45,000" },
-    { relation: "Elder Brother", education: "B.Tech", occupation: "Software Engineer", monthly_income: "1,10,000" }
-  ],
+  family_members: [],
 
-  education_records: [
-    { qualification: "Matric / 10th", institution: "Kendriya Vidyalaya No. 1", board_university: "CBSE", year: "2019", div_marks_pct: "91.4%", medium: "English", boarder_dayscholar: "Day Scholar", achievement: "School Science Rank 1" },
-    { qualification: "10+2 / 12th", institution: "Army Public School", board_university: "CBSE", year: "2021", div_marks_pct: "88.6%", medium: "English", boarder_dayscholar: "Day Scholar", achievement: "Physics Olympiad District 2nd" },
-    { qualification: "Graduation (B.Tech)", institution: "National Institute of Technology", board_university: "Autonomous", year: "2025", div_marks_pct: "8.4 CGPA", medium: "English", boarder_dayscholar: "Boarder", achievement: "Robotics Club Lead" }
-  ],
+  education_records: [],
 
-  height_m: "1.78",
-  weight_kg: "72",
-  present_occupation: "Student / Final Year B.Tech",
-  monthly_income: "Nil",
+  height_m: "",
+  weight_kg: "",
+  present_occupation: "",
+  monthly_income: "",
 
-  has_ncc: true,
-  ncc_wing: "Army",
-  ncc_division: "Senior Division",
-  ncc_certificate: "B Certificate (Alpha Grade)",
-  ncc_duration: "2 Years",
-  sports_records: [
-    { sport: "Football", duration: "4 Years", represented_level: "College First XI", achievement: "Inter-collegiate Runners-up" },
-    { sport: "Cross-Country / Athletics", duration: "3 Years", represented_level: "School & District", achievement: "10K Marathon Finisher (46m)" }
-  ],
+  has_ncc: false,
+  ncc_wing: "",
+  ncc_division: "",
+  ncc_certificate: "",
+  ncc_duration: "",
+  sports_records: [],
 
-  hobbies: "Aeromodelling, Geopolitical podcasting, Trekking, Long-distance running",
-  extra_curricular: "Debating society lead, organizing committee member of National Tech Fest",
-  responsibilities_held: "School Sports Captain (2020-21), College Robotics Club President (2024-25)",
+  hobbies: "",
+  extra_curricular: "",
+  responsibilities_held: "",
 
   nature_of_commission: "Permanent Commission (PC)",
   service_preference: "1. Army  2. Air Force  3. Navy",
-  total_chances_availed: "1",
-  ssb_attempts: [
-    { entry: "NDA 148", board_place: "18 SSB Prayagraj", date: "Nov 2021", chest_batch_no: "Chest 34 / B-7102", result: "Conference Out" }
-  ]
+  total_chances_availed: "0",
+  ssb_attempts: []
 };
 
 export default function ProfilePage() {
@@ -314,22 +302,28 @@ export default function ProfilePage() {
             setCompletionPct(data.profile_completion_pct || 30);
           }
         } else {
-          setEmail("cadet_demo@ssbastra.in");
+          setEmail("cadet@ssbastra.in");
           setFormData(prev => ({
             ...prev,
-            full_name: "ROHAN SHARMA",
-            dob: "2002-09-12",
+            full_name: "",
+            dob: "",
             gender: "male",
             target_entry: "CDS"
           }));
         }
 
-        // Restore any saved local PIQ draft & assessment
+        // Restore any saved local PIQ draft & assessment (purging legacy mock demo artifacts)
         const cachedPiq = localStorage.getItem("ssb_candidate_piq_data");
         if (cachedPiq) {
           try {
             const parsed = JSON.parse(cachedPiq);
-            setFormData(prev => ({ ...prev, ...parsed, dob: normalizeDobForInput(parsed.dob) || prev.dob }));
+            // Purge legacy hardcoded demo entries if present in local storage
+            if (parsed.full_name === "ROHAN SHARMA" || parsed.hobbies?.includes("Aeromodelling")) {
+              localStorage.removeItem("ssb_candidate_piq_data");
+              localStorage.removeItem("ssb_candidate_piq_assessment");
+            } else {
+              setFormData(prev => ({ ...prev, ...parsed, dob: normalizeDobForInput(parsed.dob) || prev.dob }));
+            }
           } catch {
             // ignore JSON parse error
           }
@@ -338,7 +332,20 @@ export default function ProfilePage() {
         const cachedAssessment = localStorage.getItem("ssb_candidate_piq_assessment");
         if (cachedAssessment) {
           try {
-            setAssessment(JSON.parse(cachedAssessment));
+            const parsedAssessment = JSON.parse(cachedAssessment);
+            const assessmentStr = JSON.stringify(parsedAssessment);
+            // Purge legacy mock assessment referencing demo clubs/schools
+            if (
+              assessmentStr.includes("Robotics") ||
+              assessmentStr.includes("Kendriya Vidyalaya") ||
+              assessmentStr.includes("APS") ||
+              assessmentStr.includes("NDA 148")
+            ) {
+              localStorage.removeItem("ssb_candidate_piq_assessment");
+              setAssessment(null);
+            } else {
+              setAssessment(parsedAssessment);
+            }
           } catch {
             // ignore JSON parse error
           }
@@ -355,106 +362,108 @@ export default function ProfilePage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Helper: Load HTMLImageElement safely
-  const loadHtmlImage = (file: File): Promise<HTMLImageElement> => {
-    return new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        resolve(img);
-      };
-      img.onerror = (e) => {
-        URL.revokeObjectURL(url);
-        reject(e);
-      };
-      img.src = url;
-    });
-  };
-
-  // Helper: Client-Side Image Compression using HTML5 Canvas (Max 1600px, 82% JPEG quality)
-  // Drops 8-15 MB camera photos down to ~250-350 KB, preventing Vercel 413 FUNCTION_PAYLOAD_TOO_LARGE
+  // Helper: Client-Side Image Compression using FileReader + Canvas
+  // Downscales any smartphone photo (10-25 MB) to max 1600px width/height & 80% JPEG quality (~200-350 KB)
   const compressImageClientSide = async (
     file: File,
     maxDimension = 1600,
-    quality = 0.82
+    quality = 0.80
   ): Promise<File> => {
-    if (!file.type.startsWith("image/")) {
-      return file;
-    }
-
-    try {
-      let sourceWidth = 0;
-      let sourceHeight = 0;
-      let imageSource: ImageBitmap | HTMLImageElement;
-
-      if (typeof window !== "undefined" && typeof createImageBitmap === "function") {
-        try {
-          const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
-          imageSource = bmp;
-          sourceWidth = bmp.width;
-          sourceHeight = bmp.height;
-        } catch {
-          imageSource = await loadHtmlImage(file);
-          sourceWidth = imageSource.naturalWidth || imageSource.width;
-          sourceHeight = imageSource.naturalHeight || imageSource.height;
-        }
-      } else {
-        imageSource = await loadHtmlImage(file);
-        sourceWidth = imageSource.naturalWidth || imageSource.width;
-        sourceHeight = imageSource.naturalHeight || imageSource.height;
+    return new Promise((resolve) => {
+      const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|bmp|tiff)$/i.test(file.name);
+      if (!isImage) {
+        return resolve(file);
       }
 
-      let targetWidth = sourceWidth;
-      let targetHeight = sourceHeight;
-      if (sourceWidth > maxDimension || sourceHeight > maxDimension) {
-        if (sourceWidth > sourceHeight) {
-          targetHeight = Math.round((sourceHeight * maxDimension) / sourceWidth);
-          targetWidth = maxDimension;
-        } else {
-          targetWidth = Math.round((sourceWidth * maxDimension) / sourceHeight);
-          targetHeight = maxDimension;
-        }
-      }
+      const reader = new FileReader();
+      reader.onerror = () => {
+        console.warn("[Compression] FileReader error, proceeding with original file");
+        resolve(file);
+      };
 
-      const canvas = document.createElement("canvas");
-      canvas.width = targetWidth;
-      canvas.height = targetHeight;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return file;
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => {
+          console.warn("[Compression] Image decode error, proceeding with original file");
+          resolve(file);
+        };
 
-      // Solid white background for clean transparency & high contrast
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fillRect(0, 0, targetWidth, targetHeight);
-      ctx.drawImage(imageSource, 0, 0, targetWidth, targetHeight);
+        img.onload = () => {
+          try {
+            let width = img.naturalWidth || img.width;
+            let height = img.naturalHeight || img.height;
 
-      if ("close" in imageSource && typeof imageSource.close === "function") {
-        imageSource.close();
-      }
+            if (!width || !height) {
+              return resolve(file);
+            }
 
-      const compressedBlob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, "image/jpeg", quality)
-      );
+            // Downscale to maxDimension
+            if (width > maxDimension || height > maxDimension) {
+              if (width > height) {
+                height = Math.round((height * maxDimension) / width);
+                width = maxDimension;
+              } else {
+                width = Math.round((width * maxDimension) / height);
+                height = maxDimension;
+              }
+            }
 
-      if (!compressedBlob) return file;
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return resolve(file);
 
-      const cleanBaseName = file.name.replace(/\.[^/.]+$/, "");
-      return new File([compressedBlob], `${cleanBaseName}.jpg`, {
-        type: "image/jpeg",
-        lastModified: Date.now()
-      });
-    } catch (err) {
-      console.warn("Client-side image compression fallback to original:", err);
-      return file;
-    }
+            // Clean white background for contrast and transparency handling
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+
+            canvas.toBlob(
+              (blob) => {
+                if (!blob) return resolve(file);
+
+                const cleanBaseName = file.name.replace(/\.[^/.]+$/, "");
+                const compressedFile = new File([blob], `${cleanBaseName}.jpg`, {
+                  type: "image/jpeg",
+                  lastModified: Date.now()
+                });
+
+                console.log(
+                  `[Client Compression] ${file.name} compressed: ${(file.size / 1024).toFixed(0)} KB → ${(compressedFile.size / 1024).toFixed(0)} KB (${width}x${height})`
+                );
+                resolve(compressedFile);
+              },
+              "image/jpeg",
+              quality
+            );
+          } catch (err) {
+            console.warn("[Compression] Canvas processing error:", err);
+            resolve(file);
+          }
+        };
+
+        img.src = reader.result as string;
+      };
+
+      reader.readAsDataURL(file);
+    });
   };
 
-  // Helper: Client-Side PDF Rasterization to Compressed Images using pdfjs-dist
-  // Converts multi-MB scanned PDFs into crisp ~250 KB JPEGs per page (Page 1 & Page 2)
+  // Helper: Client-Side PDF Handling
+  // If PDF <= 3.5 MB, transmit directly (Gemini natively parses multi-page PDFs with high accuracy).
+  // If PDF > 3.5 MB, attempt client-side page rasterization or advise cadet.
   const convertPdfToCompressedImages = async (
     file: File,
     onProgress?: (msg: string) => void
   ): Promise<File[]> => {
+    // If PDF is already under 3.5 MB, send directly as application/pdf!
+    // Vercel serverless limit is 4.5 MB, so a <= 3.5 MB PDF passes effortlessly with zero worker issues.
+    if (file.size <= 3.5 * 1024 * 1024) {
+      onProgress?.(`⚡ Preparing ${file.name} (${(file.size / 1024).toFixed(0)} KB) for AI analysis...`);
+      return [file];
+    }
+
     if (typeof window === "undefined") return [file];
 
     try {
@@ -465,7 +474,7 @@ export default function ProfilePage() {
         pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
       }
 
-      onProgress?.("⚡ Reading PDF pages on device...");
+      onProgress?.("⚡ Reading multi-page scanned PDF...");
       const arrayBuffer = await file.arrayBuffer();
       const loadingTask = pdfjsLib.getDocument({
         data: new Uint8Array(arrayBuffer),
@@ -478,7 +487,7 @@ export default function ProfilePage() {
       const compressedImages: File[] = [];
 
       for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-        onProgress?.(`⚡ Rasterizing & compressing Page ${pageNum} of ${numPages} on device...`);
+        onProgress?.(`⚡ Compressing Page ${pageNum} of ${numPages} on device...`);
         const page = await pdf.getPage(pageNum);
         const viewport = page.getViewport({ scale: 1.0 });
 
@@ -502,7 +511,7 @@ export default function ProfilePage() {
           }).promise;
 
           const blob = await new Promise<Blob | null>((resolve) => {
-            canvas.toBlob(resolve, "image/jpeg", 0.82);
+            canvas.toBlob(resolve, "image/jpeg", 0.80);
           });
 
           if (blob) {
@@ -524,13 +533,8 @@ export default function ProfilePage() {
       console.warn("Client-side PDF rasterization fallback:", err);
     }
 
-    // Fallback: If PDF was already below 3.5 MB, transmit directly
-    if (file.size <= 3.5 * 1024 * 1024) {
-      return [file];
-    }
-
     throw new Error(
-      `Scanned PDF size (${(file.size / (1024 * 1024)).toFixed(1)} MB) exceeds Vercel's payload limit (4.5 MB) and could not be compressed on device. Please upload JPG/PNG photos instead.`
+      `Your scanned PDF is ${(file.size / (1024 * 1024)).toFixed(1)} MB, which exceeds Vercel's 4.5 MB serverless limit. Please snap or upload photos of Page 1 & Page 2 directly (photos are auto-compressed on your device to ~250 KB).`
     );
   };
 
@@ -540,6 +544,7 @@ export default function ProfilePage() {
     setIsParsingPiq(true);
     setParseNotification(null);
     setParseError(null);
+    setAssessment(null); // CRITICAL: Clear any stale/ghost assessment immediately
     setParseStatusMessage("⚡ Inspecting document files on device...");
 
     try {
@@ -555,7 +560,7 @@ export default function ProfilePage() {
         } else {
           const origMb = (f.size / (1024 * 1024)).toFixed(1);
           setParseStatusMessage(`⚡ Compressing photo ${i + 1} on device (${origMb} MB)...`);
-          const compressed = await compressImageClientSide(f, 1600, 0.82);
+          const compressed = await compressImageClientSide(f, 1600, 0.80);
           const compKb = (compressed.size / 1024).toFixed(0);
           console.log(`[SSB Client Compression] Compressed ${f.name} from ${origMb} MB to ${compKb} KB`);
           optimizedFiles.push(compressed);
@@ -564,6 +569,14 @@ export default function ProfilePage() {
 
       const totalPayloadBytes = optimizedFiles.reduce((acc, file) => acc + file.size, 0);
       const totalKb = (totalPayloadBytes / 1024).toFixed(0);
+
+      // Pre-flight check: Prevent Vercel 413 by rejecting payloads over 4.2 MB on the client
+      if (totalPayloadBytes > 4.2 * 1024 * 1024) {
+        throw new Error(
+          `Payload size (${(totalPayloadBytes / (1024 * 1024)).toFixed(1)} MB) exceeds Vercel's 4.5 MB limit. Please take photos using the Camera or upload standard JPG/PNG photos.`
+        );
+      }
+
       setParseStatusMessage(`⚡ Transmitting optimized payload (${totalKb} KB) to Gemini AI...`);
 
       const dataPayload = new FormData();
@@ -616,6 +629,7 @@ export default function ProfilePage() {
       console.error("Gemini PIQ Analysis error:", err);
       const msg = err instanceof Error ? err.message : "Error analyzing document";
       setParseError(msg);
+      setAssessment(null); // Ensure no old assessment is shown after an error
     } finally {
       setIsParsingPiq(false);
       setParseStatusMessage(null);
@@ -653,6 +667,24 @@ export default function ProfilePage() {
       alert("Failed to save PIQ to server. Local copy saved.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  // 4. Reset Form & Purge Local Cache
+  const handleResetForm = () => {
+    if (confirm("Reset all form fields and clear cached PIQ data from your device?")) {
+      localStorage.removeItem("ssb_candidate_piq_data");
+      localStorage.removeItem("ssb_candidate_piq_assessment");
+      setFormData(INITIAL_PIQ_DATA);
+      setAssessment(null);
+      setSelectedPdf(null);
+      setPhotoP1(null);
+      setPhotoP2(null);
+      setPhotoP1Preview(null);
+      setPhotoP2Preview(null);
+      setParseNotification(null);
+      setParseError(null);
+      setCompletionPct(0);
     }
   };
 
@@ -704,6 +736,16 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={handleResetForm}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[var(--canvas-border)] hover:border-red-500/50 bg-[var(--canvas-surface-subtle)] text-[var(--fg-muted)] hover:text-red-500 text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+            title="Reset form fields & purge local cache"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">RESET</span>
+          </button>
 
           <button
             onClick={handleSave}
