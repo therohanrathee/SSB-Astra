@@ -87,7 +87,7 @@ interface SsbAttempt {
   result: string;
 }
 
-interface PiqFormData {
+export interface PiqFormData {
   // Identity & Demographics (Items 1, 2, 3, 5)
   full_name: string;
   father_name: string;

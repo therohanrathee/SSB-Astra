@@ -182,6 +182,14 @@ flowchart TD
       - **Full-Width Segmented Tab Control:** Replaced uneven left-aligned buttons with a responsive grid (`grid-cols-2` on desktop, `grid-cols-3` on mobile) spanning 100% of the intake card width with zero empty space.
       - **Simplified Military Button Labels:** Standardized tab and action labels to concise, clean terms (`PDF`, `Image`, `Camera`), and updated action buttons to `ANALYZE PIQ & GENERATE INSIGHTS`.
       - **Clean Officer Status Messages:** Replaced low-level device strings with high-level military progress indicators (`⚡ Reading PIQ document...`, `⚡ Processing Page scans...`, `⚡ Senior Interviewing Officer AI evaluating dossier...`, `⚡ Formulating OLQ scores & predicting interview questions...`).
+    - **Personalised Command Dashboard & 4-Wing Testing Hub (`src/app/dashboard/page.tsx`):**
+      - **Personalised Command Briefing:** Displays dynamic salutation (`getDynamicOfficerGreeting`), active SSB Target Entry pill with pulsing radar indicator (`SSB ENTRY: <ENTRY> • ARMED FORCES SELECTION BOARD`), and quick metrics strip (Target Entry, PIQ Score out of 100, Dossier Readiness %, and Predicted IO Questions count).
+      - **"Continue Mission / Where You Left Off" Hero Module:** Dedicated tactical HUD card placed prominently at the top of the workspace. Dynamically detects candidate state: points to AI-tailored Personal Interview Drills if PIQ is uploaded/scored, or guides the candidate to complete/scan Form 107-A if pending. Persists drill history in `localStorage` (`ssb_last_activity`) with 1-click `Resume Drill` action.
+      - **4 Full Testing Wings & Segmented Tab Navigation:**
+        - Integrated the requested **Personal Interview (Day 02-04)** suite alongside **Screening (Day 01)**, **Psychology (Day 02)**, and **GTO (Day 03-04)**.
+        - Full-width segmented tab control allows instant toggling between `All 4 Wings`, `Day 1: Screening`, `Day 2: Psychology`, `Day 3-4: GTO`, and `Day 2-4: Interview`.
+        - **Dedicated Personal Interview Command Wing:** Incorporates Senior Assessor OLQ matrix (Factor I to IV breakdown), **Candidate-Personalized Predicted IO Questions** (extracted directly from their PIQ dossier with interactive practice modals), and 4 specialized drills: CIQ 1 to 5 Rapid-Fire sequences, Vulnerability & Red Flag Defense, Defense Awareness & Geopolitics, and Officer Motivation/Self-Knowledge.
+      - **Candidate Dossier & OLQ Radar Integration:** Bottom dashboard panel dynamically displays the candidate's composite PIQ score, overall recommendation verdict, top identified strength, and interview focus area.
   - **Next Step (Phase 4):** Next developer/agent should launch the Stage-1 Computerised Cognitive & Psychometric Screening System (CSSS + OPAM engines), utilizing the Web Audio API synthesizer and micro-timers.
 - [ ] **Phase 4: Stage-1 Test Engine (CSSS + OPAM)**
   - Micro-timer runner (16-30s auto-advancing, no back button).
