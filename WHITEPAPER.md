@@ -114,15 +114,30 @@ flowchart TD
 - [x] **Phase 3.5: PIQ (Personal Information Questionnaire) Analysis & AI Autofill UI (IN PROGRESS / UI BUILT)**
   - **Comprehensive DIPR Form 107-A Analysis:** Analyzed official DIPR Questionnaire No. 107-A (Revised) structure across both Page 1 and Page 2 (14 distinct items, 4 complex nested matrices: Family, Education, Sports, Previous SSB attempts).
   - **Sample Blank PIQ Delivery:** Added official DIPR 107-A blank PDF at `public/sample_piq.pdf` with direct 1-click download on candidate profile.
-  - **AI Smart Extraction Backend & UI ("Analyse & Fill Information using PIQ"):**
+  - **AI Smart Extraction Backend & Image Normalization Pipeline:**
     - Configured dedicated Google Gemini API key (`GEMINI_PIQ_API_KEY`) isolated strictly for PIQ document analysis.
-    - Implemented live backend endpoint `/api/piq/analyze` using **`gemini-3.5-flash-lite`** (500 free daily scans quota, ~15,000/month) with automatic fallback to `gemini-3.8-flash`.
+    - Added high-performance image pre-processing with `sharp`: auto-rotates mobile EXIF orientation (`.rotate()`), standardizes resolution to 1600px width, and normalizes into high-contrast 85% JPEG for deterministic multimodal vision processing.
+    - Implemented live cascading backend endpoint `/api/piq/analyze` using **`gemini-3.5-flash-lite`** (500 free daily scans quota, ~15,000/month) with automatic failover to `gemini-3.8-flash` and `gemini-flash-latest`.
     - Native multimodal intake supporting 3 distinct acquisition flows:
       1. *2-Page PDF* (`application/pdf`)
       2. *2 Photos (Page 1 Front & Page 2 Back)* (`image/png, image/jpeg`)
       3. *Live Camera Capture* (`accept="image/*" capture="environment"`)
     - Added offline 1-click demo auto-fill for rapid testing.
+  - **Officer Candidate Dossier Assessment & PIQ Scoring Engine:**
+    - Refined system prompt to perform dual-action processing: strict JSON transcription + Senior Interviewing Officer (IO) evaluation.
+    - Evaluates candidates across the **4 Classical Assessment Pillars**:
+      1. *Academics & Consistency* (25 pts)
+      2. *Sports, NCC & Physical Stamina* (25 pts)
+      3. *Leadership & Positions of Responsibility* (25 pts)
+      4. *Hobbies, Self-Development & Drive* (25 pts)
+    - Emits:
+      - Composite **PIQ Score out of 100** with overall verdict badge.
+      - Positive OLQ indicators (Strengths).
+      - Vulnerabilities & Red Flags (areas the IO will probe).
+      - **Predicted IO Rapid-Fire Questions** forecast.
+      - Tactical recommendations to strengthen candidate presentation.
   - **Profile Page (`src/app/profile/page.tsx`) Deployed:**
+    - Integrated the **AI PIQ Dossier Assessment & IO Forecast** visual radar component above tabs.
     - Locked email credential field (read-only with security padlock badge).
     - 4 structured military tabbed panels:
       1. *Identity & Demographics* (Items 1-3, 5: Name, Father's Name, DOB, Gender, Religion, Mother Tongue, Category, Marital Status).

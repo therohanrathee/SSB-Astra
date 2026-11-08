@@ -26,12 +26,32 @@ import {
   Compass,
   Camera,
   Images,
-  AlertTriangle
+  AlertTriangle,
+  Target,
+  Award,
+  Zap,
+  ChevronDown,
+  ChevronUp,
+  TrendingUp
 } from "lucide-react";
 import CrossedSwords from "@/components/CrossedSwords";
 import { supabase } from "@/lib/supabaseClient";
 
 // --- Types for Structured PIQ (DIPR Questionnaire No. 107-A) ---
+export interface PiqAssessment {
+  piq_score: number;
+  overall_verdict: string;
+  score_breakdown: {
+    academics: { score: number; max: number; assessment: string };
+    sports_and_ncc: { score: number; max: number; assessment: string };
+    leadership_and_responsibility: { score: number; max: number; assessment: string };
+    hobbies_and_depth: { score: number; max: number; assessment: string };
+  };
+  key_strengths: string[];
+  vulnerabilities_and_red_flags: string[];
+  io_probable_questions: string[];
+  recommendations_for_improvement: string[];
+}
 interface FamilyMember {
   relation: string;
   education: string;
@@ -208,6 +228,8 @@ export default function ProfilePage() {
   const [isParsingPiq, setIsParsingPiq] = useState(false);
   const [parseNotification, setParseNotification] = useState<string | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [assessment, setAssessment] = useState<PiqAssessment | null>(null);
+  const [showAssessment, setShowAssessment] = useState(true);
 
   // Dedicated refs for the 3 upload methods
   const pdfInputRef = useRef<HTMLInputElement>(null);
@@ -251,12 +273,21 @@ export default function ProfilePage() {
           }));
         }
 
-        // Restore any saved local PIQ draft
+        // Restore any saved local PIQ draft & assessment
         const cachedPiq = localStorage.getItem("ssb_candidate_piq_data");
         if (cachedPiq) {
           try {
             const parsed = JSON.parse(cachedPiq);
             setFormData(prev => ({ ...prev, ...parsed }));
+          } catch {
+            // ignore JSON parse error
+          }
+        }
+
+        const cachedAssessment = localStorage.getItem("ssb_candidate_piq_assessment");
+        if (cachedAssessment) {
+          try {
+            setAssessment(JSON.parse(cachedAssessment));
           } catch {
             // ignore JSON parse error
           }
@@ -307,8 +338,13 @@ export default function ProfilePage() {
         ssb_attempts: ext.ssb_attempts && ext.ssb_attempts.length > 0 ? ext.ssb_attempts : prev.ssb_attempts,
       }));
 
+      if (json.assessment) {
+        setAssessment(json.assessment);
+        localStorage.setItem("ssb_candidate_piq_assessment", JSON.stringify(json.assessment));
+      }
+
       setCompletionPct(100);
-      setParseNotification(`✨ Successfully extracted DIPR Form 107-A data from ${files.length} document(s) via Gemini AI! All 4 sections populated for your review.`);
+      setParseNotification(`✨ Successfully extracted DIPR Form 107-A data from ${files.length} document(s) & generated Officer PIQ Score!`);
     } catch (err: unknown) {
       console.error("Gemini PIQ Analysis error:", err);
       const msg = err instanceof Error ? err.message : "Error analyzing document";
@@ -363,7 +399,43 @@ export default function ProfilePage() {
         service_preference: "1. Army (Infantry / Armoured)  2. Air Force  3. Navy",
         total_chances_availed: "1",
       }));
-      setParseNotification(`✨ Loaded sample data for "${filename}". All 4 sections populated for demonstration.`);
+
+      const sampleAssessment: PiqAssessment = {
+        piq_score: 86,
+        overall_verdict: "STRONG OFFICER CANDIDATE PROFILE — BALANCED OLQ FOUNDATION",
+        score_breakdown: {
+          academics: { score: 22, max: 25, assessment: "Consistent 88%+ academics from 10th to B.Tech. Strong technical aptitude." },
+          sports_and_ncc: { score: 21, max: 25, assessment: "Active football team participation and NCC 'C' Cert (Alpha). High physical stamina." },
+          leadership_and_responsibility: { score: 23, max: 25, assessment: "Senior Under Officer (SUO) and Athletics Captaincy demonstrate social influence." },
+          hobbies_and_depth: { score: 20, max: 25, assessment: "Aeromodelling and distance running show active engagement and discipline." }
+        },
+        key_strengths: [
+          "Consistent first-division academic trajectory in STEM disciplines.",
+          "Proven team leadership and organizational experience as NCC Senior Under Officer.",
+          "Regular participation in competitive team sports (Football First XI).",
+          "Active technical hobby (Aeromodelling) directly aligns with aviation/defense systems."
+        ],
+        vulnerabilities_and_red_flags: [
+          "Dip in 12th percentage (88.6%) compared to 10th (91.4%) — IO will probe reason for slight deceleration.",
+          "Previous Conference Out at 18 SSB Prayagraj requires clear self-retrospection on Stage-2 performance.",
+          "Aeromodelling demands deep technical knowledge — expect viva-style aerodynamic questions."
+        ],
+        io_probable_questions: [
+          "I see a 3% drop in your 12th board marks compared to 10th. What went wrong during your board prep?",
+          "As Senior Under Officer, tell me about an occasion where a cadet under your command refused an order. How did you handle it?",
+          "You participated in aeromodelling — explain how an aircraft controls pitch, roll, and yaw during sudden wind shear.",
+          "Why did you get Conference Out in your previous NDA attempt, and what tangible changes have you made since then?"
+        ],
+        recommendations_for_improvement: [
+          "Quantify achievements clearly: Mention exact tournament levels, positions, and finishes in your written records.",
+          "Prepare aerodynamic and propulsion fundamentals thoroughly to defend your aeromodelling hobby with confidence.",
+          "Frame your previous SSB attempt positively: Highlight newfound maturity, physical stamina drills, and systematic preparation."
+        ]
+      };
+      setAssessment(sampleAssessment);
+      localStorage.setItem("ssb_candidate_piq_assessment", JSON.stringify(sampleAssessment));
+
+      setParseNotification(`✨ Loaded sample data & AI Dossier Score for "${filename}". All 4 sections populated for demonstration.`);
       setCompletionPct(100);
     }, 1500);
   };
@@ -664,6 +736,222 @@ export default function ProfilePage() {
             Email is tied to your SSB Astra credential & cannot be edited here.
           </div>
         </div>
+
+        {/* AI PIQ DOSSIER ASSESSMENT & OFFICER READINESS RADAR */}
+        {assessment && (
+          <div className="p-5 sm:p-6 rounded-xl border-2 border-[var(--gold-accent)]/40 bg-[var(--canvas-surface)] shadow-lg space-y-5 animate-in fade-in slide-in-from-top-3 duration-300">
+            {/* Header & Toggle */}
+            <div className="flex items-center justify-between border-b border-[var(--canvas-border)] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg border border-[var(--gold-accent)]/50 bg-[var(--gold-accent)]/10 flex items-center justify-center text-[var(--gold-accent)]">
+                  <Award className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs sm:text-sm font-extrabold tracking-wider">
+                      AI PIQ DOSSIER ASSESSMENT & IO FORECAST
+                    </span>
+                    <span className="text-[9px] px-2 py-0.5 rounded bg-[var(--gold-accent)]/15 text-[var(--gold-accent)] border border-[var(--gold-accent)]/30 font-bold">
+                      DIPR BENCHMARK
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-[var(--fg-muted)]">
+                    Evaluated against the 15 Officer Like Qualities (OLQs) by Senior Selection Board IO heuristics
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowAssessment(!showAssessment)}
+                className="flex items-center gap-1 text-xs font-bold text-[var(--fg-secondary)] hover:text-[var(--gold-accent)] px-2.5 py-1 rounded border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)]"
+              >
+                <span>{showAssessment ? "Collapse" : "Expand Analysis"}</span>
+                {showAssessment ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+
+            {showAssessment && (
+              <div className="space-y-6">
+                {/* Top Row: Score Badge + 4 Pillars */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+                  {/* Score Big Display */}
+                  <div className="md:col-span-4 p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] flex flex-col items-center justify-center text-center relative overflow-hidden">
+                    <div className="text-[10px] uppercase font-bold text-[var(--fg-muted)] tracking-wider mb-1">
+                      Candidate PIQ Score
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className={`text-4xl sm:text-5xl font-black tracking-tight ${
+                        assessment.piq_score >= 80 ? "text-[var(--military-olive)]" : assessment.piq_score >= 60 ? "text-[var(--gold-accent)]" : "text-amber-500"
+                      }`}>
+                        {assessment.piq_score}
+                      </span>
+                      <span className="text-sm font-bold text-[var(--fg-muted)]">/ 100</span>
+                    </div>
+
+                    <div className="mt-2 text-[10px] font-extrabold px-2.5 py-1 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)] text-[var(--fg-primary)] tracking-wide uppercase">
+                      {assessment.overall_verdict}
+                    </div>
+                  </div>
+
+                  {/* 4 Pillars Progress Bars */}
+                  <div className="md:col-span-8 space-y-3">
+                    <div className="text-xs font-bold text-[var(--fg-secondary)] uppercase tracking-wider">
+                      The 4 Classical Assessment Pillars
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Academics */}
+                      <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
+                        <div className="flex justify-between text-[11px] font-bold">
+                          <span className="text-[var(--fg-secondary)]">Academics & Consistency</span>
+                          <span className="text-[var(--primary-accent)]">{assessment.score_breakdown.academics.score}/25</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-[var(--primary-accent)]" 
+                            style={{ width: `${(assessment.score_breakdown.academics.score / 25) * 100}%` }}
+                          />
+                        </div>
+                        <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
+                          {assessment.score_breakdown.academics.assessment}
+                        </p>
+                      </div>
+
+                      {/* Sports & NCC */}
+                      <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
+                        <div className="flex justify-between text-[11px] font-bold">
+                          <span className="text-[var(--fg-secondary)]">Sports, NCC & Physical</span>
+                          <span className="text-[var(--gold-accent)]">{assessment.score_breakdown.sports_and_ncc.score}/25</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-[var(--gold-accent)]" 
+                            style={{ width: `${(assessment.score_breakdown.sports_and_ncc.score / 25) * 100}%` }}
+                          />
+                        </div>
+                        <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
+                          {assessment.score_breakdown.sports_and_ncc.assessment}
+                        </p>
+                      </div>
+
+                      {/* Leadership */}
+                      <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
+                        <div className="flex justify-between text-[11px] font-bold">
+                          <span className="text-[var(--fg-secondary)]">Leadership & Responsibilities</span>
+                          <span className="text-[var(--military-olive)]">{assessment.score_breakdown.leadership_and_responsibility.score}/25</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-[var(--military-olive)]" 
+                            style={{ width: `${(assessment.score_breakdown.leadership_and_responsibility.score / 25) * 100}%` }}
+                          />
+                        </div>
+                        <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
+                          {assessment.score_breakdown.leadership_and_responsibility.assessment}
+                        </p>
+                      </div>
+
+                      {/* Hobbies & Depth */}
+                      <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
+                        <div className="flex justify-between text-[11px] font-bold">
+                          <span className="text-[var(--fg-secondary)]">Hobbies & Drive</span>
+                          <span className="text-purple-400">{assessment.score_breakdown.hobbies_and_depth.score}/25</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-purple-500" 
+                            style={{ width: `${(assessment.score_breakdown.hobbies_and_depth.score / 25) * 100}%` }}
+                          />
+                        </div>
+                        <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
+                          {assessment.score_breakdown.hobbies_and_depth.assessment}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Strengths & Vulnerabilities Radar */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Key Strengths */}
+                  <div className="p-4 rounded-xl border border-[var(--military-olive)]/40 bg-[var(--military-olive)]/5 space-y-2.5">
+                    <div className="flex items-center gap-2 text-xs font-bold text-[var(--military-olive)] uppercase tracking-wider">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Positive OLQ Indicators in your PIQ</span>
+                    </div>
+                    <ul className="space-y-1.5 text-xs text-[var(--fg-primary)]">
+                      {assessment.key_strengths.map((str, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-[11px] leading-relaxed">
+                          <span className="text-[var(--military-olive)] font-bold mt-0.5">✓</span>
+                          <span>{str}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Vulnerabilities & Red Flags */}
+                  <div className="p-4 rounded-xl border border-amber-500/40 bg-amber-500/5 space-y-2.5">
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-500 uppercase tracking-wider">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span>Vulnerabilities / Red Flags IO Will Probe</span>
+                    </div>
+                    <ul className="space-y-1.5 text-xs text-[var(--fg-primary)]">
+                      {assessment.vulnerabilities_and_red_flags.map((vuln, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-[11px] leading-relaxed">
+                          <span className="text-amber-500 font-bold mt-0.5">⚠</span>
+                          <span>{vuln}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Interviewing Officer (IO) Question Forecast */}
+                <div className="p-4 rounded-xl border border-[var(--primary-accent)]/40 bg-[var(--primary-accent)]/5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-bold text-[var(--primary-accent)] uppercase tracking-wider">
+                      <Zap className="w-4 h-4 text-[var(--gold-accent)]" />
+                      <span>Predicted Interviewing Officer (IO) Questions On Your PIQ</span>
+                    </div>
+                    <span className="text-[9px] px-2 py-0.5 rounded bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] font-semibold">
+                      RAPID-FIRE PREP
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {assessment.io_probable_questions.map((q, idx) => (
+                      <div key={idx} className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface)] text-xs flex items-start gap-2.5 shadow-sm">
+                        <span className="w-5 h-5 rounded-full bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                          Q{idx + 1}
+                        </span>
+                        <p className="text-[11px] text-[var(--fg-primary)] italic leading-relaxed">
+                          &ldquo;{q}&rdquo;
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Tactical Recommendations */}
+                <div className="p-4 rounded-xl border border-[var(--gold-accent)]/40 bg-[var(--gold-accent)]/5 space-y-2.5">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--gold-accent)] uppercase tracking-wider">
+                    <Target className="w-4 h-4" />
+                    <span>Tactical Recommendations To Strengthen Your Presentation</span>
+                  </div>
+                  <ul className="space-y-1.5 text-xs text-[var(--fg-primary)]">
+                    {assessment.recommendations_for_improvement.map((rec, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-[11px] leading-relaxed">
+                        <span className="text-[var(--gold-accent)] font-bold mt-0.5">&bull;</span>
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* SECTION NAVIGATION TABS */}
         <div className="border-b border-[var(--canvas-border)] flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px">
