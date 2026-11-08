@@ -50,6 +50,9 @@ next-env.d.ts
 *.sln
 *.sw?
 
+# TypeScript build cache
+*.tsbuildinfo
+
 # Temporary / Scratch directories
 scratch/
 tmp/
