@@ -154,9 +154,21 @@ flowchart TD
     - Replaced rigid, empty full-width top headers with floating glassmorphic action pills (`pointer-events-auto` inside transparent `sticky top-0 pointer-events-none` container) on `/profile` and `/dashboard`.
     - Integrated military dual theme switcher (`ThemeToggle`) across all routes (`/`, `/dashboard`, `/profile`, `/login`) with persistent `localStorage` synchronization and flash-prevention script in `src/app/layout.tsx`.
     - Main container has comfortable top padding (`pt-2 sm:pt-4` / `pt-6 sm:pt-8`) so content breathes naturally without sticking to the browser edge.
-  - **Database Persistence & SQL Migration:**
+  - **Database Persistence, Cross-Device Sync & Post Graduation Support:**
     - Saved runnable SQL migration `supabase/002_add_piq_and_assessment.sql` adding `piq_data` (JSONB), `piq_assessment` (JSONB), and `last_piq_uploaded_at` (TIMESTAMPTZ) to `public.profiles`.
-    - Auto-persists candidate PIQ data and assessment directly to Supabase on upload and manual save, ensuring cross-device synchronization and instant restoration on reload.
+    - **Multi-Device Authoritative Sync Engine:**
+      - Resolved cross-device data disappearance bug where uploading on mobile showed score and details on mobile, but logging in from desktop showed score/insights while form details appeared blank.
+      - Supabase `piq_data` and `piq_assessment` parsers now safely handle both native JSONB objects and JSON strings.
+      - Implemented authoritative synchronization: when Supabase contains populated fields (e.g. uploaded from mobile), it takes priority over desktop's local storage and immediately updates desktop's cache.
+      - Removed blind local storage overwrite that previously allowed secondary devices with empty cache to clear the form.
+      - Strict Auto-Save Guard: debounced auto-save requires meaningful form data before writing to Supabase, preventing secondary blank states from ever overwriting remote database records with `{}`.
+      - Bi-directional Auto-Heal: if a device has richer local data than remote, it automatically repairs and syncs the dossier up to Supabase.
+    - **DIPR 107-A Item 7 Post Graduation & Education UI Upgrade:**
+      - Added standard `DEFAULT_EDUCATION_RECORDS` baseline (10th, 12th, Graduation).
+      - Added dedicated `+ Post Graduation` quick button and `+ Qualification` button in Section 3B.
+      - Added official DIPR Column 6 `Medium of Instruction` (English, Hindi, etc.) input.
+      - Made `Qualification / Degree` fully editable across all rows with individual delete/remove buttons.
+      - Updated Gemini extraction prompt in `src/app/api/piq/analyze/route.ts` (Instruction 7) to explicitly capture Post Graduation (M.Tech, M.Sc, MBA, M.A) whenever written by candidates on physical Form 107-A.
   - **Next Step (Phase 4):** Next developer/agent should launch the Stage-1 Computerised Cognitive & Psychometric Screening System (CSSS + OPAM engines), utilizing the Web Audio API synthesizer and micro-timers.
 - [ ] **Phase 4: Stage-1 Test Engine (CSSS + OPAM)**
   - Micro-timer runner (16-30s auto-advancing, no back button).

@@ -151,6 +151,39 @@ interface PiqFormData {
   ssb_attempts: SsbAttempt[];
 }
 
+const DEFAULT_EDUCATION_RECORDS: EducationRecord[] = [
+  {
+    qualification: "Matriculation / 10th",
+    institution: "",
+    board_university: "",
+    year: "",
+    div_marks_pct: "",
+    medium: "English",
+    boarder_dayscholar: "Day Scholar",
+    achievement: ""
+  },
+  {
+    qualification: "10+2 / Intermediate / 12th",
+    institution: "",
+    board_university: "",
+    year: "",
+    div_marks_pct: "",
+    medium: "English",
+    boarder_dayscholar: "Day Scholar",
+    achievement: ""
+  },
+  {
+    qualification: "Graduation (B.Tech / B.Sc / B.Com / B.A / etc.)",
+    institution: "",
+    board_university: "",
+    year: "",
+    div_marks_pct: "",
+    medium: "English",
+    boarder_dayscholar: "Day Scholar",
+    achievement: ""
+  }
+];
+
 const INITIAL_PIQ_DATA: PiqFormData = {
   full_name: "",
   father_name: "",
@@ -182,7 +215,7 @@ const INITIAL_PIQ_DATA: PiqFormData = {
   father_mother_death_age: "",
   family_members: [],
 
-  education_records: [],
+  education_records: DEFAULT_EDUCATION_RECORDS,
 
   height_m: "",
   weight_kg: "",
@@ -281,7 +314,7 @@ export default function ProfilePage() {
     return "";
   };
 
-  // 1. Load User Profile from Supabase & Local Cache
+  // 1. Load User Profile from Supabase & Local Cache with Multi-Device Authoritative Sync
   useEffect(() => {
     async function loadCandidate() {
       try {
@@ -290,91 +323,193 @@ export default function ProfilePage() {
           setUserId(user.id);
           setEmail(user.email || "candidate@ssbastra.in");
 
-          // Fetch profile row
-          const { data } = await supabase
+          // Fetch profile row from Supabase
+          const { data, error: dbError } = await supabase
             .from("profiles")
             .select("*")
             .eq("id", user.id)
             .maybeSingle();
 
-          if (data) {
-            // Restore from Supabase piq_data if present
-            if (data.piq_data && typeof data.piq_data === "object" && Object.keys(data.piq_data).length > 0) {
-              setFormData({
-                ...INITIAL_PIQ_DATA,
-                ...data.piq_data,
-                full_name: data.full_name || data.piq_data.full_name || "",
-                target_entry: data.target_entry || data.piq_data.target_entry || "CDS",
-                dob: normalizeDobForInput(data.dob || data.piq_data.dob) || "",
-                gender: (data.gender as "male" | "female") || data.piq_data.gender || "male",
-              });
-            } else {
-              setFormData(prev => ({
-                ...prev,
-                full_name: data.full_name || prev.full_name || "",
-                target_entry: data.target_entry || prev.target_entry || "CDS",
-                dob: normalizeDobForInput(data.dob) || prev.dob || "",
-                gender: (data.gender as "male" | "female") || prev.gender || "male",
-              }));
-            }
-
-            // Restore from Supabase piq_assessment if present
-            if (data.piq_assessment && typeof data.piq_assessment === "object") {
-              setAssessment(data.piq_assessment as PiqAssessment);
-              setHasUploadedData(true);
-              localStorage.setItem("ssb_candidate_piq_assessment", JSON.stringify(data.piq_assessment));
-            }
-            if (data.piq_data && typeof data.piq_data === "object" && Object.keys(data.piq_data).length > 0) {
-              setHasUploadedData(true);
-            }
-            if (data.last_piq_uploaded_at) {
-              setHasUploadedData(true);
-            }
-            setCompletionPct(data.profile_completion_pct || (data.piq_assessment ? 100 : 30));
+          if (dbError) {
+            console.warn("[loadCandidate Supabase fetch error]:", dbError);
           }
-        } else {
-          setEmail("cadet@ssbastra.in");
-          setFormData(prev => ({
-            ...prev,
-            full_name: "",
-            dob: "",
-            gender: "male",
-            target_entry: "CDS"
-          }));
-        }
 
-        // Restore any saved local PIQ draft & assessment
-        const cachedPiq = localStorage.getItem("ssb_candidate_piq_data");
-        if (cachedPiq) {
-          try {
-            const parsed = JSON.parse(cachedPiq);
-            if (parsed && typeof parsed === "object") {
-              setFormData(prev => ({ ...prev, ...parsed, dob: normalizeDobForInput(parsed.dob) || prev.dob }));
-              if (parsed.full_name || parsed.father_name || (parsed.education_records && parsed.education_records.length > 0)) {
-                setHasUploadedData(true);
+          if (data) {
+            // A. Safely parse remote piq_data (support JSONB object and stringified JSON)
+            let remotePiqData: Partial<PiqFormData> | null = null;
+            if (data.piq_data) {
+              if (typeof data.piq_data === "object" && data.piq_data !== null) {
+                remotePiqData = data.piq_data;
+              } else if (typeof data.piq_data === "string") {
+                try {
+                  remotePiqData = JSON.parse(data.piq_data);
+                } catch (e) {
+                  console.warn("Could not parse data.piq_data JSON string:", e);
+                }
               }
             }
-          } catch {
-            // ignore JSON parse error
-          }
-        }
 
-        const cachedAssessment = localStorage.getItem("ssb_candidate_piq_assessment");
-        if (cachedAssessment) {
-          try {
-            const parsedAssessment = JSON.parse(cachedAssessment);
-            if (parsedAssessment && typeof parsedAssessment === "object") {
-              setAssessment(parsedAssessment);
-              setHasUploadedData(true);
+            // B. Safely parse remote piq_assessment (support JSONB object and stringified JSON)
+            let remoteAssessment: PiqAssessment | null = null;
+            if (data.piq_assessment) {
+              if (typeof data.piq_assessment === "object" && data.piq_assessment !== null) {
+                remoteAssessment = data.piq_assessment as PiqAssessment;
+              } else if (typeof data.piq_assessment === "string") {
+                try {
+                  remoteAssessment = JSON.parse(data.piq_assessment);
+                } catch (e) {
+                  console.warn("Could not parse data.piq_assessment JSON string:", e);
+                }
+              }
             }
-          } catch {
-            // ignore JSON parse error
-          }
-        }
 
-        const isUploadedCached = localStorage.getItem("ssb_candidate_piq_uploaded");
-        if (isUploadedCached === "true") {
-          setHasUploadedData(true);
+            // Helper: count how many real dossier fields are populated
+            const countMeaningfulFields = (d?: Partial<PiqFormData> | null): number => {
+              if (!d || typeof d !== "object") return 0;
+              let count = 0;
+              if (d.full_name && d.full_name.trim()) count++;
+              if (d.father_name && d.father_name.trim()) count++;
+              if (d.max_residence_place && d.max_residence_place.trim()) count++;
+              if (d.present_residence_place && d.present_residence_place.trim()) count++;
+              if (d.perm_residence_place && d.perm_residence_place.trim()) count++;
+              if (d.hobbies && d.hobbies.trim()) count++;
+              if (d.extra_curricular && d.extra_curricular.trim()) count++;
+              if (Array.isArray(d.family_members) && d.family_members.length > 0) count += d.family_members.length * 2;
+              if (Array.isArray(d.education_records) && d.education_records.length > 0) count += d.education_records.length * 2;
+              if (Array.isArray(d.sports_records) && d.sports_records.length > 0) count += d.sports_records.length * 2;
+              if (Array.isArray(d.ssb_attempts) && d.ssb_attempts.length > 0) count += d.ssb_attempts.length * 2;
+              return count;
+            };
+
+            const remoteCount = countMeaningfulFields(remotePiqData);
+
+            // Read device local storage
+            let localPiqData: Partial<PiqFormData> | null = null;
+            const cachedPiq = localStorage.getItem("ssb_candidate_piq_data");
+            if (cachedPiq) {
+              try {
+                localPiqData = JSON.parse(cachedPiq);
+              } catch {
+                localPiqData = null;
+              }
+            }
+            const localCount = countMeaningfulFields(localPiqData);
+
+            // C. Multi-Device Authoritative Resolution:
+            // 1. If remote database has populated fields, remote Supabase WINS (e.g. candidate uploaded on mobile, opening on desktop).
+            //    We update formData and write it to desktop's localStorage so local cache is in sync.
+            // 2. If remote database is empty but local device has populated fields (e.g. candidate just uploaded on this device),
+            //    local cache wins and auto-heals Supabase.
+            // 3. Fallback to basic profiles record.
+            let resolvedData: PiqFormData;
+
+            if (remoteCount > 0) {
+              resolvedData = {
+                ...INITIAL_PIQ_DATA,
+                ...remotePiqData,
+                full_name: data.full_name || remotePiqData?.full_name || "",
+                target_entry: data.target_entry || remotePiqData?.target_entry || "CDS",
+                dob: normalizeDobForInput(data.dob || remotePiqData?.dob) || "",
+                gender: (data.gender as "male" | "female") || remotePiqData?.gender || "male",
+                education_records: (remotePiqData?.education_records && remotePiqData.education_records.length > 0)
+                  ? remotePiqData.education_records
+                  : DEFAULT_EDUCATION_RECORDS,
+                family_members: remotePiqData?.family_members || [],
+                sports_records: remotePiqData?.sports_records || [],
+                ssb_attempts: remotePiqData?.ssb_attempts || []
+              };
+              setFormData(resolvedData);
+              localStorage.setItem("ssb_candidate_piq_data", JSON.stringify(resolvedData));
+              setHasUploadedData(true);
+            } else if (localCount > 0 && localPiqData) {
+              resolvedData = {
+                ...INITIAL_PIQ_DATA,
+                ...localPiqData,
+                full_name: localPiqData.full_name || data.full_name || "",
+                target_entry: localPiqData.target_entry || data.target_entry || "CDS",
+                dob: normalizeDobForInput(localPiqData.dob || data.dob) || "",
+                gender: (localPiqData.gender as "male" | "female") || (data.gender as "male" | "female") || "male",
+                education_records: (localPiqData.education_records && localPiqData.education_records.length > 0)
+                  ? localPiqData.education_records
+                  : DEFAULT_EDUCATION_RECORDS,
+                family_members: localPiqData.family_members || [],
+                sports_records: localPiqData.sports_records || [],
+                ssb_attempts: localPiqData.ssb_attempts || []
+              };
+              setFormData(resolvedData);
+              setHasUploadedData(true);
+
+              // Auto-heal remote Supabase record with this local data
+              try {
+                await supabase
+                  .from("profiles")
+                  .update({
+                    full_name: resolvedData.full_name,
+                    target_entry: resolvedData.target_entry,
+                    dob: resolvedData.dob ? normalizeDobForInput(resolvedData.dob) : null,
+                    profile_completion_pct: 100,
+                    piq_data: resolvedData,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq("id", user.id);
+              } catch (healErr) {
+                console.warn("[Auto-heal to Supabase]:", healErr);
+              }
+            } else {
+              resolvedData = {
+                ...INITIAL_PIQ_DATA,
+                full_name: data.full_name || "",
+                target_entry: data.target_entry || "CDS",
+                dob: normalizeDobForInput(data.dob) || "",
+                gender: (data.gender as "male" | "female") || "male",
+                education_records: DEFAULT_EDUCATION_RECORDS
+              };
+              setFormData(resolvedData);
+            }
+
+            // D. Assessment Resolution
+            if (remoteAssessment) {
+              setAssessment(remoteAssessment);
+              setHasUploadedData(true);
+              localStorage.setItem("ssb_candidate_piq_assessment", JSON.stringify(remoteAssessment));
+            } else {
+              const cachedAssessment = localStorage.getItem("ssb_candidate_piq_assessment");
+              if (cachedAssessment) {
+                try {
+                  const parsed = JSON.parse(cachedAssessment);
+                  if (parsed && typeof parsed === "object") {
+                    setAssessment(parsed);
+                    setHasUploadedData(true);
+                  }
+                } catch {
+                  // ignore
+                }
+              }
+            }
+
+            if (data.last_piq_uploaded_at || remoteCount > 0 || remoteAssessment) {
+              setHasUploadedData(true);
+              localStorage.setItem("ssb_candidate_piq_uploaded", "true");
+            }
+            setCompletionPct(data.profile_completion_pct || (remoteAssessment ? 100 : (remoteCount > 0 ? 90 : 30)));
+          }
+        } else {
+          // Unauthenticated or demo mode
+          setEmail("cadet@ssbastra.in");
+          const cachedPiq = localStorage.getItem("ssb_candidate_piq_data");
+          if (cachedPiq) {
+            try {
+              const parsed = JSON.parse(cachedPiq);
+              if (parsed && typeof parsed === "object") {
+                setFormData(prev => ({ ...prev, ...parsed, dob: normalizeDobForInput(parsed.dob) || prev.dob }));
+                if (parsed.full_name || parsed.father_name) {
+                  setHasUploadedData(true);
+                }
+              }
+            } catch {
+              // ignore
+            }
+          }
         }
       } catch (err) {
         console.error("Failed to load cadet profile:", err);
@@ -894,7 +1029,7 @@ export default function ProfilePage() {
         ...ext,
         dob: normalizeDobForInput(ext.dob) || "",
         family_members: ext.family_members && ext.family_members.length > 0 ? ext.family_members : [],
-        education_records: ext.education_records && ext.education_records.length > 0 ? ext.education_records : [],
+        education_records: ext.education_records && ext.education_records.length > 0 ? ext.education_records : DEFAULT_EDUCATION_RECORDS,
         sports_records: ext.sports_records && ext.sports_records.length > 0 ? ext.sports_records : [],
         ssb_attempts: ext.ssb_attempts && ext.ssb_attempts.length > 0 ? ext.ssb_attempts : [],
       };
@@ -906,8 +1041,17 @@ export default function ProfilePage() {
       }
       localStorage.setItem("ssb_candidate_piq_data", JSON.stringify(freshFormData));
 
+      let activeUserId = userId;
+      if (!activeUserId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          activeUserId = user.id;
+          setUserId(user.id);
+        }
+      }
+
       // Auto-persist directly to database so candidate never loses assessment
-      if (userId) {
+      if (activeUserId) {
         try {
           await supabase
             .from("profiles")
@@ -921,7 +1065,7 @@ export default function ProfilePage() {
               last_piq_uploaded_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
-            .eq("id", userId);
+            .eq("id", activeUserId);
         } catch (dbErr) {
           console.warn("[Auto-sync to Supabase profiles]:", dbErr);
           await supabase
@@ -933,7 +1077,7 @@ export default function ProfilePage() {
               profile_completion_pct: 100,
               updated_at: new Date().toISOString()
             })
-            .eq("id", userId);
+            .eq("id", activeUserId);
         }
       }
 
@@ -1012,6 +1156,19 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!isInitialLoadedRef.current) return;
     if (!hasUploadedData) return;
+
+    // Strict guard: Never auto-save empty/blank state to Supabase
+    const hasMeaningfulData = Boolean(
+      formData.full_name?.trim() ||
+      formData.father_name?.trim() ||
+      formData.max_residence_place?.trim() ||
+      formData.present_residence_place?.trim() ||
+      formData.perm_residence_place?.trim() ||
+      (formData.education_records && formData.education_records.some(r => r.institution?.trim() || r.board_university?.trim())) ||
+      (formData.family_members && formData.family_members.length > 0) ||
+      (formData.sports_records && formData.sports_records.length > 0)
+    );
+    if (!hasMeaningfulData) return;
 
     setIsAutoSaving(true);
     const timer = setTimeout(async () => {
@@ -2208,22 +2365,99 @@ export default function ProfilePage() {
 
               {/* Educational Record Table (Item 7) */}
               <div className="space-y-4 pt-4 border-t border-[var(--canvas-border)]">
-                <div className="border-b border-[var(--canvas-border)] pb-2">
-                  <h3 className="text-sm font-bold tracking-wide flex items-center gap-2">
-                    <GraduationCap className="w-4 h-4 text-[var(--gold-accent)]" />
-                    <span>SECTION 3B: EDUCATIONAL RECORD (ITEM 7 - COMMENCING FROM MATRICULATION)</span>
-                  </h3>
-                  <p className="text-[11px] text-[var(--fg-muted)] mt-0.5">
-                    Qualification, institution, board/university, percentage, medium & outstanding achievements.
-                  </p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--canvas-border)] pb-2">
+                  <div>
+                    <h3 className="text-sm font-bold tracking-wide flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-[var(--gold-accent)]" />
+                      <span>SECTION 3B: EDUCATIONAL RECORD (ITEM 7 - COMMENCING FROM MATRICULATION)</span>
+                    </h3>
+                    <p className="text-[11px] text-[var(--fg-muted)] mt-0.5">
+                      Qualification, institution, board/university, percentage, medium & outstanding achievements.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newRec: EducationRecord = {
+                          qualification: "Post Graduation (M.Tech / M.Sc / MBA / M.A / etc.)",
+                          institution: "",
+                          board_university: "",
+                          year: "",
+                          div_marks_pct: "",
+                          medium: "English",
+                          boarder_dayscholar: "Day Scholar",
+                          achievement: ""
+                        };
+                        updateField("education_records", [...formData.education_records, newRec]);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--primary-accent)]/15 border border-[var(--primary-accent)]/40 hover:bg-[var(--primary-accent)]/25 text-xs font-bold text-[var(--primary-accent)] transition-all cursor-pointer shadow-sm active:scale-95"
+                      title="Add Post Graduation / Master's degree record"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ Post Graduation</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newRec: EducationRecord = {
+                          qualification: "Additional Qualification",
+                          institution: "",
+                          board_university: "",
+                          year: "",
+                          div_marks_pct: "",
+                          medium: "English",
+                          boarder_dayscholar: "Day Scholar",
+                          achievement: ""
+                        };
+                        updateField("education_records", [...formData.education_records, newRec]);
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)] hover:border-[var(--gold-accent)] text-xs font-bold text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] transition-all cursor-pointer shadow-sm active:scale-95"
+                      title="Add diploma or other qualification"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ Qualification</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
                   {formData.education_records.map((rec, idx) => (
-                    <div key={idx} className="p-3.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-2.5">
-                      <div className="text-xs font-bold text-[var(--primary-accent)] flex items-center justify-between">
-                        <span>{rec.qualification}</span>
-                        <span className="text-[10px] text-[var(--fg-muted)] font-normal">Step {idx + 1} of {formData.education_records.length}</span>
+                    <div key={idx} className="p-3.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-2.5 relative group">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1 max-w-md">
+                          <label className="block text-[9px] text-[var(--fg-muted)] mb-0.5">Qualification / Examination *</label>
+                          <input
+                            type="text"
+                            value={rec.qualification}
+                            onChange={e => {
+                              const list = [...formData.education_records];
+                              list[idx].qualification = e.target.value;
+                              updateField("education_records", list);
+                            }}
+                            placeholder="e.g. Matriculation / 10th, 10+2, Graduation, Post Graduation"
+                            className="w-full px-2.5 py-1 rounded border border-[var(--canvas-border)] focus:border-[var(--primary-accent)] bg-[var(--canvas-bg)] text-xs font-bold text-[var(--primary-accent)]"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-[var(--fg-muted)] font-normal hidden sm:inline">
+                            Step {idx + 1} of {formData.education_records.length}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const list = formData.education_records.filter((_, i) => i !== idx);
+                              updateField("education_records", list);
+                            }}
+                            className="p-1.5 rounded text-[var(--fg-muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                            title="Remove Qualification"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
@@ -2237,6 +2471,7 @@ export default function ProfilePage() {
                               list[idx].institution = e.target.value;
                               updateField("education_records", list);
                             }}
+                            placeholder="School / College Name"
                             className="w-full px-2 py-1 rounded border border-[var(--canvas-border)] bg-[var(--canvas-bg)] text-xs"
                           />
                         </div>
@@ -2251,6 +2486,7 @@ export default function ProfilePage() {
                               list[idx].board_university = e.target.value;
                               updateField("education_records", list);
                             }}
+                            placeholder="e.g. CBSE / State Board / VTU"
                             className="w-full px-2 py-1 rounded border border-[var(--canvas-border)] bg-[var(--canvas-bg)] text-xs"
                           />
                         </div>
@@ -2265,6 +2501,7 @@ export default function ProfilePage() {
                               list[idx].year = e.target.value;
                               updateField("education_records", list);
                             }}
+                            placeholder="e.g. 2021"
                             className="w-full px-2 py-1 rounded border border-[var(--canvas-border)] bg-[var(--canvas-bg)] text-xs"
                           />
                         </div>
@@ -2279,10 +2516,28 @@ export default function ProfilePage() {
                               list[idx].div_marks_pct = e.target.value;
                               updateField("education_records", list);
                             }}
+                            placeholder="e.g. 1st Div (82.4%)"
                             className="w-full px-2 py-1 rounded border border-[var(--canvas-border)] bg-[var(--canvas-bg)] text-xs font-bold"
                           />
                         </div>
 
+                        <div>
+                          <label className="block text-[9px] text-[var(--fg-muted)] mb-0.5">Medium of Instruction</label>
+                          <input
+                            type="text"
+                            value={rec.medium || "English"}
+                            onChange={e => {
+                              const list = [...formData.education_records];
+                              list[idx].medium = e.target.value;
+                              updateField("education_records", list);
+                            }}
+                            placeholder="e.g. English / Hindi"
+                            className="w-full px-2 py-1 rounded border border-[var(--canvas-border)] bg-[var(--canvas-bg)] text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
                         <div>
                           <label className="block text-[9px] text-[var(--fg-muted)] mb-0.5">Boarder / Day Scholar</label>
                           <select
@@ -2298,24 +2553,81 @@ export default function ProfilePage() {
                             <option value="Boarder">Boarder / Hosteller</option>
                           </select>
                         </div>
-                      </div>
 
-                      <div>
-                        <label className="block text-[9px] text-[var(--fg-muted)] mb-0.5">Outstanding Achievement, if any</label>
-                        <input
-                          type="text"
-                          value={rec.achievement}
-                          onChange={e => {
-                            const list = [...formData.education_records];
-                            list[idx].achievement = e.target.value;
-                            updateField("education_records", list);
-                          }}
-                          placeholder="e.g. School topper, Olympiad medalist, Merit list rank"
-                          className="w-full px-2.5 py-1 rounded border border-[var(--canvas-border)] bg-[var(--canvas-bg)] text-xs text-[var(--gold-accent)]"
-                        />
+                        <div className="sm:col-span-3">
+                          <label className="block text-[9px] text-[var(--fg-muted)] mb-0.5">Outstanding Achievement, if any</label>
+                          <input
+                            type="text"
+                            value={rec.achievement}
+                            onChange={e => {
+                              const list = [...formData.education_records];
+                              list[idx].achievement = e.target.value;
+                              updateField("education_records", list);
+                            }}
+                            placeholder="e.g. School topper, Olympiad medalist, Merit list rank"
+                            className="w-full px-2.5 py-1 rounded border border-[var(--canvas-border)] bg-[var(--canvas-bg)] text-xs text-[var(--gold-accent)]"
+                          />
+                        </div>
                       </div>
                     </div>
                   ))}
+
+                  {formData.education_records.length === 0 && (
+                    <div className="p-6 rounded-lg border border-dashed border-[var(--canvas-border)] text-center space-y-2">
+                      <p className="text-xs text-[var(--fg-muted)]">No educational records present.</p>
+                      <button
+                        type="button"
+                        onClick={() => updateField("education_records", DEFAULT_EDUCATION_RECORDS)}
+                        className="px-3 py-1.5 rounded-lg bg-[var(--primary-accent)] text-white text-xs font-bold cursor-pointer"
+                      >
+                        Restore Standard 10th, 12th & Graduation Rows
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="pt-2 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newRec: EducationRecord = {
+                          qualification: "Post Graduation (M.Tech / M.Sc / MBA / M.A / etc.)",
+                          institution: "",
+                          board_university: "",
+                          year: "",
+                          div_marks_pct: "",
+                          medium: "English",
+                          boarder_dayscholar: "Day Scholar",
+                          achievement: ""
+                        };
+                        updateField("education_records", [...formData.education_records, newRec]);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-[var(--primary-accent)]/50 hover:border-[var(--primary-accent)] bg-[var(--primary-accent)]/5 hover:bg-[var(--primary-accent)]/10 text-xs font-bold text-[var(--primary-accent)] transition-all cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ Add Post Graduation / Master&apos;s</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newRec: EducationRecord = {
+                          qualification: "Additional Qualification",
+                          institution: "",
+                          board_university: "",
+                          year: "",
+                          div_marks_pct: "",
+                          medium: "English",
+                          boarder_dayscholar: "Day Scholar",
+                          achievement: ""
+                        };
+                        updateField("education_records", [...formData.education_records, newRec]);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-[var(--canvas-border)] hover:border-[var(--canvas-border-hover)] bg-[var(--canvas-surface-subtle)] text-xs font-bold text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] transition-all cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ Add Another Qualification</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 

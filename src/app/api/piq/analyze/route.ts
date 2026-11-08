@@ -79,7 +79,7 @@ Output ONLY valid JSON matching this exact structure:
     
     "education_records": [
       {
-        "qualification": string,
+        "qualification": string (e.g. "Matriculation / 10th", "10+2 / Intermediate / 12th", "Graduation", "Post Graduation (Master's / M.Tech / M.Sc / MBA / etc.)"),
         "institution": string,
         "board_university": string,
         "year": string,
@@ -158,7 +158,8 @@ Important Instructions:
 4. Officer Assessment Accuracy: The PIQ score and Interviewing Officer assessment must be 100% grounded in the extracted form data. If the candidate has few extracurriculars or achievements, reflect that objectively in the breakdown and recommendations rather than fabricating imaginary activities.
 5. RESIDENCE RESOLUTION (Item 4): Candidates frequently write "Same as above", "Do", "-do-", or "as above" in 4(b) (Present Residence) or 4(c) (Permanent Residence). When this occurs, DO NOT output literal "Same as above". Instead, COPY the actual place name, district, state, and approximate population from 4(a) (or 4(b)) into 4(b) and 4(c) so that all fields contain the full geographic data.
 6. FAMILY DETAILS (Item 6): In the family table, use "Father", "Mother", and for any brothers or sisters, use "Sibling" (or "Elder Sibling" / "Younger Sibling", or "Brother" / "Sister" as indicated by candidate). Do not assume brother if it is a sister.
-7. Output strictly valid JSON with no markdown formatting or commentary.`;
+7. EDUCATIONAL RECORD (Item 7): Commencing from Matriculation, extract all academic qualifications listed in chronological order: Matriculation / 10th, 10+2 / 12th, Graduation, and Post Graduation (Master's / M.Tech / M.Sc / MBA / etc. if filled by candidate). If the candidate entered Post Graduation or additional higher qualifications, ALWAYS capture and transcribe them into education_records.
+8. Output strictly valid JSON with no markdown formatting or commentary.`;
 
     parts.push({ text: systemPrompt });
 
