@@ -354,92 +354,6 @@ export default function ProfilePage() {
     }
   };
 
-  const simulateAiPiqParsing = (filename: string) => {
-    setIsParsingPiq(true);
-    setParseNotification(null);
-    setParseError(null);
-
-    // Instant offline simulation for testing UI without real upload
-    setTimeout(() => {
-      setIsParsingPiq(false);
-      setFormData(prev => ({
-        ...prev,
-        full_name: prev.full_name || "VIKRAMADITYA SINGH",
-        father_name: "COL. RAJESHWAR SINGH (RETD)",
-        gender: "male",
-        dob: "2002-04-14",
-        religion: "Hindu",
-        mother_tongue: "Hindi",
-        category: "General",
-        marital_status: "Single",
-        max_residence_place: "Pune",
-        max_residence_district: "Pune",
-        max_residence_state: "Maharashtra",
-        max_residence_population: "72 Lakhs",
-        present_residence_place: "Dehradun",
-        present_residence_district: "Dehradun",
-        present_residence_state: "Uttarakhand",
-        present_residence_population: "9.5 Lakhs",
-        perm_residence_place: "Jaipur",
-        perm_residence_district: "Jaipur",
-        perm_residence_state: "Rajasthan",
-        perm_residence_population: "38 Lakhs",
-        perm_residence_district_hq: true,
-        height_m: "1.80",
-        weight_kg: "74",
-        has_ncc: true,
-        ncc_wing: "Army",
-        ncc_division: "Senior Division",
-        ncc_certificate: "C Certificate (Alpha Grade)",
-        ncc_duration: "3 Years",
-        hobbies: "Aero-modelling, Geopolitical wargaming, Marathon running, Classical flute",
-        extra_curricular: "National Cadet Corps Best Cadet nominee, Inter-university Debate Champion",
-        responsibilities_held: "NCC Senior Under Officer (SUO), Captain of University Athletics Contingent",
-        nature_of_commission: "Permanent Commission (PC)",
-        service_preference: "1. Army (Infantry / Armoured)  2. Air Force  3. Navy",
-        total_chances_availed: "1",
-      }));
-
-      const sampleAssessment: PiqAssessment = {
-        piq_score: 86,
-        overall_verdict: "STRONG OFFICER CANDIDATE PROFILE — BALANCED OLQ FOUNDATION",
-        score_breakdown: {
-          academics: { score: 22, max: 25, assessment: "Consistent 88%+ academics from 10th to B.Tech. Strong technical aptitude." },
-          sports_and_ncc: { score: 21, max: 25, assessment: "Active football team participation and NCC 'C' Cert (Alpha). High physical stamina." },
-          leadership_and_responsibility: { score: 23, max: 25, assessment: "Senior Under Officer (SUO) and Athletics Captaincy demonstrate social influence." },
-          hobbies_and_depth: { score: 20, max: 25, assessment: "Aeromodelling and distance running show active engagement and discipline." }
-        },
-        key_strengths: [
-          "Consistent first-division academic trajectory in STEM disciplines.",
-          "Proven team leadership and organizational experience as NCC Senior Under Officer.",
-          "Regular participation in competitive team sports (Football First XI).",
-          "Active technical hobby (Aeromodelling) directly aligns with aviation/defense systems."
-        ],
-        vulnerabilities_and_red_flags: [
-          "Dip in 12th percentage (88.6%) compared to 10th (91.4%) — IO will probe reason for slight deceleration.",
-          "Previous Conference Out at 18 SSB Prayagraj requires clear self-retrospection on Stage-2 performance.",
-          "Aeromodelling demands deep technical knowledge — expect viva-style aerodynamic questions."
-        ],
-        io_probable_questions: [
-          "I see a 3% drop in your 12th board marks compared to 10th. What went wrong during your board prep?",
-          "As Senior Under Officer, tell me about an occasion where a cadet under your command refused an order. How did you handle it?",
-          "You participated in aeromodelling — explain how an aircraft controls pitch, roll, and yaw during sudden wind shear.",
-          "Why did you get Conference Out in your previous NDA attempt, and what tangible changes have you made since then?"
-        ],
-        recommendations_for_improvement: [
-          "Quantify achievements clearly: Mention exact tournament levels, positions, and finishes in your written records.",
-          "Prepare aerodynamic and propulsion fundamentals thoroughly to defend your aeromodelling hobby with confidence.",
-          "Frame your previous SSB attempt positively: Highlight newfound maturity, physical stamina drills, and systematic preparation."
-        ]
-      };
-      setAssessment(sampleAssessment);
-      localStorage.setItem("ssb_candidate_piq_assessment", JSON.stringify(sampleAssessment));
-
-      setParseNotification(`✨ Loaded sample data & AI Dossier Score for "${filename}". All 4 sections populated for demonstration.`);
-      setCompletionPct(100);
-    }, 1500);
-  };
-
   // 3. Save PIQ Data
   const handleSave = async () => {
     setSaving(true);
@@ -676,23 +590,10 @@ export default function ProfilePage() {
                 </button>
               </div>
 
-              {/* 1-Click Offline Demo Button & Status Indicator */}
-              <div className="flex items-center justify-between pt-1">
-                <div className="text-[10px] text-[var(--fg-muted)] flex items-center gap-1">
-                  {isParsingPiq && <RefreshCw className="w-3 h-3 animate-spin text-[var(--primary-accent)]" />}
-                  <span>{isParsingPiq ? "Gemini AI is analyzing document & tables..." : "Supports PDF, JPG, PNG & Live Camera"}</span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => simulateAiPiqParsing("Sample_Cadet_PIQ_107A.pdf")}
-                  disabled={isParsingPiq}
-                  className="text-[10px] font-bold text-[var(--gold-accent)] hover:underline flex items-center gap-1 cursor-pointer"
-                  title="Populate with sample cadet data without uploading"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  <span>Try 1-Click Demo Fill</span>
-                </button>
+              {/* Status / Document Format Indicator */}
+              <div className="pt-1 text-[10px] text-[var(--fg-muted)] flex items-center gap-1.5">
+                {isParsingPiq && <RefreshCw className="w-3 h-3 animate-spin text-[var(--primary-accent)]" />}
+                <span>{isParsingPiq ? "Gemini AI is analyzing document & tables..." : "Supports PDF, JPG, PNG & Live Camera Capture"}</span>
               </div>
 
               {/* Success Notification */}

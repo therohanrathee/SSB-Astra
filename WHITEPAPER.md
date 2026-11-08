@@ -122,7 +122,7 @@ flowchart TD
       1. *2-Page PDF* (`application/pdf`)
       2. *2 Photos (Page 1 Front & Page 2 Back)* (`image/png, image/jpeg`)
       3. *Live Camera Capture* (`accept="image/*" capture="environment"`)
-    - Added offline 1-click demo auto-fill for rapid testing.
+    - Streamlined production intake strictly driven by live AI document ingestion (2-Page PDF, 2 Photos, or Direct Camera Scan).
   - **Officer Candidate Dossier Assessment & PIQ Scoring Engine:**
     - Refined system prompt to perform dual-action processing: strict JSON transcription + Senior Interviewing Officer (IO) evaluation.
     - Evaluates candidates across the **4 Classical Assessment Pillars**:
