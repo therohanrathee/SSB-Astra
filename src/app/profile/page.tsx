@@ -3,12 +3,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, 
   Download, 
   UploadCloud, 
   Sparkles, 
-  Lock, 
   CheckCircle2, 
   AlertCircle, 
   Save, 
@@ -33,9 +33,11 @@ import {
   ChevronDown,
   ChevronUp,
   TrendingUp,
-  RotateCcw
+  X,
+  SlidersHorizontal
 } from "lucide-react";
 import CrossedSwords from "@/components/CrossedSwords";
+import ThemeToggle from "@/components/ThemeToggle";
 import { supabase } from "@/lib/supabaseClient";
 
 // --- Types for Structured PIQ (DIPR Questionnaire No. 107-A) ---
@@ -223,6 +225,7 @@ export default function ProfilePage() {
   // Intake mode & Device detection
   const [intakeMode, setIntakeMode] = useState<"pdf" | "photos" | "camera">("pdf");
   const [isMobile, setIsMobile] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   // Staged Files for user review prior to analysis
   const [selectedPdf, setSelectedPdf] = useState<File | null>(null);
@@ -292,14 +295,32 @@ export default function ProfilePage() {
             .maybeSingle();
 
           if (data) {
-            setFormData(prev => ({
-              ...prev,
-              full_name: data.full_name || prev.full_name || "CADET ASPIRANT",
-              target_entry: data.target_entry || prev.target_entry || "CDS",
-              dob: normalizeDobForInput(data.dob) || prev.dob || "2003-08-15",
-              gender: (data.gender as "male" | "female") || prev.gender || "male",
-            }));
-            setCompletionPct(data.profile_completion_pct || 30);
+            // Restore from Supabase piq_data if present
+            if (data.piq_data && typeof data.piq_data === "object" && Object.keys(data.piq_data).length > 0) {
+              setFormData({
+                ...INITIAL_PIQ_DATA,
+                ...data.piq_data,
+                full_name: data.full_name || data.piq_data.full_name || "",
+                target_entry: data.target_entry || data.piq_data.target_entry || "CDS",
+                dob: normalizeDobForInput(data.dob || data.piq_data.dob) || "",
+                gender: (data.gender as "male" | "female") || data.piq_data.gender || "male",
+              });
+            } else {
+              setFormData(prev => ({
+                ...prev,
+                full_name: data.full_name || prev.full_name || "",
+                target_entry: data.target_entry || prev.target_entry || "CDS",
+                dob: normalizeDobForInput(data.dob) || prev.dob || "",
+                gender: (data.gender as "male" | "female") || prev.gender || "male",
+              }));
+            }
+
+            // Restore from Supabase piq_assessment if present
+            if (data.piq_assessment && typeof data.piq_assessment === "object") {
+              setAssessment(data.piq_assessment as PiqAssessment);
+              localStorage.setItem("ssb_candidate_piq_assessment", JSON.stringify(data.piq_assessment));
+            }
+            setCompletionPct(data.profile_completion_pct || (data.piq_assessment ? 100 : 30));
           }
         } else {
           setEmail("cadet@ssbastra.in");
@@ -860,21 +881,56 @@ export default function ProfilePage() {
         });
       }
 
-      setFormData(prev => ({
-        ...prev,
+      // Auto-reset baseline and update to the newly extracted details
+      const freshFormData: PiqFormData = {
+        ...INITIAL_PIQ_DATA,
         ...ext,
-        dob: normalizeDobForInput(ext.dob) || prev.dob,
-        family_members: ext.family_members && ext.family_members.length > 0 ? ext.family_members : prev.family_members,
-        education_records: ext.education_records && ext.education_records.length > 0 ? ext.education_records : prev.education_records,
-        sports_records: ext.sports_records && ext.sports_records.length > 0 ? ext.sports_records : prev.sports_records,
-        ssb_attempts: ext.ssb_attempts && ext.ssb_attempts.length > 0 ? ext.ssb_attempts : prev.ssb_attempts,
-      }));
+        dob: normalizeDobForInput(ext.dob) || "",
+        family_members: ext.family_members && ext.family_members.length > 0 ? ext.family_members : [],
+        education_records: ext.education_records && ext.education_records.length > 0 ? ext.education_records : [],
+        sports_records: ext.sports_records && ext.sports_records.length > 0 ? ext.sports_records : [],
+        ssb_attempts: ext.ssb_attempts && ext.ssb_attempts.length > 0 ? ext.ssb_attempts : [],
+      };
+      setFormData(freshFormData);
 
       if (json.assessment) {
         setAssessment(json.assessment);
         localStorage.setItem("ssb_candidate_piq_assessment", JSON.stringify(json.assessment));
       }
+      localStorage.setItem("ssb_candidate_piq_data", JSON.stringify(freshFormData));
 
+      // Auto-persist directly to database so candidate never loses assessment
+      if (userId) {
+        try {
+          await supabase
+            .from("profiles")
+            .update({
+              full_name: freshFormData.full_name,
+              target_entry: freshFormData.target_entry,
+              dob: freshFormData.dob ? normalizeDobForInput(freshFormData.dob) : null,
+              profile_completion_pct: 100,
+              piq_data: freshFormData,
+              piq_assessment: json.assessment || null,
+              last_piq_uploaded_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", userId);
+        } catch (dbErr) {
+          console.warn("[Auto-sync to Supabase profiles]:", dbErr);
+          await supabase
+            .from("profiles")
+            .update({
+              full_name: freshFormData.full_name,
+              target_entry: freshFormData.target_entry,
+              dob: freshFormData.dob ? normalizeDobForInput(freshFormData.dob) : null,
+              profile_completion_pct: 100,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", userId);
+        }
+      }
+
+      setMobileDrawerOpen(false);
       setCompletionPct(100);
       setParseNotification(
         `✨ Successfully extracted DIPR Form 107-A data from ${optimizedFiles.length} optimized page(s) (${totalKb} KB) & generated Officer PIQ Score!`
@@ -898,19 +954,38 @@ export default function ProfilePage() {
     try {
       // Always cache in localStorage for instant retrieval
       localStorage.setItem("ssb_candidate_piq_data", JSON.stringify(formData));
+      if (assessment) {
+        localStorage.setItem("ssb_candidate_piq_assessment", JSON.stringify(assessment));
+      }
 
       // If user is authenticated in Supabase, update profile row
       if (userId) {
-        await supabase
-          .from("profiles")
-          .update({
-            full_name: formData.full_name,
-            target_entry: formData.target_entry,
-            dob: formData.dob ? formData.dob : null,
-            profile_completion_pct: 100,
-            updated_at: new Date().toISOString()
-          })
-          .eq("id", userId);
+        try {
+          await supabase
+            .from("profiles")
+            .update({
+              full_name: formData.full_name,
+              target_entry: formData.target_entry,
+              dob: formData.dob ? formData.dob : null,
+              profile_completion_pct: 100,
+              piq_data: formData,
+              piq_assessment: assessment,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", userId);
+        } catch (dbErr) {
+          console.warn("[Save profile to Supabase with piq_data/assessment]:", dbErr);
+          await supabase
+            .from("profiles")
+            .update({
+              full_name: formData.full_name,
+              target_entry: formData.target_entry,
+              dob: formData.dob ? formData.dob : null,
+              profile_completion_pct: 100,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", userId);
+        }
       }
 
       setCompletionPct(100);
@@ -924,788 +999,684 @@ export default function ProfilePage() {
     }
   };
 
-  // 4. Reset Form & Purge Local Cache
-  const handleResetForm = () => {
-    if (confirm("Reset all form fields and clear cached PIQ data from your device?")) {
-      localStorage.removeItem("ssb_candidate_piq_data");
-      localStorage.removeItem("ssb_candidate_piq_assessment");
-      setFormData(INITIAL_PIQ_DATA);
-      setAssessment(null);
-      setSelectedPdf(null);
-      setPhotoP1(null);
-      setPhotoP2(null);
-      setPhotoP1Preview(null);
-      setPhotoP2Preview(null);
-      setParseNotification(null);
-      setParseError(null);
-      setCompletionPct(0);
-    }
-  };
+  // Assess whether candidate has existing profile/PIQ data
+  const hasUploadedData = Boolean(
+    assessment || (formData.father_name && formData.father_name.trim().length > 0) || (formData.education_records && formData.education_records.length > 0)
+  );
 
-  return (
-    <div className="min-h-screen bg-military-grid flex flex-col font-mono text-[var(--fg-primary)]">
-      
-      {/* Top Header */}
-      <header className="border-b border-[var(--canvas-border)] bg-[var(--canvas-surface)]/90 backdrop-blur-md px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/dashboard"
-            className="w-8 h-8 rounded border border-[var(--canvas-border)] hover:border-[var(--primary-accent)] flex items-center justify-center text-[var(--fg-secondary)] hover:text-[var(--primary-accent)] transition-colors"
-            title="Return to Dashboard"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded border border-[var(--primary-accent)]/60 bg-[var(--canvas-surface)] flex items-center justify-center">
-              <CrossedSwords className="w-4 h-4 text-[var(--primary-accent)]" />
+  // Render the Intake Section (Blank form download + AI scan)
+  // Supports hero layout (compact = false) or compact sidebar layout (compact = true)
+  const renderIntakeSection = (compact: boolean = false) => {
+    return (
+      <div className={compact ? "space-y-3" : "grid grid-cols-1 md:grid-cols-12 gap-4"}>
+        {/* 1. Official Blank PIQ Card */}
+        <div className={
+          compact
+            ? "p-3.5 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)] flex items-center justify-between shadow-sm relative overflow-hidden group"
+            : "md:col-span-5 p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)] flex flex-col justify-between shadow-sm relative overflow-hidden group"
+        }>
+          <div className="absolute top-0 right-0 w-24 h-24 bg-[var(--gold-accent)]/5 rounded-full blur-xl pointer-events-none" />
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <FileText className="w-4 h-4 text-[var(--gold-accent)] shrink-0" />
+              <span className="text-xs font-bold tracking-wide">OFFICIAL BLANK PIQ</span>
             </div>
-            <div>
+            <p className="text-[10px] text-[var(--fg-muted)] leading-relaxed mb-2 sm:mb-3">
+              {compact ? "Standardized Armed Forces DIPR 107-A (Revised)" : "Download the standardized Armed Forces DIPR Questionnaire No. 107-A (Revised) PDF for physical practice and handwriting familiarity before your board."}
+            </p>
+          </div>
+
+          <a
+            href="/sample_piq.pdf"
+            download="DIPR_Questionnaire_107A_Blank_PIQ.pdf"
+            className={
+              compact
+                ? "flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--canvas-border)] hover:border-[var(--gold-accent)] bg-[var(--canvas-surface-subtle)] hover:bg-[var(--canvas-surface)] text-[11px] font-bold text-[var(--fg-primary)] transition-all shadow-sm shrink-0"
+                : "w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-[var(--canvas-border)] hover:border-[var(--gold-accent)] bg-[var(--canvas-surface-subtle)] hover:bg-[var(--canvas-surface)] text-xs font-bold text-[var(--fg-primary)] transition-all group-hover:border-[var(--gold-accent)]/70 shadow-sm"
+            }
+          >
+            <Download className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
+            <span>{compact ? "Download PDF" : "DOWNLOAD BLANK PIQ (PDF)"}</span>
+          </a>
+        </div>
+
+        {/* 2. AI Smart Autofill / Re-Scan Card */}
+        <div className={
+          compact
+            ? "p-4 rounded-xl border-2 border-dashed border-[var(--primary-accent)]/50 bg-[var(--canvas-surface)] flex flex-col justify-between relative overflow-hidden group shadow-sm space-y-3"
+            : "md:col-span-7 p-4 rounded-xl border-2 border-dashed border-[var(--primary-accent)]/50 bg-[var(--canvas-surface)] flex flex-col justify-between relative overflow-hidden group shadow-sm"
+        }>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary-accent)]/5 rounded-full blur-2xl pointer-events-none" />
+          
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-2">
-                <span className="text-xs sm:text-sm font-extrabold tracking-wider">
-                  PIQ DOSSIER <span className="text-[var(--gold-accent)]">TERMINAL</span>
-                </span>
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] border border-[var(--primary-accent)]/30 font-bold hidden sm:inline-block">
-                  DIPR NO. 107-A (REVISED)
+                <Sparkles className="w-4 h-4 text-[var(--primary-accent)] animate-pulse" />
+                <span className="text-xs font-bold text-[var(--primary-accent)] tracking-wider">
+                  {compact ? "RE-SCAN PIQ (AI OCR)" : "ANALYSE & AUTOFILL USING PIQ (AI OCR)"}
                 </span>
               </div>
-              <span className="text-[9px] block text-[var(--fg-muted)] leading-none uppercase">
-                PERSONAL INFORMATION QUESTIONNAIRE & OLQ BASELINE
+              <span className="text-[9px] px-2 py-0.5 rounded bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] font-semibold border border-[var(--primary-accent)]/30">
+                {compact ? "AUTO-RESET" : "FASTEST METHOD"}
               </span>
             </div>
-          </div>
-        </div>
-
-        {/* Header Right Actions */}
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 text-right">
-            <div>
-              <div className="text-[10px] font-bold text-[var(--gold-accent)]">
-                {completionPct}% COMPLETE
-              </div>
-              <div className="w-20 h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden mt-0.5">
-                <div 
-                  className="h-full bg-gradient-to-r from-[var(--gold-accent)] to-[var(--primary-accent)] transition-all duration-500"
-                  style={{ width: `${completionPct}%` }}
-                />
-              </div>
-            </div>
+            <p className="text-[11px] text-[var(--fg-muted)] leading-relaxed mb-3">
+              {compact
+                ? "Upload a new scan to refresh your profile fields and recalculate your Officer PIQ score."
+                : "Don't want to type 14 sections manually? Upload your handwritten or filled PIQ scan (PDF/Image). Our AI model extracts all tables and autofills your profile in seconds."}
+            </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleResetForm}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[var(--canvas-border)] hover:border-red-500/50 bg-[var(--canvas-surface-subtle)] text-[var(--fg-muted)] hover:text-red-500 text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-            title="Reset form fields & purge local cache"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">RESET</span>
-          </button>
-
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50"
-          >
-            {saving ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Save className="w-3.5 h-3.5" />
-            )}
-            <span>{saving ? "SAVING..." : "SAVE PIQ"}</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Body */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
-
-        {/* Success Alert Banner */}
-        {saveSuccess && (
-          <div className="p-3.5 rounded-lg border border-[var(--military-olive)] bg-[var(--military-olive)]/15 text-[var(--fg-primary)] flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-200">
-            <div className="flex items-center gap-2.5 text-xs">
-              <CheckCircle2 className="w-4 h-4 text-[var(--military-olive)] shrink-0" />
-              <span><strong>PIQ DOSSIER SAVED:</strong> Profile completion updated to 100%. Candidate credentials synchronized.</span>
-            </div>
-            <Link href="/dashboard" className="text-xs font-bold underline hover:opacity-80">
-              Return to Dashboard &rarr;
-            </Link>
-          </div>
-        )}
-
-        {/* AI SMART INGESTION & SAMPLE PIQ ACTION BAR */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-          
-          {/* Left: Download Official Blank PIQ */}
-          <div className="md:col-span-5 p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)] flex flex-col justify-between shadow-sm relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-[var(--gold-accent)]/5 rounded-full blur-xl pointer-events-none" />
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <FileText className="w-4 h-4 text-[var(--gold-accent)]" />
-                <span className="text-xs font-bold tracking-wide">OFFICIAL BLANK PIQ FORM</span>
-              </div>
-              <p className="text-[11px] text-[var(--fg-muted)] leading-relaxed mb-4">
-                Download the standardized Armed Forces <strong>DIPR Questionnaire No. 107-A (Revised)</strong> PDF for physical practice and handwriting familiarity before your board.
-              </p>
-            </div>
-
-            <a
-              href="/sample_piq.pdf"
-              download="DIPR_Questionnaire_107A_Blank_PIQ.pdf"
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-[var(--canvas-border)] hover:border-[var(--gold-accent)] bg-[var(--canvas-surface-subtle)] hover:bg-[var(--canvas-surface)] text-xs font-bold text-[var(--fg-primary)] transition-all group-hover:border-[var(--gold-accent)]/70 shadow-sm"
+          {/* Mode Switcher Tabs */}
+          <div className="flex items-center gap-2 border-b border-[var(--canvas-border)] pb-2 mb-2">
+            <button
+              type="button"
+              onClick={() => setIntakeMode("pdf")}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                intakeMode === "pdf"
+                  ? "bg-[var(--primary-accent)] text-white shadow-sm"
+                  : "bg-[var(--canvas-surface-subtle)] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
+              }`}
             >
-              <Download className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
-              <span>DOWNLOAD BLANK PIQ (PDF)</span>
-            </a>
+              <FileText className="w-3.5 h-3.5" />
+              <span>2-Page PDF</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIntakeMode("photos")}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                intakeMode === "photos"
+                  ? "bg-[var(--primary-accent)] text-white shadow-sm"
+                  : "bg-[var(--canvas-surface-subtle)] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
+              }`}
+            >
+              <Images className="w-3.5 h-3.5" />
+              <span>Photos (P1 & P2)</span>
+            </button>
+
+            {isMobile && (
+              <button
+                type="button"
+                onClick={() => setIntakeMode("camera")}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  intakeMode === "camera"
+                    ? "bg-[var(--primary-accent)] text-white shadow-sm"
+                    : "bg-[var(--canvas-surface-subtle)] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
+                }`}
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span>Camera</span>
+              </button>
+            )}
           </div>
 
-          {/* Right: AI Smart Autofill from PIQ */}
-          <div className="md:col-span-7 p-4 rounded-xl border-2 border-dashed border-[var(--primary-accent)]/50 bg-[var(--canvas-surface)] flex flex-col justify-between relative overflow-hidden group shadow-sm">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary-accent)]/5 rounded-full blur-2xl pointer-events-none" />
-            
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[var(--primary-accent)] animate-pulse" />
-                  <span className="text-xs font-bold text-[var(--primary-accent)] tracking-wider">
-                    ANALYSE & AUTOFILL USING PIQ (AI OCR)
-                  </span>
-                </div>
-                <span className="text-[9px] px-2 py-0.5 rounded bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] font-semibold border border-[var(--primary-accent)]/30">
-                  FASTEST METHOD
-                </span>
+          {/* INTAKE MODE A: 1 SINGLE PDF DROP BOX */}
+          {intakeMode === "pdf" && (
+            <div className="space-y-3">
+              <input
+                ref={pdfInputRef}
+                type="file"
+                accept=".pdf,application/pdf"
+                className="hidden"
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f) setSelectedPdf(f);
+                }}
+              />
+
+              <div
+                onClick={() => pdfInputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const f = e.dataTransfer.files?.[0];
+                  if (f && (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"))) {
+                    setSelectedPdf(f);
+                  }
+                }}
+                className="border-2 border-dashed border-[var(--canvas-border)] hover:border-[var(--primary-accent)] rounded-xl p-4 text-center cursor-pointer transition-all bg-[var(--canvas-surface-subtle)]/60 hover:bg-[var(--canvas-surface-subtle)] group"
+              >
+                {selectedPdf ? (
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className="w-9 h-9 rounded-full bg-[var(--military-olive)]/20 border border-[var(--military-olive)] flex items-center justify-center text-[var(--military-olive)]">
+                      <FileCheck className="w-4 h-4" />
+                    </div>
+                    <span className="text-xs font-bold text-[var(--fg-primary)] truncate max-w-[200px]">{selectedPdf.name}</span>
+                    <span className="text-[10px] text-[var(--fg-muted)]">
+                      {(selectedPdf.size / 1024).toFixed(1)} KB • Click to change PDF
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className="w-9 h-9 rounded-full bg-[var(--primary-accent)]/10 border border-[var(--primary-accent)]/30 flex items-center justify-center text-[var(--primary-accent)] group-hover:scale-105 transition-transform">
+                      <UploadCloud className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-[var(--fg-primary)] block">
+                        Drop 2-Page PIQ PDF here, or click to browse
+                      </span>
+                      <span className="text-[10px] text-[var(--fg-muted)]">
+                        Official scanned DIPR 107-A (.pdf)
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
-              <p className="text-[11px] text-[var(--fg-muted)] leading-relaxed mb-3">
-                Don&apos;t want to type 14 sections manually? Upload your handwritten or filled PIQ scan (PDF/Image). Our AI model extracts all tables and autofills your profile in seconds.
-              </p>
-            </div>
-
-            {/* Mode Switcher Tabs */}
-            <div className="flex items-center gap-2 border-b border-[var(--canvas-border)] pb-2 mb-3">
-              <button
-                type="button"
-                onClick={() => setIntakeMode("pdf")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  intakeMode === "pdf"
-                    ? "bg-[var(--primary-accent)] text-white shadow-sm"
-                    : "bg-[var(--canvas-surface-subtle)] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>2-Page PDF</span>
-              </button>
 
               <button
                 type="button"
-                onClick={() => setIntakeMode("photos")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  intakeMode === "photos"
-                    ? "bg-[var(--primary-accent)] text-white shadow-sm"
-                    : "bg-[var(--canvas-surface-subtle)] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
-                }`}
+                disabled={!selectedPdf || isParsingPiq}
+                onClick={() => selectedPdf && analyzePiqWithGemini([selectedPdf])}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                <Images className="w-3.5 h-3.5" />
-                <span>Upload Photos (P1 & P2)</span>
+                {isParsingPiq ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span className="truncate max-w-[240px]">{parseStatusMessage || "ANALYZING PDF..."}</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
+                    <span>{selectedPdf ? "ANALYSE SELECTED PDF WITH AI" : "SELECT PDF TO ANALYSE"}</span>
+                  </>
+                )}
               </button>
-
-              {/* Show Camera ONLY on mobile/touch screens */}
-              {isMobile && (
-                <button
-                  type="button"
-                  onClick={() => setIntakeMode("camera")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    intakeMode === "camera"
-                      ? "bg-[var(--primary-accent)] text-white shadow-sm"
-                      : "bg-[var(--canvas-surface-subtle)] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
-                  }`}
-                >
-                  <Camera className="w-3.5 h-3.5" />
-                  <span>Scan Camera</span>
-                </button>
-              )}
             </div>
+          )}
 
-            {/* INTAKE MODE A: 1 SINGLE PDF DROP BOX */}
-            {intakeMode === "pdf" && (
-              <div className="space-y-3">
-                <input
-                  ref={pdfInputRef}
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  className="hidden"
-                  onChange={e => {
-                    const f = e.target.files?.[0];
-                    if (f) setSelectedPdf(f);
-                  }}
-                />
+          {/* INTAKE MODE B: 2 DROP BOXES FOR PHOTOS */}
+          {intakeMode === "photos" && (
+            <div className="space-y-3">
+              <input
+                ref={photoP1InputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,.jpg,.jpeg,.png,.webp"
+                className="hidden"
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    setPhotoP1(f);
+                    setPhotoP1Preview(URL.createObjectURL(f));
+                  }
+                }}
+              />
 
+              <input
+                ref={photoP2InputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,.jpg,.jpeg,.png,.webp"
+                className="hidden"
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    setPhotoP2(f);
+                    setPhotoP2Preview(URL.createObjectURL(f));
+                  }
+                }}
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* Drop Box 1: Page 1 Front */}
                 <div
-                  onClick={() => pdfInputRef.current?.click()}
+                  onClick={() => photoP1InputRef.current?.click()}
                   onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                   onDrop={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     const f = e.dataTransfer.files?.[0];
-                    if (f && (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"))) {
-                      setSelectedPdf(f);
-                    }
-                  }}
-                  className="border-2 border-dashed border-[var(--canvas-border)] hover:border-[var(--primary-accent)] rounded-xl p-5 text-center cursor-pointer transition-all bg-[var(--canvas-surface-subtle)]/60 hover:bg-[var(--canvas-surface-subtle)] group"
-                >
-                  {selectedPdf ? (
-                    <div className="flex flex-col items-center gap-1.5">
-                      <div className="w-10 h-10 rounded-full bg-[var(--military-olive)]/20 border border-[var(--military-olive)] flex items-center justify-center text-[var(--military-olive)]">
-                        <FileCheck className="w-5 h-5" />
-                      </div>
-                      <span className="text-xs font-bold text-[var(--fg-primary)]">{selectedPdf.name}</span>
-                      <span className="text-[10px] text-[var(--fg-muted)]">
-                        {(selectedPdf.size / 1024).toFixed(1)} KB • Click to change PDF
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-10 h-10 rounded-full bg-[var(--primary-accent)]/10 border border-[var(--primary-accent)]/30 flex items-center justify-center text-[var(--primary-accent)] group-hover:scale-105 transition-transform">
-                        <UploadCloud className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-[var(--fg-primary)] block">
-                          Drop your 2-Page PIQ PDF here, or click to browse
-                        </span>
-                        <span className="text-[10px] text-[var(--fg-muted)]">
-                          Accepts official scanned or digital DIPR 107-A (.pdf)
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  disabled={!selectedPdf || isParsingPiq}
-                  onClick={() => selectedPdf && analyzePiqWithGemini([selectedPdf])}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isParsingPiq ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span className="truncate max-w-[280px]">{parseStatusMessage || "ANALYZING 2-PAGE PDF WITH GEMINI AI..."}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
-                      <span>{selectedPdf ? "ANALYSE SELECTED PDF WITH AI" : "SELECT PDF TO ANALYSE"}</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-
-            {/* INTAKE MODE B: 2 DROP BOXES FOR PAGE 1 & PAGE 2 */}
-            {intakeMode === "photos" && (
-              <div className="space-y-3">
-                <input
-                  ref={photoP1InputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,.jpg,.jpeg,.png,.webp"
-                  className="hidden"
-                  onChange={e => {
-                    const f = e.target.files?.[0];
-                    if (f) {
+                    if (f && f.type.startsWith("image/")) {
                       setPhotoP1(f);
                       setPhotoP1Preview(URL.createObjectURL(f));
                     }
                   }}
-                />
+                  className="border-2 border-dashed border-[var(--canvas-border)] hover:border-[var(--primary-accent)] rounded-xl p-3 text-center cursor-pointer transition-all bg-[var(--canvas-surface-subtle)]/60 hover:bg-[var(--canvas-surface-subtle)] relative overflow-hidden group min-h-[110px] flex flex-col items-center justify-center"
+                >
+                  <div className="text-[10px] font-bold text-[var(--gold-accent)] uppercase tracking-wider mb-1">
+                    Page 1 (Front)
+                  </div>
+                  {photoP1Preview ? (
+                    <div className="flex flex-col items-center gap-1 w-full">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={photoP1Preview} alt="Page 1 preview" className="w-12 h-16 object-cover rounded border border-[var(--canvas-border)] shadow-sm" />
+                      <span className="text-[10px] font-bold text-[var(--fg-primary)] truncate max-w-[120px]">{photoP1?.name}</span>
+                      <span className="text-[9px] text-[var(--military-olive)] font-bold">✓ Ready</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1">
+                      <UploadCloud className="w-5 h-5 text-[var(--primary-accent)] group-hover:scale-110 transition-transform" />
+                      <span className="text-xs font-bold text-[var(--fg-primary)]">Drop Page 1</span>
+                      <span className="text-[9px] text-[var(--fg-muted)]">Personal info</span>
+                    </div>
+                  )}
+                </div>
 
-                <input
-                  ref={photoP2InputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,.jpg,.jpeg,.png,.webp"
-                  className="hidden"
-                  onChange={e => {
-                    const f = e.target.files?.[0];
-                    if (f) {
+                {/* Drop Box 2: Page 2 Back */}
+                <div
+                  onClick={() => photoP2InputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const f = e.dataTransfer.files?.[0];
+                    if (f && f.type.startsWith("image/")) {
                       setPhotoP2(f);
                       setPhotoP2Preview(URL.createObjectURL(f));
                     }
                   }}
-                />
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Drop Box 1: Page 1 Front */}
-                  <div
-                    onClick={() => photoP1InputRef.current?.click()}
-                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const f = e.dataTransfer.files?.[0];
-                      if (f && f.type.startsWith("image/")) {
-                        setPhotoP1(f);
-                        setPhotoP1Preview(URL.createObjectURL(f));
-                      }
-                    }}
-                    className="border-2 border-dashed border-[var(--canvas-border)] hover:border-[var(--primary-accent)] rounded-xl p-4 text-center cursor-pointer transition-all bg-[var(--canvas-surface-subtle)]/60 hover:bg-[var(--canvas-surface-subtle)] relative overflow-hidden group min-h-[140px] flex flex-col items-center justify-center"
-                  >
-                    <div className="text-[10px] font-bold text-[var(--gold-accent)] uppercase tracking-wider mb-1.5">
-                      Box 1: Page 1 (Front)
-                    </div>
-                    {photoP1Preview ? (
-                      <div className="flex flex-col items-center gap-1.5 w-full">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={photoP1Preview} alt="Page 1 preview" className="w-16 h-20 object-cover rounded border border-[var(--canvas-border)] shadow-sm" />
-                        <span className="text-[10px] font-bold text-[var(--fg-primary)] truncate max-w-[140px]">{photoP1?.name}</span>
-                        <span className="text-[9px] text-[var(--military-olive)] font-bold">✓ Ready • Click to change</span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-1.5">
-                        <UploadCloud className="w-6 h-6 text-[var(--primary-accent)] group-hover:scale-110 transition-transform" />
-                        <span className="text-xs font-bold text-[var(--fg-primary)]">Drop Page 1 Photo</span>
-                        <span className="text-[9px] text-[var(--fg-muted)]">Personal & academics</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Drop Box 2: Page 2 Back */}
-                  <div
-                    onClick={() => photoP2InputRef.current?.click()}
-                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const f = e.dataTransfer.files?.[0];
-                      if (f && f.type.startsWith("image/")) {
-                        setPhotoP2(f);
-                        setPhotoP2Preview(URL.createObjectURL(f));
-                      }
-                    }}
-                    className="border-2 border-dashed border-[var(--canvas-border)] hover:border-[var(--primary-accent)] rounded-xl p-4 text-center cursor-pointer transition-all bg-[var(--canvas-surface-subtle)]/60 hover:bg-[var(--canvas-surface-subtle)] relative overflow-hidden group min-h-[140px] flex flex-col items-center justify-center"
-                  >
-                    <div className="text-[10px] font-bold text-[var(--primary-accent)] uppercase tracking-wider mb-1.5">
-                      Box 2: Page 2 (Back)
-                    </div>
-                    {photoP2Preview ? (
-                      <div className="flex flex-col items-center gap-1.5 w-full">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={photoP2Preview} alt="Page 2 preview" className="w-16 h-20 object-cover rounded border border-[var(--canvas-border)] shadow-sm" />
-                        <span className="text-[10px] font-bold text-[var(--fg-primary)] truncate max-w-[140px]">{photoP2?.name}</span>
-                        <span className="text-[9px] text-[var(--military-olive)] font-bold">✓ Ready • Click to change</span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-1.5">
-                        <UploadCloud className="w-6 h-6 text-[var(--primary-accent)] group-hover:scale-110 transition-transform" />
-                        <span className="text-xs font-bold text-[var(--fg-primary)]">Drop Page 2 Photo</span>
-                        <span className="text-[9px] text-[var(--fg-muted)]">Sports, NCC & SSB attempts</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={(!photoP1 && !photoP2) || isParsingPiq}
-                  onClick={() => {
-                    const files = [photoP1, photoP2].filter(Boolean) as File[];
-                    analyzePiqWithGemini(files);
-                  }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="border-2 border-dashed border-[var(--canvas-border)] hover:border-[var(--primary-accent)] rounded-xl p-3 text-center cursor-pointer transition-all bg-[var(--canvas-surface-subtle)]/60 hover:bg-[var(--canvas-surface-subtle)] relative overflow-hidden group min-h-[110px] flex flex-col items-center justify-center"
                 >
-                  {isParsingPiq ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span className="truncate max-w-[280px]">{parseStatusMessage || "ANALYZING PHOTOS WITH GEMINI AI..."}</span>
-                    </>
+                  <div className="text-[10px] font-bold text-[var(--primary-accent)] uppercase tracking-wider mb-1">
+                    Page 2 (Back)
+                  </div>
+                  {photoP2Preview ? (
+                    <div className="flex flex-col items-center gap-1 w-full">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={photoP2Preview} alt="Page 2 preview" className="w-12 h-16 object-cover rounded border border-[var(--canvas-border)] shadow-sm" />
+                      <span className="text-[10px] font-bold text-[var(--fg-primary)] truncate max-w-[120px]">{photoP2?.name}</span>
+                      <span className="text-[9px] text-[var(--military-olive)] font-bold">✓ Ready</span>
+                    </div>
                   ) : (
-                    <>
-                      <Sparkles className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
-                      <span>
-                        {photoP1 && photoP2
-                          ? "ANALYSE BOTH PAGES (PAGE 1 & 2) WITH AI"
-                          : photoP1 || photoP2
-                          ? "ANALYSE SELECTED PHOTO WITH AI"
-                          : "SELECT PAGE 1 & PAGE 2 PHOTOS"}
-                      </span>
-                    </>
+                    <div className="flex flex-col items-center gap-1">
+                      <UploadCloud className="w-5 h-5 text-[var(--primary-accent)] group-hover:scale-110 transition-transform" />
+                      <span className="text-xs font-bold text-[var(--fg-primary)]">Drop Page 2</span>
+                      <span className="text-[9px] text-[var(--fg-muted)]">Sports & SSB</span>
+                    </div>
                   )}
-                </button>
-              </div>
-            )}
-
-            {/* INTAKE MODE C: 2 CAMERA CAPTURE BOXES (MOBILE ONLY) */}
-            {isMobile && intakeMode === "camera" && (
-              <div className="space-y-3">
-                <input
-                  ref={cameraP1InputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={e => {
-                    const f = e.target.files?.[0];
-                    if (f) {
-                      setPhotoP1(f);
-                      setPhotoP1Preview(URL.createObjectURL(f));
-                    }
-                  }}
-                />
-
-                <input
-                  ref={cameraP2InputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={e => {
-                    const f = e.target.files?.[0];
-                    if (f) {
-                      setPhotoP2(f);
-                      setPhotoP2Preview(URL.createObjectURL(f));
-                    }
-                  }}
-                />
-
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Camera 1: Page 1 */}
-                  <div
-                    onClick={() => cameraP1InputRef.current?.click()}
-                    className="border-2 border-dashed border-[var(--canvas-border)] hover:border-[var(--primary-accent)] rounded-xl p-3 text-center cursor-pointer transition-all bg-[var(--canvas-surface-subtle)] min-h-[130px] flex flex-col items-center justify-center"
-                  >
-                    <span className="text-[9px] font-bold text-[var(--gold-accent)] uppercase block mb-1">
-                      Page 1 (Front)
-                    </span>
-                    {photoP1Preview ? (
-                      <div className="flex flex-col items-center gap-1">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={photoP1Preview} alt="P1" className="w-12 h-16 object-cover rounded border" />
-                        <span className="text-[9px] text-[var(--military-olive)] font-bold">✓ Retake</span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-1">
-                        <Camera className="w-6 h-6 text-[var(--primary-accent)]" />
-                        <span className="text-[11px] font-bold">Snap Page 1</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Camera 2: Page 2 */}
-                  <div
-                    onClick={() => cameraP2InputRef.current?.click()}
-                    className="border-2 border-dashed border-[var(--canvas-border)] hover:border-[var(--primary-accent)] rounded-xl p-3 text-center cursor-pointer transition-all bg-[var(--canvas-surface-subtle)] min-h-[130px] flex flex-col items-center justify-center"
-                  >
-                    <span className="text-[9px] font-bold text-[var(--primary-accent)] uppercase block mb-1">
-                      Page 2 (Back)
-                    </span>
-                    {photoP2Preview ? (
-                      <div className="flex flex-col items-center gap-1">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={photoP2Preview} alt="P2" className="w-12 h-16 object-cover rounded border" />
-                        <span className="text-[9px] text-[var(--military-olive)] font-bold">✓ Retake</span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-1">
-                        <Camera className="w-6 h-6 text-[var(--primary-accent)]" />
-                        <span className="text-[11px] font-bold">Snap Page 2</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={(!photoP1 && !photoP2) || isParsingPiq}
-                  onClick={() => {
-                    const files = [photoP1, photoP2].filter(Boolean) as File[];
-                    analyzePiqWithGemini(files);
-                  }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isParsingPiq ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span className="truncate max-w-[280px]">{parseStatusMessage || "ANALYZING CAPTURED PHOTOS WITH AI..."}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
-                      <span>
-                        {photoP1 && photoP2
-                          ? "ANALYSE BOTH CAPTURED PAGES WITH AI"
-                          : photoP1 || photoP2
-                          ? "ANALYSE CAPTURED PAGE WITH AI"
-                          : "CAPTURE PAGE 1 & PAGE 2 TO ANALYSE"}
-                      </span>
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-
-            {/* Status / Document Format Indicator */}
-            <div className="pt-2 text-[10px] text-[var(--fg-muted)] flex items-center gap-1.5">
-              {isParsingPiq && <RefreshCw className="w-3 h-3 animate-spin text-[var(--primary-accent)] shrink-0" />}
-              <span className="font-medium text-[var(--fg-secondary)]">
-                {isParsingPiq
-                  ? (parseStatusMessage || "Gemini AI is analyzing document & tables...")
-                  : "On-device compression enabled: under Vercel payload limit & 100% private"}
-              </span>
-            </div>
-
-              {/* Success Notification */}
-              {parseNotification && (
-                <div className="p-2.5 rounded bg-[var(--military-olive)]/15 border border-[var(--military-olive)] text-[11px] text-[var(--fg-primary)] flex items-center gap-2 animate-in fade-in duration-200">
-                  <FileCheck className="w-4 h-4 text-[var(--military-olive)] shrink-0" />
-                  <span>{parseNotification}</span>
-                </div>
-              )}
-
-              {/* Error Notification */}
-              {parseError && (
-                <div className="p-2.5 rounded bg-red-500/10 border border-red-500/30 text-[11px] text-red-500 flex items-center gap-2 animate-in fade-in duration-200">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span>{parseError}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-        {/* LOCKED EMAIL BAR */}
-        <div className="p-3.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded border border-[var(--canvas-border)] bg-[var(--canvas-surface)] flex items-center justify-center text-[var(--fg-muted)]">
-              <Lock className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
-            </div>
-            <div>
-              <div className="text-[10px] text-[var(--fg-muted)] uppercase tracking-wider font-semibold">
-                Candidate Primary Identifier (Locked)
-              </div>
-              <div className="text-xs font-bold text-[var(--fg-primary)] flex items-center gap-2">
-                <span>{email || "candidate@ssbastra.in"}</span>
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)] text-[var(--gold-accent)] font-semibold">
-                  READ-ONLY
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="text-[10px] text-[var(--fg-muted)] italic">
-            Email is tied to your SSB Astra credential & cannot be edited here.
-          </div>
-        </div>
-
-        {/* AI PIQ DOSSIER ASSESSMENT & OFFICER READINESS RADAR */}
-        {assessment && (
-          <div className="p-5 sm:p-6 rounded-xl border-2 border-[var(--gold-accent)]/40 bg-[var(--canvas-surface)] shadow-lg space-y-5 animate-in fade-in slide-in-from-top-3 duration-300">
-            {/* Header & Toggle */}
-            <div className="flex items-center justify-between border-b border-[var(--canvas-border)] pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg border border-[var(--gold-accent)]/50 bg-[var(--gold-accent)]/10 flex items-center justify-center text-[var(--gold-accent)]">
-                  <Award className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs sm:text-sm font-extrabold tracking-wider">
-                      AI PIQ DOSSIER ASSESSMENT & IO FORECAST
-                    </span>
-                    <span className="text-[9px] px-2 py-0.5 rounded bg-[var(--gold-accent)]/15 text-[var(--gold-accent)] border border-[var(--gold-accent)]/30 font-bold">
-                      DIPR BENCHMARK
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-[var(--fg-muted)]">
-                    Evaluated against the 15 Officer Like Qualities (OLQs) by Senior Selection Board IO heuristics
-                  </span>
                 </div>
               </div>
 
               <button
                 type="button"
-                onClick={() => setShowAssessment(!showAssessment)}
-                className="flex items-center gap-1 text-xs font-bold text-[var(--fg-secondary)] hover:text-[var(--gold-accent)] px-2.5 py-1 rounded border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)]"
+                disabled={(!photoP1 && !photoP2) || isParsingPiq}
+                onClick={() => {
+                  const files = [photoP1, photoP2].filter(Boolean) as File[];
+                  analyzePiqWithGemini(files);
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                <span>{showAssessment ? "Collapse" : "Expand Analysis"}</span>
-                {showAssessment ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                {isParsingPiq ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span className="truncate max-w-[240px]">{parseStatusMessage || "ANALYZING PHOTOS..."}</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
+                    <span>
+                      {photoP1 && photoP2
+                        ? "ANALYSE BOTH PAGES WITH AI"
+                        : photoP1 || photoP2
+                        ? "ANALYSE SELECTED PHOTO WITH AI"
+                        : "SELECT PAGE 1 & 2 PHOTOS"}
+                    </span>
+                  </>
+                )}
               </button>
             </div>
+          )}
 
-            {showAssessment && (
-              <div className="space-y-6">
-                {/* Top Row: Score Badge + 4 Pillars */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
-                  {/* Score Big Display */}
-                  <div className="md:col-span-4 p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] flex flex-col items-center justify-center text-center relative overflow-hidden">
-                    <div className="text-[10px] uppercase font-bold text-[var(--fg-muted)] tracking-wider mb-1">
-                      Candidate PIQ Score
+          {/* INTAKE MODE C: CAMERA (MOBILE ONLY) */}
+          {isMobile && intakeMode === "camera" && (
+            <div className="space-y-3">
+              <input
+                ref={cameraP1InputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    setPhotoP1(f);
+                    setPhotoP1Preview(URL.createObjectURL(f));
+                  }
+                }}
+              />
+
+              <input
+                ref={cameraP2InputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    setPhotoP2(f);
+                    setPhotoP2Preview(URL.createObjectURL(f));
+                  }
+                }}
+              />
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div
+                  onClick={() => cameraP1InputRef.current?.click()}
+                  className="border-2 border-dashed border-[var(--canvas-border)] hover:border-[var(--primary-accent)] rounded-xl p-2.5 text-center cursor-pointer transition-all bg-[var(--canvas-surface-subtle)] min-h-[105px] flex flex-col items-center justify-center"
+                >
+                  <span className="text-[9px] font-bold text-[var(--gold-accent)] uppercase block mb-1">
+                    Page 1 (Front)
+                  </span>
+                  {photoP1Preview ? (
+                    <div className="flex flex-col items-center gap-1">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={photoP1Preview} alt="P1" className="w-10 h-14 object-cover rounded border" />
+                      <span className="text-[9px] text-[var(--military-olive)] font-bold">✓ Retake</span>
                     </div>
-                    <div className="flex items-baseline gap-1">
-                      <span className={`text-4xl sm:text-5xl font-black tracking-tight ${
-                        assessment.piq_score >= 80 ? "text-[var(--military-olive)]" : assessment.piq_score >= 60 ? "text-[var(--gold-accent)]" : "text-amber-500"
-                      }`}>
-                        {assessment.piq_score}
-                      </span>
-                      <span className="text-sm font-bold text-[var(--fg-muted)]">/ 100</span>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1">
+                      <Camera className="w-5 h-5 text-[var(--primary-accent)]" />
+                      <span className="text-[10px] font-bold">Snap P1</span>
                     </div>
-
-                    <div className="mt-2 text-[10px] font-extrabold px-2.5 py-1 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)] text-[var(--fg-primary)] tracking-wide uppercase">
-                      {assessment.overall_verdict}
-                    </div>
-                  </div>
-
-                  {/* 4 Pillars Progress Bars */}
-                  <div className="md:col-span-8 space-y-3">
-                    <div className="text-xs font-bold text-[var(--fg-secondary)] uppercase tracking-wider">
-                      The 4 Classical Assessment Pillars
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {/* Academics */}
-                      <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
-                        <div className="flex justify-between text-[11px] font-bold">
-                          <span className="text-[var(--fg-secondary)]">Academics & Consistency</span>
-                          <span className="text-[var(--primary-accent)]">{assessment.score_breakdown.academics?.score ?? 0}/25</span>
-                        </div>
-                        <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-[var(--primary-accent)] transition-all duration-500" 
-                            style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.academics?.score ?? 0) / 25) * 100)))}%` }}
-                          />
-                        </div>
-                        <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
-                          {assessment.score_breakdown.academics?.assessment}
-                        </p>
-                      </div>
-
-                      {/* Sports & NCC */}
-                      <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
-                        <div className="flex justify-between text-[11px] font-bold">
-                          <span className="text-[var(--fg-secondary)]">Sports, NCC & Physical</span>
-                          <span className="text-[var(--gold-accent)]">{assessment.score_breakdown.sports_and_ncc?.score ?? 0}/25</span>
-                        </div>
-                        <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-[var(--gold-accent)] transition-all duration-500" 
-                            style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.sports_and_ncc?.score ?? 0) / 25) * 100)))}%` }}
-                          />
-                        </div>
-                        <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
-                          {assessment.score_breakdown.sports_and_ncc?.assessment}
-                        </p>
-                      </div>
-
-                      {/* Leadership */}
-                      <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
-                        <div className="flex justify-between text-[11px] font-bold">
-                          <span className="text-[var(--fg-secondary)]">Leadership & Responsibilities</span>
-                          <span className="text-[var(--military-olive,#16a34a)]">{assessment.score_breakdown.leadership_and_responsibility?.score ?? 0}/25</span>
-                        </div>
-                        <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-[var(--military-olive,#16a34a)] transition-all duration-500" 
-                            style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.leadership_and_responsibility?.score ?? 0) / 25) * 100)))}%` }}
-                          />
-                        </div>
-                        <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
-                          {assessment.score_breakdown.leadership_and_responsibility?.assessment}
-                        </p>
-                      </div>
-
-                      {/* Hobbies & Depth */}
-                      <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
-                        <div className="flex justify-between text-[11px] font-bold">
-                          <span className="text-[var(--fg-secondary)]">Hobbies & Drive</span>
-                          <span className="text-purple-400">{assessment.score_breakdown.hobbies_and_depth?.score ?? 0}/25</span>
-                        </div>
-                        <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-purple-500 transition-all duration-500" 
-                            style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.hobbies_and_depth?.score ?? 0) / 25) * 100)))}%` }}
-                          />
-                        </div>
-                        <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
-                          {assessment.score_breakdown.hobbies_and_depth?.assessment}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
-                {/* Key Strengths & Vulnerabilities Radar */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Key Strengths */}
-                  <div className="p-4 rounded-xl border border-[var(--military-olive)]/40 bg-[var(--military-olive)]/5 space-y-2.5">
-                    <div className="flex items-center gap-2 text-xs font-bold text-[var(--military-olive)] uppercase tracking-wider">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Positive OLQ Indicators in your PIQ</span>
+                <div
+                  onClick={() => cameraP2InputRef.current?.click()}
+                  className="border-2 border-dashed border-[var(--canvas-border)] hover:border-[var(--primary-accent)] rounded-xl p-2.5 text-center cursor-pointer transition-all bg-[var(--canvas-surface-subtle)] min-h-[105px] flex flex-col items-center justify-center"
+                >
+                  <span className="text-[9px] font-bold text-[var(--primary-accent)] uppercase block mb-1">
+                    Page 2 (Back)
+                  </span>
+                  {photoP2Preview ? (
+                    <div className="flex flex-col items-center gap-1">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={photoP2Preview} alt="P2" className="w-10 h-14 object-cover rounded border" />
+                      <span className="text-[9px] text-[var(--military-olive)] font-bold">✓ Retake</span>
                     </div>
-                    <ul className="space-y-1.5 text-xs text-[var(--fg-primary)]">
-                      {assessment.key_strengths.map((str, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-[11px] leading-relaxed">
-                          <span className="text-[var(--military-olive)] font-bold mt-0.5">✓</span>
-                          <span>{str}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Vulnerabilities & Red Flags */}
-                  <div className="p-4 rounded-xl border border-amber-500/40 bg-amber-500/5 space-y-2.5">
-                    <div className="flex items-center gap-2 text-xs font-bold text-amber-500 uppercase tracking-wider">
-                      <AlertTriangle className="w-4 h-4" />
-                      <span>Vulnerabilities / Red Flags IO Will Probe</span>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1">
+                      <Camera className="w-5 h-5 text-[var(--primary-accent)]" />
+                      <span className="text-[10px] font-bold">Snap P2</span>
                     </div>
-                    <ul className="space-y-1.5 text-xs text-[var(--fg-primary)]">
-                      {assessment.vulnerabilities_and_red_flags.map((vuln, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-[11px] leading-relaxed">
-                          <span className="text-amber-500 font-bold mt-0.5">⚠</span>
-                          <span>{vuln}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Interviewing Officer (IO) Question Forecast */}
-                <div className="p-4 rounded-xl border border-[var(--primary-accent)]/40 bg-[var(--primary-accent)]/5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs font-bold text-[var(--primary-accent)] uppercase tracking-wider">
-                      <Zap className="w-4 h-4 text-[var(--gold-accent)]" />
-                      <span>Predicted Interviewing Officer (IO) Questions On Your PIQ</span>
-                    </div>
-                    <span className="text-[9px] px-2 py-0.5 rounded bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] font-semibold">
-                      RAPID-FIRE PREP
-                    </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    {assessment.io_probable_questions.map((q, idx) => (
-                      <div key={idx} className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface)] text-xs flex items-start gap-2.5 shadow-sm">
-                        <span className="w-5 h-5 rounded-full bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
-                          Q{idx + 1}
-                        </span>
-                        <p className="text-[11px] text-[var(--fg-primary)] italic leading-relaxed">
-                          &ldquo;{q}&rdquo;
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Tactical Recommendations */}
-                <div className="p-4 rounded-xl border border-[var(--gold-accent)]/40 bg-[var(--gold-accent)]/5 space-y-2.5">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--gold-accent)] uppercase tracking-wider">
-                    <Target className="w-4 h-4" />
-                    <span>Tactical Recommendations To Strengthen Your Presentation</span>
-                  </div>
-                  <ul className="space-y-1.5 text-xs text-[var(--fg-primary)]">
-                    {assessment.recommendations_for_improvement.map((rec, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-[11px] leading-relaxed">
-                        <span className="text-[var(--gold-accent)] font-bold mt-0.5">&bull;</span>
-                        <span>{rec}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  )}
                 </div>
               </div>
-            )}
+
+              <button
+                type="button"
+                disabled={(!photoP1 && !photoP2) || isParsingPiq}
+                onClick={() => {
+                  const files = [photoP1, photoP2].filter(Boolean) as File[];
+                  analyzePiqWithGemini(files);
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {isParsingPiq ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span className="truncate max-w-[240px]">{parseStatusMessage || "ANALYZING..."}</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
+                    <span>
+                      {photoP1 && photoP2
+                        ? "ANALYSE BOTH CAPTURED PAGES"
+                        : photoP1 || photoP2
+                        ? "ANALYSE CAPTURED PAGE"
+                        : "CAPTURE PAGE 1 & 2"}
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Compression & Privacy Indicator */}
+          <div className="pt-1 text-[10px] text-[var(--fg-muted)] flex items-center gap-1.5">
+            {isParsingPiq && <RefreshCw className="w-3 h-3 animate-spin text-[var(--primary-accent)] shrink-0" />}
+            <span className="font-medium text-[var(--fg-secondary)] text-[10px]">
+              {isParsingPiq
+                ? (parseStatusMessage || "Gemini AI is analyzing document & tables...")
+                : "Local on-device compression: fast, private & secure"}
+            </span>
+          </div>
+
+          {/* Success Alert */}
+          {parseNotification && (
+            <div className="p-2.5 rounded bg-[var(--military-olive)]/15 border border-[var(--military-olive)] text-[11px] text-[var(--fg-primary)] flex items-center gap-2 animate-in fade-in duration-200">
+              <FileCheck className="w-4 h-4 text-[var(--military-olive)] shrink-0" />
+              <span>{parseNotification}</span>
+            </div>
+          )}
+
+          {/* Error Alert */}
+          {parseError && (
+            <div className="p-2.5 rounded bg-red-500/10 border border-red-500/30 text-[11px] text-red-500 flex items-center gap-2 animate-in fade-in duration-200">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{parseError}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Render the AI Assessment Card (Score, 4 Pillars, Strengths, Vulnerabilities, Questions, Recommendations)
+  const renderAssessmentCard = () => {
+    if (!assessment) return null;
+
+    return (
+      <div className="p-5 sm:p-6 rounded-xl border-2 border-[var(--gold-accent)]/40 bg-[var(--canvas-surface)] shadow-lg space-y-5 animate-in fade-in slide-in-from-top-3 duration-300">
+        {/* Header & Toggle */}
+        <div className="flex items-center justify-between border-b border-[var(--canvas-border)] pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg border border-[var(--gold-accent)]/50 bg-[var(--gold-accent)]/10 flex items-center justify-center text-[var(--gold-accent)]">
+              <Award className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs sm:text-sm font-extrabold tracking-wider">
+                  AI PIQ DOSSIER ASSESSMENT & IO FORECAST
+                </span>
+                <span className="text-[9px] px-2 py-0.5 rounded bg-[var(--gold-accent)]/15 text-[var(--gold-accent)] border border-[var(--gold-accent)]/30 font-bold">
+                  DIPR BENCHMARK
+                </span>
+              </div>
+              <span className="text-[10px] text-[var(--fg-muted)]">
+                Evaluated against the 15 Officer Like Qualities (OLQs) by Senior Selection Board IO heuristics
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowAssessment(!showAssessment)}
+            className="flex items-center gap-1 text-xs font-bold text-[var(--fg-secondary)] hover:text-[var(--gold-accent)] px-2.5 py-1 rounded border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] cursor-pointer"
+          >
+            <span>{showAssessment ? "Collapse" : "Expand Analysis"}</span>
+            {showAssessment ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+
+        {showAssessment && (
+          <div className="space-y-6">
+            {/* Top Row: Score Badge + 4 Pillars */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+              {/* Score Big Display */}
+              <div className="md:col-span-4 p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] flex flex-col items-center justify-center text-center relative overflow-hidden">
+                <div className="text-[10px] uppercase font-bold text-[var(--fg-muted)] tracking-wider mb-1">
+                  Candidate PIQ Score
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className={`text-4xl sm:text-5xl font-black tracking-tight ${
+                    assessment.piq_score >= 80 ? "text-[var(--military-olive)]" : assessment.piq_score >= 60 ? "text-[var(--gold-accent)]" : "text-amber-500"
+                  }`}>
+                    {assessment.piq_score}
+                  </span>
+                  <span className="text-sm font-bold text-[var(--fg-muted)]">/ 100</span>
+                </div>
+
+                <div className="mt-2 text-[10px] font-extrabold px-2.5 py-1 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)] text-[var(--fg-primary)] tracking-wide uppercase">
+                  {assessment.overall_verdict}
+                </div>
+              </div>
+
+              {/* 4 Pillars Progress Bars */}
+              <div className="md:col-span-8 space-y-3">
+                <div className="text-xs font-bold text-[var(--fg-secondary)] uppercase tracking-wider">
+                  The 4 Classical Assessment Pillars
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Academics */}
+                  <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
+                    <div className="flex justify-between text-[11px] font-bold">
+                      <span className="text-[var(--fg-secondary)]">Academics & Consistency</span>
+                      <span className="text-[var(--primary-accent)]">{assessment.score_breakdown.academics?.score ?? 0}/25</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-[var(--primary-accent)] transition-all duration-500" 
+                        style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.academics?.score ?? 0) / 25) * 100)))}%` }}
+                      />
+                    </div>
+                    <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
+                      {assessment.score_breakdown.academics?.assessment}
+                    </p>
+                  </div>
+
+                  {/* Sports & NCC */}
+                  <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
+                    <div className="flex justify-between text-[11px] font-bold">
+                      <span className="text-[var(--fg-secondary)]">Sports, NCC & Physical</span>
+                      <span className="text-[var(--gold-accent)]">{assessment.score_breakdown.sports_and_ncc?.score ?? 0}/25</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-[var(--gold-accent)] transition-all duration-500" 
+                        style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.sports_and_ncc?.score ?? 0) / 25) * 100)))}%` }}
+                      />
+                    </div>
+                    <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
+                      {assessment.score_breakdown.sports_and_ncc?.assessment}
+                    </p>
+                  </div>
+
+                  {/* Leadership */}
+                  <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
+                    <div className="flex justify-between text-[11px] font-bold">
+                      <span className="text-[var(--fg-secondary)]">Leadership & Responsibilities</span>
+                      <span className="text-[var(--military-olive,#16a34a)]">{assessment.score_breakdown.leadership_and_responsibility?.score ?? 0}/25</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-[var(--military-olive,#16a34a)] transition-all duration-500" 
+                        style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.leadership_and_responsibility?.score ?? 0) / 25) * 100)))}%` }}
+                      />
+                    </div>
+                    <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
+                      {assessment.score_breakdown.leadership_and_responsibility?.assessment}
+                    </p>
+                  </div>
+
+                  {/* Hobbies & Depth */}
+                  <div className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-1">
+                    <div className="flex justify-between text-[11px] font-bold">
+                      <span className="text-[var(--fg-secondary)]">Hobbies & Drive</span>
+                      <span className="text-purple-400">{assessment.score_breakdown.hobbies_and_depth?.score ?? 0}/25</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-purple-500 transition-all duration-500" 
+                        style={{ width: `${Math.min(100, Math.max(0, (((assessment.score_breakdown.hobbies_and_depth?.score ?? 0) / 25) * 100)))}%` }}
+                      />
+                    </div>
+                    <p className="text-[9px] text-[var(--fg-muted)] leading-tight pt-0.5">
+                      {assessment.score_breakdown.hobbies_and_depth?.assessment}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Key Strengths & Vulnerabilities Radar */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Key Strengths */}
+              <div className="p-4 rounded-xl border border-[var(--military-olive)]/40 bg-[var(--military-olive)]/5 space-y-2.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-[var(--military-olive)] uppercase tracking-wider">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Positive OLQ Indicators in your PIQ</span>
+                </div>
+                <ul className="space-y-1.5 text-xs text-[var(--fg-primary)]">
+                  {assessment.key_strengths.map((str, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-[11px] leading-relaxed">
+                      <span className="text-[var(--military-olive)] font-bold mt-0.5">✓</span>
+                      <span>{str}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Vulnerabilities & Red Flags */}
+              <div className="p-4 rounded-xl border border-amber-500/40 bg-amber-500/5 space-y-2.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-500 uppercase tracking-wider">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span>Vulnerabilities / Red Flags IO Will Probe</span>
+                </div>
+                <ul className="space-y-1.5 text-xs text-[var(--fg-primary)]">
+                  {assessment.vulnerabilities_and_red_flags.map((vuln, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-[11px] leading-relaxed">
+                      <span className="text-amber-500 font-bold mt-0.5">⚠</span>
+                      <span>{vuln}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* Interviewing Officer (IO) Question Forecast */}
+            <div className="p-4 rounded-xl border border-[var(--primary-accent)]/40 bg-[var(--primary-accent)]/5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-[var(--primary-accent)] uppercase tracking-wider">
+                  <Zap className="w-4 h-4 text-[var(--gold-accent)]" />
+                  <span>Predicted Interviewing Officer (IO) Questions On Your PIQ</span>
+                </div>
+                <span className="text-[9px] px-2 py-0.5 rounded bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] font-semibold">
+                  RAPID-FIRE PREP
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {assessment.io_probable_questions.map((q, idx) => (
+                  <div key={idx} className="p-2.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface)] text-xs flex items-start gap-2.5 shadow-sm">
+                    <span className="w-5 h-5 rounded-full bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                      Q{idx + 1}
+                    </span>
+                    <p className="text-[11px] text-[var(--fg-primary)] italic leading-relaxed">
+                      &ldquo;{q}&rdquo;
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Tactical Recommendations */}
+            <div className="p-4 rounded-xl border border-[var(--gold-accent)]/40 bg-[var(--gold-accent)]/5 space-y-2.5">
+              <div className="flex items-center gap-2 text-xs font-bold text-[var(--gold-accent)] uppercase tracking-wider">
+                <Target className="w-4 h-4" />
+                <span>Tactical Recommendations To Strengthen Your Presentation</span>
+              </div>
+              <ul className="space-y-1.5 text-xs text-[var(--fg-primary)]">
+                {assessment.recommendations_for_improvement.map((rec, idx) => (
+                  <li key={idx} className="flex items-start gap-2 text-[11px] leading-relaxed">
+                    <span className="text-[var(--gold-accent)] font-bold mt-0.5">&bull;</span>
+                    <span>{rec}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         )}
+      </div>
+    );
+  };
 
+  // Render the Section Tabs and Dossier Form (Sections 1-4)
+  const renderDossierForm = () => (
+    <div className="space-y-4">
         {/* SECTION NAVIGATION TABS */}
         <div className="border-b border-[var(--canvas-border)] flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px">
           {[
@@ -2608,33 +2579,208 @@ export default function ProfilePage() {
           )}
 
         </div>
+      </div>
+    );
 
-        {/* BOTTOM ACTION BAR */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)]">
-          <div className="text-xs text-[var(--fg-muted)]">
-            Cadet Profile: <strong className="text-[var(--fg-primary)]">{formData.full_name || "CADET ASPIRANT"}</strong> ({formData.target_entry}) • Completion: <span className="text-[var(--gold-accent)] font-bold">{completionPct}%</span>
+    return (
+      <div className="min-h-screen bg-military-grid flex flex-col font-mono text-[var(--fg-primary)]">
+        
+        {/* Floating Top HUD (Invisible Header Container with Floating Action Pills) */}
+        <header className="sticky top-0 z-40 px-3 sm:px-6 py-3.5 pointer-events-none">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+            
+            {/* Left: Floating Navigation Pill */}
+            <div className="pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)]/85 backdrop-blur-md shadow-sm">
+              <Link
+                href="/dashboard"
+                className="w-7 h-7 rounded border border-[var(--canvas-border)] hover:border-[var(--primary-accent)] flex items-center justify-center text-[var(--fg-secondary)] hover:text-[var(--primary-accent)] transition-colors cursor-pointer"
+                title="Return to Dashboard"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+              </Link>
+              <div className="w-6 h-6 rounded border border-[var(--primary-accent)]/60 bg-[var(--canvas-surface)] flex items-center justify-center">
+                <CrossedSwords className="w-3.5 h-3.5 text-[var(--primary-accent)]" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs sm:text-sm font-extrabold tracking-wider">
+                    PIQ DOSSIER <span className="text-[var(--gold-accent)]">TERMINAL</span>
+                  </span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] border border-[var(--primary-accent)]/30 font-bold hidden md:inline-block">
+                    DIPR 107-A
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Floating Actions Pill */}
+            <div className="pointer-events-auto flex items-center gap-2">
+              {/* Mobile Drawer Trigger (when candidate already has data uploaded) */}
+              {hasUploadedData && (
+                <button
+                  type="button"
+                  onClick={() => setMobileDrawerOpen(true)}
+                  className="lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--primary-accent)] bg-[var(--primary-accent)]/10 text-[var(--primary-accent)] text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer backdrop-blur-md"
+                  title="Upload or Re-Scan PIQ"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">Re-Scan PIQ</span>
+                </button>
+              )}
+
+              {/* Profile Completion Meter */}
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)]/85 backdrop-blur-md shadow-sm text-right">
+                <div>
+                  <div className="text-[10px] font-bold text-[var(--gold-accent)]">
+                    {completionPct}% COMPLETE
+                  </div>
+                  <div className="w-20 h-1.5 bg-[var(--canvas-border)] rounded-full overflow-hidden mt-0.5">
+                    <div 
+                      className="h-full bg-gradient-to-r from-[var(--gold-accent)] to-[var(--primary-accent)] transition-all duration-500"
+                      style={{ width: `${completionPct}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Military Dual Theme Switcher */}
+              <ThemeToggle compact />
+
+              {/* Save PIQ Button */}
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                {saving ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Save className="w-3.5 h-3.5" />
+                )}
+                <span className="hidden sm:inline">{saving ? "SAVING..." : "SAVE PIQ"}</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Body */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 pt-2 pb-16 space-y-6">
+
+          {/* Success Alert Banner */}
+          {saveSuccess && (
+            <div className="p-3.5 rounded-lg border border-[var(--military-olive)] bg-[var(--military-olive)]/15 text-[var(--fg-primary)] flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center gap-2.5 text-xs">
+                <CheckCircle2 className="w-4 h-4 text-[var(--military-olive)] shrink-0" />
+                <span><strong>PIQ DOSSIER SAVED:</strong> Profile completion updated to 100%. Candidate credentials synchronized.</span>
+              </div>
+              <Link href="/dashboard" className="text-xs font-bold underline hover:opacity-80">
+                Return to Dashboard &rarr;
+              </Link>
+            </div>
+          )}
+
+          {/* DYNAMIC VIEWPORT LAYOUT: Initial Hero Ingestion Deck vs. Post-Upload Left Sidebar */}
+          {!hasUploadedData ? (
+            <div className="space-y-6">
+              {/* Main Viewport Hero Intake Deck */}
+              <motion.div
+                layout
+                layoutId="piq-intake-deck"
+                transition={{ type: "spring", stiffness: 300, damping: 28 }}
+              >
+                {renderIntakeSection(false)}
+              </motion.div>
+
+              {/* Dossier Questionnaire Form */}
+              {renderDossierForm()}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Desktop Left Sidebar: Compact Intake & Re-Scan Deck */}
+              <aside className="hidden lg:block lg:col-span-4 lg:sticky lg:top-20 space-y-4">
+                <motion.div
+                  layout
+                  layoutId="piq-intake-deck"
+                  transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                >
+                  {renderIntakeSection(true)}
+                </motion.div>
+              </aside>
+
+              {/* Main Viewport: Assessment at TOP + Form below */}
+              <div className="col-span-12 lg:col-span-8 space-y-6">
+                {/* Top: PIQ Assessment & Insights */}
+                {renderAssessmentCard()}
+
+                {/* Dossier Questionnaire Form */}
+                {renderDossierForm()}
+              </div>
+            </div>
+          )}
+
+          {/* BOTTOM ACTION BAR */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)]">
+            <div className="text-xs text-[var(--fg-muted)]">
+              Cadet Profile: <strong className="text-[var(--fg-primary)]">{formData.full_name || "CADET ASPIRANT"}</strong> ({formData.target_entry}) • Completion: <span className="text-[var(--gold-accent)] font-bold">{completionPct}%</span>
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <Link
+                href="/dashboard"
+                className="flex-1 sm:flex-initial text-center px-4 py-2 rounded-lg border border-[var(--canvas-border)] hover:border-[var(--primary-accent)] text-xs font-bold text-[var(--fg-secondary)] transition-all"
+              >
+                Back to Dashboard
+              </Link>
+
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                <span>{saving ? "SAVING..." : "SAVE & COMPLETE PIQ"}</span>
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <Link
-              href="/dashboard"
-              className="flex-1 sm:flex-initial text-center px-4 py-2 rounded-lg border border-[var(--canvas-border)] hover:border-[var(--primary-accent)] text-xs font-bold text-[var(--fg-secondary)] transition-all"
-            >
-              Back to Dashboard
-            </Link>
+          {/* Mobile Slide-over Drawer for Intake / Re-Scan */}
+          <AnimatePresence>
+            {mobileDrawerOpen && hasUploadedData && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setMobileDrawerOpen(false)}
+                  className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 lg:hidden"
+                />
+                <motion.div
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "100%" }}
+                  transition={{ type: "spring", damping: 28, stiffness: 300 }}
+                  className="fixed inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto bg-[var(--canvas-surface)] border-t-2 border-[var(--primary-accent)] rounded-t-2xl z-50 p-4 sm:p-6 shadow-2xl lg:hidden font-mono"
+                >
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-[var(--canvas-border)]">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[var(--gold-accent)]" />
+                      <span className="text-xs font-bold tracking-wider">RE-SCAN OR DOWNLOAD PIQ</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMobileDrawerOpen(false)}
+                      className="p-1.5 rounded-lg border border-[var(--canvas-border)] hover:border-red-500 text-[var(--fg-muted)] hover:text-red-500 transition-colors cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {renderIntakeSection(true)}
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
 
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50"
-            >
-              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              <span>{saving ? "SAVING..." : "SAVE & COMPLETE PIQ"}</span>
-            </button>
-          </div>
-        </div>
-
-      </main>
-    </div>
-  );
+        </main>
+      </div>
+    );
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Shield, ArrowRight, Lock, Mail, KeyRound, User, Calendar, Award, CheckCircle2, AlertCircle } from "lucide-react";
 import CrossedSwords from "@/components/CrossedSwords";
+import ThemeToggle from "@/components/ThemeToggle";
 import { supabase } from "@/lib/supabaseClient";
 
 type AuthStep = "email" | "password_login" | "otp_verify" | "create_password" | "onboarding";
@@ -195,7 +196,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-military-grid flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-military-grid flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative">
+      {/* Floating Theme Switcher */}
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle compact />
+      </div>
       {/* Background Ambience */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[400px] bg-[var(--primary-glow)] rounded-full blur-[140px] pointer-events-none -z-10" />
 

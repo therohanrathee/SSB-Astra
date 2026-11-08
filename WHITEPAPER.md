@@ -111,7 +111,7 @@ flowchart TD
       2. **Psychology (Day 02):** Manso Vacha suite covering TAT (4-min slides), WAT (15s words), SRT, and SD.
       3. **GTO (Day 03 & 04):** Karmana ground series featuring GPE tactical sand models, PGT/HGT bridging physics, and Lecturette intelligence.
   - Zero build errors, fully type-checked with TypeScript and Next.js 16.
-- [x] **Phase 3.5: PIQ (Personal Information Questionnaire) Analysis & AI Autofill UI (IN PROGRESS / UI BUILT)**
+- [x] **Phase 3.5: PIQ Dossier Architecture, AI Multimodal Engine & UI Overhaul (COMPLETED & VERIFIED)**
   - **Comprehensive DIPR Form 107-A Analysis:** Analyzed official DIPR Questionnaire No. 107-A (Revised) structure across both Page 1 and Page 2 (14 distinct items, 4 complex nested matrices: Family, Education, Sports, Previous SSB attempts).
   - **Sample Blank PIQ Delivery:** Added official DIPR 107-A blank PDF at `public/sample_piq.pdf` with direct 1-click download on candidate profile.
   - **AI Smart Extraction Backend & Image Normalization Pipeline:**
@@ -127,12 +127,6 @@ flowchart TD
       - Implemented robust `FileReader.readAsDataURL` + HTML5 Canvas downsampling (`compressImageClientSide`): auto-scales image dimensions to max 1600px maintaining aspect ratio with 80% JPEG quality and white background contrast. Reduces 8-15 MB photos down to ~250-350 KB (96% bandwidth reduction) while retaining razor-sharp handwriting legibility.
       - 100% Client-Side PDF Rasterization: ALL PDFs (scanned or digital) are rasterized on-device into compressed 1600px JPEG page images via `pdfjs-dist` and HTML5 Canvas, completely standardizing the ingestion pipeline so the backend and Gemini Vision ALWAYS receive identical, optimized ~250 KB images.
       - Real-time client status streaming: dynamically informs cadet of compression progress, bandwidth savings, and transmission stages before scoring.
-    - **Scrubbing Legacy Mock Data & Ghost Assessment Prevention:**
-      - Purged all hardcoded placeholder data from `INITIAL_PIQ_DATA` (Kendriya Vidyalaya, APS, NIT B.Tech, Football, Robotics Club, NDA 148 Conference Out) so all fields start completely blank.
-      - Implemented automatic local cache sanitization in `useEffect` to eradicate stale demo drafts and ghost assessments from the candidate's browser `localStorage`.
-      - Guarded `analyzePiqWithGemini`: state `assessment` is immediately reset to `null` before each scan and upon any error, preventing ghost assessments from persisting on failure.
-      - Added header `RESET` button for instant candidate cache and form purge.
-      - Hardened Gemini prompt with strict factual extraction constraints: forbids hallucinating or inventing imaginary extracurriculars when sections are blank.
     - **Physical Form Field Normalization & Sibling Logic:**
       - *Residence Auto-Resolution (Item 4):* Form 107-A candidates often write "Same as above", "Do", or "-do-" in 4(b) (Present Residence) or 4(c) (Permanent Residence). The system automatically resolves and copies the real place name, district, state, and approximate population from 4(a) (or 4(b)) into 4(b) and 4(c) on both backend and client side, ensuring no literal "Same as above" text is saved.
       - *Family Sibling Normalization (Item 6):* In the family table, brothers and sisters are automatically normalized to "Sibling" (or "Younger Sibling" / "Elder Sibling"), avoiding unilateral gendered assumptions.
@@ -143,29 +137,21 @@ flowchart TD
         3. **Tier 3 (Direct Transmission Fallback):** For compact PDFs $\le 3.5\text{ MB}$, transmits directly to Gemini Vision under the Vercel 4.5 MB ceiling.
     - Resolved WebKit/Safari `DOMException: The string did not match the expected pattern` by standardizing file `accept` MIME types, implementing safe response text parsing, and auto-normalizing extracted dates to `YYYY-MM-DD`.
   - **Officer Candidate Dossier Assessment & PIQ Scoring Engine:**
-    - Refined system prompt to perform dual-action processing: strict JSON transcription + Senior Interviewing Officer (IO) evaluation.
-    - Evaluates candidates across the **4 Classical Assessment Pillars**:
-      1. *Academics & Consistency* (25 pts)
-      2. *Sports, NCC & Physical Stamina* (25 pts)
-      3. *Leadership & Positions of Responsibility* (25 pts)
-      4. *Hobbies, Self-Development & Drive* (25 pts)
-    - Emits:
-      - Composite **PIQ Score out of 100** with overall verdict badge.
-      - Positive OLQ indicators (Strengths).
-      - Vulnerabilities & Red Flags (areas the IO will probe).
-      - **Predicted IO Rapid-Fire Questions** forecast.
-      - Tactical recommendations to strengthen candidate presentation.
-  - **Profile Page (`src/app/profile/page.tsx`) Deployed:**
-    - Integrated the **AI PIQ Dossier Assessment & IO Forecast** visual radar component above tabs.
-    - Locked email credential field (read-only with security padlock badge).
-    - 4 structured military tabbed panels:
-      1. *Identity & Demographics* (Items 1-3, 5: Name, Father's Name, DOB, Gender, Religion, Mother Tongue, Category, Marital Status).
-      2. *Residential History* (Item 4: Maximum, Present, Permanent residence with population & District HQ toggle).
-      3. *Family & Academics* (Items 6 & 7: Parents alive toggle, dynamic family members table, full 4-tier educational record table).
-      4. *Physical, NCC, Sports & SSB History* (Items 8-14: Height, Weight, Occupation, NCC Wing/Div/Cert, Sports, Hobbies, Responsibilities, Commission Nature & Service Preference, Previous SSB attempts table).
-    - Local storage state persistence + Supabase profile updates (saving advances completion to 100%).
-    - Seamless navigation links connected from Dashboard profile menu.
-  - **Next Step:** Finalize SQL schema fields with user before executing migration `supabase/002_add_piq_fields.sql`.
+    - Evaluates candidates across the **4 Classical Assessment Pillars**: Academics & Consistency (25 pts), Sports, NCC & Physical Stamina (25 pts), Leadership & Positions of Responsibility (25 pts), and Hobbies & Drive (25 pts).
+    - Emits: Composite **PIQ Score out of 100** with overall verdict badge, positive OLQ indicators (Strengths), vulnerabilities & red flags, **Predicted IO Rapid-Fire Questions**, and tactical recommendations.
+  - **UI Layout Overhaul & Morphing Architecture (`src/app/profile/page.tsx`):**
+    - **Initial / Empty State:** For first-time visitors (`!hasUploadedData`), the two intake options (*Download Official Blank PIQ* & *AI Smart Autofill*) are prominently centered in the main viewport hero deck.
+    - **Post-Upload State (`hasUploadedData`):** Using Framer Motion `layout` and `layoutId="piq-intake-deck"`, the intake cards smoothly morph to a compact, minimal-footprint left sidebar (`lg:col-span-4`), leaving the primary viewport (`lg:col-span-8`) dedicated to the candidate's **PIQ Dossier Assessment & IO Insights** at the very top, followed by the questionnaire form.
+    - **Mobile Optimization:** On mobile devices, after upload, the intake deck is hidden from the main flow into a slide-over sheet drawer (`mobileDrawerOpen`) accessible via a floating top-bar trigger, ensuring 100% of the mobile viewport immediately surfaces the PIQ score and assessment radar.
+    - **Header Clean-Up:** Removed the manual reset button (uploading a new PIQ automatically resets baseline and overwrites fields) and purged the locked email banner (reserved for dedicated settings).
+  - **Floating Invisible Header & Global Theme Switcher:**
+    - Replaced rigid, empty full-width top headers with floating glassmorphic action pills (`pointer-events-auto` inside transparent `sticky top-0 pointer-events-none` container) on `/profile` and `/dashboard`.
+    - Integrated military dual theme switcher (`ThemeToggle`) across all routes (`/`, `/dashboard`, `/profile`, `/login`) with persistent `localStorage` synchronization and flash-prevention script in `src/app/layout.tsx`.
+    - Main container has comfortable top padding (`pt-2 sm:pt-4` / `pt-6 sm:pt-8`) so content breathes naturally without sticking to the browser edge.
+  - **Database Persistence & SQL Migration:**
+    - Saved runnable SQL migration `supabase/002_add_piq_and_assessment.sql` adding `piq_data` (JSONB), `piq_assessment` (JSONB), and `last_piq_uploaded_at` (TIMESTAMPTZ) to `public.profiles`.
+    - Auto-persists candidate PIQ data and assessment directly to Supabase on upload and manual save, ensuring cross-device synchronization and instant restoration on reload.
+  - **Next Step (Phase 4):** Next developer/agent should launch the Stage-1 Computerised Cognitive & Psychometric Screening System (CSSS + OPAM engines), utilizing the Web Audio API synthesizer and micro-timers.
 - [ ] **Phase 4: Stage-1 Test Engine (CSSS + OPAM)**
   - Micro-timer runner (16-30s auto-advancing, no back button).
   - Web Audio API integration for tone and phonetic callouts.

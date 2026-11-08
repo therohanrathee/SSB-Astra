@@ -20,6 +20,7 @@ import {
   Edit3
 } from "lucide-react";
 import CrossedSwords from "@/components/CrossedSwords";
+import ThemeToggle from "@/components/ThemeToggle";
 import { supabase } from "@/lib/supabaseClient";
 import { getDynamicOfficerGreeting } from "@/lib/greeting";
 
@@ -119,24 +120,31 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-military-grid flex flex-col font-mono text-[var(--fg-primary)]">
-      {/* Top HUD Professional Navigation Bar */}
-      <header className="border-b border-[var(--canvas-border)] bg-[var(--canvas-surface)]/90 backdrop-blur-md px-4 sm:px-8 py-3 flex items-center justify-between sticky top-0 z-40">
-        
-        {/* Left: Brand / Home Link */}
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-md border border-[var(--primary-accent)]/60 bg-[var(--canvas-surface)] flex items-center justify-center shadow-sm">
-            <CrossedSwords className="w-5 h-5 text-[var(--primary-accent)]" />
-          </div>
-          <div>
-            <span className="text-sm font-extrabold tracking-wider">
-              SSB<span className="text-[var(--gold-accent)] font-semibold">ASTRA</span>
-            </span>
-            <span className="text-[9px] block text-[var(--fg-muted)] leading-none uppercase">CANDIDATE HQ</span>
-          </div>
-        </Link>
+      {/* Floating Top HUD (Invisible Header Container with Floating Action Pills) */}
+      <header className="sticky top-0 z-40 px-4 sm:px-8 py-3.5 pointer-events-none">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          
+          {/* Left: Brand / Home Link Floating Pill */}
+          <Link 
+            href="/" 
+            className="pointer-events-auto flex items-center gap-2.5 px-3 py-1.5 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)]/85 backdrop-blur-md hover:border-[var(--primary-accent)] transition-all shadow-sm group"
+          >
+            <div className="w-7 h-7 rounded-md border border-[var(--primary-accent)]/60 bg-[var(--canvas-surface)] flex items-center justify-center shadow-sm">
+              <CrossedSwords className="w-4 h-4 text-[var(--primary-accent)]" />
+            </div>
+            <div>
+              <span className="text-xs sm:text-sm font-extrabold tracking-wider">
+                SSB<span className="text-[var(--gold-accent)] font-semibold">ASTRA</span>
+              </span>
+              <span className="text-[8px] sm:text-[9px] block text-[var(--fg-muted)] leading-none uppercase">CANDIDATE HQ</span>
+            </div>
+          </Link>
 
-        {/* Right: Professional User Profile Widget with Completion Meter */}
-        <div className="relative" ref={menuRef}>
+          {/* Right: Floating Theme Toggle & User Profile Widget */}
+          <div className="pointer-events-auto flex items-center gap-3">
+            <ThemeToggle compact />
+
+          <div className="relative" ref={menuRef}>
           {completionPct < 100 ? (
             /* Extended Profile Window when profile is not complete:
                Complete button on LEFT, Profile info & Avatar on RIGHT */
@@ -227,8 +235,10 @@ export default function DashboardPage() {
               </button>
             </div>
           )}
+          </div>
         </div>
-      </header>
+      </div>
+    </header>
 
       {/* Main Dashboard Workspace */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8 flex-1">
