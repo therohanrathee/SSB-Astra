@@ -231,10 +231,60 @@ export default function ProfilePage() {
   const [assessment, setAssessment] = useState<PiqAssessment | null>(null);
   const [showAssessment, setShowAssessment] = useState(true);
 
-  // Dedicated refs for the 3 upload methods
+  // Intake mode & Device detection
+  const [intakeMode, setIntakeMode] = useState<"pdf" | "photos" | "camera">("pdf");
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Staged Files for user review prior to analysis
+  const [selectedPdf, setSelectedPdf] = useState<File | null>(null);
+  const [photoP1, setPhotoP1] = useState<File | null>(null);
+  const [photoP2, setPhotoP2] = useState<File | null>(null);
+  const [photoP1Preview, setPhotoP1Preview] = useState<string | null>(null);
+  const [photoP2Preview, setPhotoP2Preview] = useState<string | null>(null);
+
+  // Dedicated refs for dropboxes and camera triggers
   const pdfInputRef = useRef<HTMLInputElement>(null);
-  const photosInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const photoP1InputRef = useRef<HTMLInputElement>(null);
+  const photoP2InputRef = useRef<HTMLInputElement>(null);
+  const cameraP1InputRef = useRef<HTMLInputElement>(null);
+  const cameraP2InputRef = useRef<HTMLInputElement>(null);
+
+  // Detect mobile device to selectively hide/show camera scanning
+  useEffect(() => {
+    const checkMobile = () => {
+      if (typeof window === "undefined") return;
+      const ua = navigator.userAgent || "";
+      const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+      const hasTouch = "ontouchstart" in window || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
+      const isNarrow = window.innerWidth < 768;
+      setIsMobile((mobileRegex.test(ua) || Boolean(hasTouch)) && isNarrow);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Helper to ensure dates strictly conform to YYYY-MM-DD for HTML5 date inputs
+  const normalizeDobForInput = (dobStr?: string): string => {
+    if (!dobStr) return "";
+    const trimmed = dobStr.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+    const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+    if (dmyMatch) {
+      const day = dmyMatch[1].padStart(2, "0");
+      const month = dmyMatch[2].padStart(2, "0");
+      const year = dmyMatch[3];
+      return `${year}-${month}-${day}`;
+    }
+    const ymdMatch = trimmed.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+    if (ymdMatch) {
+      const year = ymdMatch[1];
+      const month = ymdMatch[2].padStart(2, "0");
+      const day = ymdMatch[3].padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+    return "";
+  };
 
   // 1. Load User Profile from Supabase & Local Cache
   useEffect(() => {
@@ -257,7 +307,7 @@ export default function ProfilePage() {
               ...prev,
               full_name: data.full_name || prev.full_name || "CADET ASPIRANT",
               target_entry: data.target_entry || prev.target_entry || "CDS",
-              dob: data.dob || prev.dob || "2003-08-15",
+              dob: normalizeDobForInput(data.dob) || prev.dob || "2003-08-15",
               gender: (data.gender as "male" | "female") || prev.gender || "male",
             }));
             setCompletionPct(data.profile_completion_pct || 30);
@@ -278,7 +328,7 @@ export default function ProfilePage() {
         if (cachedPiq) {
           try {
             const parsed = JSON.parse(cachedPiq);
-            setFormData(prev => ({ ...prev, ...parsed }));
+            setFormData(prev => ({ ...prev, ...parsed, dob: normalizeDobForInput(parsed.dob) || prev.dob }));
           } catch {
             // ignore JSON parse error
           }
@@ -322,9 +372,17 @@ export default function ProfilePage() {
         body: dataPayload
       });
 
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || json.details || "Failed to analyze document");
+      // Safely read response text first to prevent Safari SyntaxError on non-JSON payloads
+      const resText = await res.text();
+      let json: { success?: boolean; error?: string; details?: string; data?: PiqFormData; assessment?: PiqAssessment };
+      try {
+        json = JSON.parse(resText);
+      } catch {
+        throw new Error(`Server returned unexpected response (${res.status}): ${resText.slice(0, 120)}`);
+      }
+
+      if (!res.ok || !json.success || !json.data) {
+        throw new Error(json.error || json.details || `Failed to analyze document (HTTP ${res.status})`);
       }
 
       // Merge extracted fields into state
@@ -332,6 +390,7 @@ export default function ProfilePage() {
       setFormData(prev => ({
         ...prev,
         ...ext,
+        dob: normalizeDobForInput(ext.dob) || prev.dob,
         family_members: ext.family_members && ext.family_members.length > 0 ? ext.family_members : prev.family_members,
         education_records: ext.education_records && ext.education_records.length > 0 ? ext.education_records : prev.education_records,
         sports_records: ext.sports_records && ext.sports_records.length > 0 ? ext.sports_records : prev.sports_records,
@@ -515,86 +574,371 @@ export default function ProfilePage() {
               </p>
             </div>
 
-            {/* Upload Zone / Triggers */}
-            <div className="space-y-2.5">
-              {/* Hidden specialized input fields */}
-              <input
-                ref={pdfInputRef}
-                type="file"
-                accept="application/pdf"
-                className="hidden"
-                onChange={e => {
-                  if (e.target.files && e.target.files.length > 0) {
-                    analyzePiqWithGemini(Array.from(e.target.files));
-                  }
-                }}
-              />
-              <input
-                ref={photosInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/jpg,image/webp"
-                multiple
-                className="hidden"
-                onChange={e => {
-                  if (e.target.files && e.target.files.length > 0) {
-                    analyzePiqWithGemini(Array.from(e.target.files));
-                  }
-                }}
-              />
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={e => {
-                  if (e.target.files && e.target.files.length > 0) {
-                    analyzePiqWithGemini(Array.from(e.target.files));
-                  }
-                }}
-              />
+            {/* Mode Switcher Tabs */}
+            <div className="flex items-center gap-2 border-b border-[var(--canvas-border)] pb-2 mb-3">
+              <button
+                type="button"
+                onClick={() => setIntakeMode("pdf")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  intakeMode === "pdf"
+                    ? "bg-[var(--primary-accent)] text-white shadow-sm"
+                    : "bg-[var(--canvas-surface-subtle)] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>2-Page PDF</span>
+              </button>
 
-              {/* 3 Upload Intake Action Buttons */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setIntakeMode("photos")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  intakeMode === "photos"
+                    ? "bg-[var(--primary-accent)] text-white shadow-sm"
+                    : "bg-[var(--canvas-surface-subtle)] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
+                }`}
+              >
+                <Images className="w-3.5 h-3.5" />
+                <span>Upload Photos (P1 & P2)</span>
+              </button>
+
+              {/* Show Camera ONLY on mobile/touch screens */}
+              {isMobile && (
                 <button
                   type="button"
-                  onClick={() => pdfInputRef.current?.click()}
-                  disabled={isParsingPiq}
-                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-60"
-                  title="Upload a single 2-page PDF document"
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>2-Page PDF</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => photosInputRef.current?.click()}
-                  disabled={isParsingPiq}
-                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-60"
-                  title="Select 2 photos (Page 1 Front & Page 2 Back)"
-                >
-                  <Images className="w-3.5 h-3.5" />
-                  <span>2 Photos (P1 & P2)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => cameraInputRef.current?.click()}
-                  disabled={isParsingPiq}
-                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg border border-[var(--primary-accent)] hover:bg-[var(--primary-accent)]/10 text-[var(--primary-accent)] text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-60"
-                  title="Open device camera to snap your PIQ form"
+                  onClick={() => setIntakeMode("camera")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    intakeMode === "camera"
+                      ? "bg-[var(--primary-accent)] text-white shadow-sm"
+                      : "bg-[var(--canvas-surface-subtle)] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
+                  }`}
                 >
                   <Camera className="w-3.5 h-3.5" />
-                  <span>Scan with Camera</span>
+                  <span>Scan Camera</span>
+                </button>
+              )}
+            </div>
+
+            {/* INTAKE MODE A: 1 SINGLE PDF DROP BOX */}
+            {intakeMode === "pdf" && (
+              <div className="space-y-3">
+                <input
+                  ref={pdfInputRef}
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  className="hidden"
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) setSelectedPdf(f);
+                  }}
+                />
+
+                <div
+                  onClick={() => pdfInputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const f = e.dataTransfer.files?.[0];
+                    if (f && (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"))) {
+                      setSelectedPdf(f);
+                    }
+                  }}
+                  className="border-2 border-dashed border-[var(--canvas-border)] hover:border-[var(--primary-accent)] rounded-xl p-5 text-center cursor-pointer transition-all bg-[var(--canvas-surface-subtle)]/60 hover:bg-[var(--canvas-surface-subtle)] group"
+                >
+                  {selectedPdf ? (
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className="w-10 h-10 rounded-full bg-[var(--military-olive)]/20 border border-[var(--military-olive)] flex items-center justify-center text-[var(--military-olive)]">
+                        <FileCheck className="w-5 h-5" />
+                      </div>
+                      <span className="text-xs font-bold text-[var(--fg-primary)]">{selectedPdf.name}</span>
+                      <span className="text-[10px] text-[var(--fg-muted)]">
+                        {(selectedPdf.size / 1024).toFixed(1)} KB • Click to change PDF
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-10 h-10 rounded-full bg-[var(--primary-accent)]/10 border border-[var(--primary-accent)]/30 flex items-center justify-center text-[var(--primary-accent)] group-hover:scale-105 transition-transform">
+                        <UploadCloud className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-[var(--fg-primary)] block">
+                          Drop your 2-Page PIQ PDF here, or click to browse
+                        </span>
+                        <span className="text-[10px] text-[var(--fg-muted)]">
+                          Accepts official scanned or digital DIPR 107-A (.pdf)
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  disabled={!selectedPdf || isParsingPiq}
+                  onClick={() => selectedPdf && analyzePiqWithGemini([selectedPdf])}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isParsingPiq ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>ANALYZING 2-PAGE PDF WITH GEMINI AI...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
+                      <span>{selectedPdf ? "ANALYSE SELECTED PDF WITH AI" : "SELECT PDF TO ANALYSE"}</span>
+                    </>
+                  )}
                 </button>
               </div>
+            )}
 
-              {/* Status / Document Format Indicator */}
-              <div className="pt-1 text-[10px] text-[var(--fg-muted)] flex items-center gap-1.5">
-                {isParsingPiq && <RefreshCw className="w-3 h-3 animate-spin text-[var(--primary-accent)]" />}
-                <span>{isParsingPiq ? "Gemini AI is analyzing document & tables..." : "Supports PDF, JPG, PNG & Live Camera Capture"}</span>
+            {/* INTAKE MODE B: 2 DROP BOXES FOR PAGE 1 & PAGE 2 */}
+            {intakeMode === "photos" && (
+              <div className="space-y-3">
+                <input
+                  ref={photoP1InputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,.jpg,.jpeg,.png,.webp"
+                  className="hidden"
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      setPhotoP1(f);
+                      setPhotoP1Preview(URL.createObjectURL(f));
+                    }
+                  }}
+                />
+
+                <input
+                  ref={photoP2InputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,.jpg,.jpeg,.png,.webp"
+                  className="hidden"
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      setPhotoP2(f);
+                      setPhotoP2Preview(URL.createObjectURL(f));
+                    }
+                  }}
+                />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Drop Box 1: Page 1 Front */}
+                  <div
+                    onClick={() => photoP1InputRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const f = e.dataTransfer.files?.[0];
+                      if (f && f.type.startsWith("image/")) {
+                        setPhotoP1(f);
+                        setPhotoP1Preview(URL.createObjectURL(f));
+                      }
+                    }}
+                    className="border-2 border-dashed border-[var(--canvas-border)] hover:border-[var(--primary-accent)] rounded-xl p-4 text-center cursor-pointer transition-all bg-[var(--canvas-surface-subtle)]/60 hover:bg-[var(--canvas-surface-subtle)] relative overflow-hidden group min-h-[140px] flex flex-col items-center justify-center"
+                  >
+                    <div className="text-[10px] font-bold text-[var(--gold-accent)] uppercase tracking-wider mb-1.5">
+                      Box 1: Page 1 (Front)
+                    </div>
+                    {photoP1Preview ? (
+                      <div className="flex flex-col items-center gap-1.5 w-full">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={photoP1Preview} alt="Page 1 preview" className="w-16 h-20 object-cover rounded border border-[var(--canvas-border)] shadow-sm" />
+                        <span className="text-[10px] font-bold text-[var(--fg-primary)] truncate max-w-[140px]">{photoP1?.name}</span>
+                        <span className="text-[9px] text-[var(--military-olive)] font-bold">✓ Ready • Click to change</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1.5">
+                        <UploadCloud className="w-6 h-6 text-[var(--primary-accent)] group-hover:scale-110 transition-transform" />
+                        <span className="text-xs font-bold text-[var(--fg-primary)]">Drop Page 1 Photo</span>
+                        <span className="text-[9px] text-[var(--fg-muted)]">Personal & academics</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Drop Box 2: Page 2 Back */}
+                  <div
+                    onClick={() => photoP2InputRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const f = e.dataTransfer.files?.[0];
+                      if (f && f.type.startsWith("image/")) {
+                        setPhotoP2(f);
+                        setPhotoP2Preview(URL.createObjectURL(f));
+                      }
+                    }}
+                    className="border-2 border-dashed border-[var(--canvas-border)] hover:border-[var(--primary-accent)] rounded-xl p-4 text-center cursor-pointer transition-all bg-[var(--canvas-surface-subtle)]/60 hover:bg-[var(--canvas-surface-subtle)] relative overflow-hidden group min-h-[140px] flex flex-col items-center justify-center"
+                  >
+                    <div className="text-[10px] font-bold text-[var(--primary-accent)] uppercase tracking-wider mb-1.5">
+                      Box 2: Page 2 (Back)
+                    </div>
+                    {photoP2Preview ? (
+                      <div className="flex flex-col items-center gap-1.5 w-full">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={photoP2Preview} alt="Page 2 preview" className="w-16 h-20 object-cover rounded border border-[var(--canvas-border)] shadow-sm" />
+                        <span className="text-[10px] font-bold text-[var(--fg-primary)] truncate max-w-[140px]">{photoP2?.name}</span>
+                        <span className="text-[9px] text-[var(--military-olive)] font-bold">✓ Ready • Click to change</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1.5">
+                        <UploadCloud className="w-6 h-6 text-[var(--primary-accent)] group-hover:scale-110 transition-transform" />
+                        <span className="text-xs font-bold text-[var(--fg-primary)]">Drop Page 2 Photo</span>
+                        <span className="text-[9px] text-[var(--fg-muted)]">Sports, NCC & SSB attempts</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={(!photoP1 && !photoP2) || isParsingPiq}
+                  onClick={() => {
+                    const files = [photoP1, photoP2].filter(Boolean) as File[];
+                    analyzePiqWithGemini(files);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isParsingPiq ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>ANALYZING PHOTOS WITH GEMINI AI...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
+                      <span>
+                        {photoP1 && photoP2
+                          ? "ANALYSE BOTH PAGES (PAGE 1 & 2) WITH AI"
+                          : photoP1 || photoP2
+                          ? "ANALYSE SELECTED PHOTO WITH AI"
+                          : "SELECT PAGE 1 & PAGE 2 PHOTOS"}
+                      </span>
+                    </>
+                  )}
+                </button>
               </div>
+            )}
+
+            {/* INTAKE MODE C: 2 CAMERA CAPTURE BOXES (MOBILE ONLY) */}
+            {isMobile && intakeMode === "camera" && (
+              <div className="space-y-3">
+                <input
+                  ref={cameraP1InputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      setPhotoP1(f);
+                      setPhotoP1Preview(URL.createObjectURL(f));
+                    }
+                  }}
+                />
+
+                <input
+                  ref={cameraP2InputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      setPhotoP2(f);
+                      setPhotoP2Preview(URL.createObjectURL(f));
+                    }
+                  }}
+                />
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Camera 1: Page 1 */}
+                  <div
+                    onClick={() => cameraP1InputRef.current?.click()}
+                    className="border-2 border-dashed border-[var(--canvas-border)] hover:border-[var(--primary-accent)] rounded-xl p-3 text-center cursor-pointer transition-all bg-[var(--canvas-surface-subtle)] min-h-[130px] flex flex-col items-center justify-center"
+                  >
+                    <span className="text-[9px] font-bold text-[var(--gold-accent)] uppercase block mb-1">
+                      Page 1 (Front)
+                    </span>
+                    {photoP1Preview ? (
+                      <div className="flex flex-col items-center gap-1">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={photoP1Preview} alt="P1" className="w-12 h-16 object-cover rounded border" />
+                        <span className="text-[9px] text-[var(--military-olive)] font-bold">✓ Retake</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1">
+                        <Camera className="w-6 h-6 text-[var(--primary-accent)]" />
+                        <span className="text-[11px] font-bold">Snap Page 1</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Camera 2: Page 2 */}
+                  <div
+                    onClick={() => cameraP2InputRef.current?.click()}
+                    className="border-2 border-dashed border-[var(--canvas-border)] hover:border-[var(--primary-accent)] rounded-xl p-3 text-center cursor-pointer transition-all bg-[var(--canvas-surface-subtle)] min-h-[130px] flex flex-col items-center justify-center"
+                  >
+                    <span className="text-[9px] font-bold text-[var(--primary-accent)] uppercase block mb-1">
+                      Page 2 (Back)
+                    </span>
+                    {photoP2Preview ? (
+                      <div className="flex flex-col items-center gap-1">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={photoP2Preview} alt="P2" className="w-12 h-16 object-cover rounded border" />
+                        <span className="text-[9px] text-[var(--military-olive)] font-bold">✓ Retake</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1">
+                        <Camera className="w-6 h-6 text-[var(--primary-accent)]" />
+                        <span className="text-[11px] font-bold">Snap Page 2</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={(!photoP1 && !photoP2) || isParsingPiq}
+                  onClick={() => {
+                    const files = [photoP1, photoP2].filter(Boolean) as File[];
+                    analyzePiqWithGemini(files);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isParsingPiq ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>ANALYZING CAPTURED PHOTOS WITH AI...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
+                      <span>
+                        {photoP1 && photoP2
+                          ? "ANALYSE BOTH CAPTURED PAGES WITH AI"
+                          : photoP1 || photoP2
+                          ? "ANALYSE CAPTURED PAGE WITH AI"
+                          : "CAPTURE PAGE 1 & PAGE 2 TO ANALYSE"}
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Status / Document Format Indicator */}
+            <div className="pt-2 text-[10px] text-[var(--fg-muted)] flex items-center gap-1.5">
+              {isParsingPiq && <RefreshCw className="w-3 h-3 animate-spin text-[var(--primary-accent)]" />}
+              <span>{isParsingPiq ? "Gemini AI is analyzing document & tables..." : "Supports PDF, JPG, PNG & Multi-Page Document Inspection"}</span>
+            </div>
 
               {/* Success Notification */}
               {parseNotification && (
@@ -613,7 +957,6 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
-        </div>
 
         {/* LOCKED EMAIL BAR */}
         <div className="p-3.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -970,7 +1313,7 @@ export default function ProfilePage() {
                   </label>
                   <input
                     type="date"
-                    value={formData.dob}
+                    value={normalizeDobForInput(formData.dob)}
                     onChange={e => updateField("dob", e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-bg)] text-xs text-[var(--fg-primary)] focus:outline-none focus:border-[var(--primary-accent)]"
                   />

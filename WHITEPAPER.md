@@ -119,10 +119,10 @@ flowchart TD
     - Added high-performance image pre-processing with `sharp`: auto-rotates mobile EXIF orientation (`.rotate()`), standardizes resolution to 1600px width, and normalizes into high-contrast 85% JPEG for deterministic multimodal vision processing.
     - Implemented live cascading backend endpoint `/api/piq/analyze` using **`gemini-3.5-flash-lite`** (500 free daily scans quota, ~15,000/month) with automatic failover to `gemini-3.8-flash` and `gemini-flash-latest`.
     - Native multimodal intake supporting 3 distinct acquisition flows:
-      1. *2-Page PDF* (`application/pdf`)
-      2. *2 Photos (Page 1 Front & Page 2 Back)* (`image/png, image/jpeg`)
-      3. *Live Camera Capture* (`accept="image/*" capture="environment"`)
-    - Streamlined production intake strictly driven by live AI document ingestion (2-Page PDF, 2 Photos, or Direct Camera Scan).
+      1. *2-Page PDF Drop Zone*: Single dedicated drop box with drag-and-drop & file click trigger.
+      2. *2 Separate Photo Drop Boxes*: Dedicated Box 1 (Page 1 Front) and Box 2 (Page 2 Back) with live thumbnail previews and staged multi-file submission.
+      3. *Live Camera Capture*: Strictly conditionally rendered for mobile/touch devices (`isMobile`), providing 2 distinct shutter triggers for Page 1 & Page 2 before sending to AI.
+    - Resolved WebKit/Safari `DOMException: The string did not match the expected pattern` by standardizing file `accept` MIME types, implementing safe response text parsing, and auto-normalizing extracted dates to `YYYY-MM-DD`.
   - **Officer Candidate Dossier Assessment & PIQ Scoring Engine:**
     - Refined system prompt to perform dual-action processing: strict JSON transcription + Senior Interviewing Officer (IO) evaluation.
     - Evaluates candidates across the **4 Classical Assessment Pillars**:
