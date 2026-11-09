@@ -190,6 +190,15 @@ flowchart TD
         - Full-width segmented tab control allows instant toggling between `All 4 Wings`, `Day 1: Screening`, `Day 2: Psychology`, `Day 3-4: GTO`, and `Day 2-4: Interview`.
         - **Dedicated Personal Interview Command Wing:** Incorporates Senior Assessor OLQ matrix (Factor I to IV breakdown), **Candidate-Personalized Predicted IO Questions** (extracted directly from their PIQ dossier with interactive practice modals), and 4 specialized drills: CIQ 1 to 5 Rapid-Fire sequences, Vulnerability & Red Flag Defense, Defense Awareness & Geopolitics, and Officer Motivation/Self-Knowledge.
       - **Candidate Dossier & OLQ Radar Integration:** Bottom dashboard panel dynamically displays the candidate's composite PIQ score, overall recommendation verdict, top identified strength, and interview focus area.
+    - **Stage-1 Screening Simulator Hub (`/screening`):**
+      - **Dual-Column Command Hub:** Designed and implemented `/screening` with a split-column layout featuring an official operational advisory banner:
+        - *Left Column (Operational Protocol):* **Legacy Screening (OIR + PPDT)** — primary active protocol across all SSB boards.
+        - *Right Column (Trial Batches):* **New DIPR System (CSSS + OPAM)** — computerized cognitive and psychometric battery.
+      - **OIR Digitization & CBT Engine Architecture:**
+        - Integrated official Authentic, DDE, and Byju's OIR booklets into `data/oir_raw/`.
+        - Implemented dynamic per-question options (supporting 2 options like `Yes/No`, 3 options, 4 options `A/B/C/D`, and 5 options `1/2/3/4/5`).
+        - Reconstructs blurry scanned booklet figures into crisp digital vector SVGs and high-resolution snippets, preserving exact authentic booklet numbers (Set 34, Set 35, Set 53, Set 54, Set 71, Set 75D, Set 6) with their official printed question counts and countdown timers.
+        - Testbook-style CBT interface featuring a live Question Palette on the right (Answered, Not Answered, Marked for Review, Answered & Marked for Review) and question viewport on the left.
   - **Next Step (Phase 4):** Next developer/agent should launch the Stage-1 Computerised Cognitive & Psychometric Screening System (CSSS + OPAM engines), utilizing the Web Audio API synthesizer and micro-timers.
 - [ ] **Phase 4: Stage-1 Test Engine (CSSS + OPAM)**
   - Micro-timer runner (16-30s auto-advancing, no back button).

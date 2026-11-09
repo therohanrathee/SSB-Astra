@@ -723,14 +723,13 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <button 
-                  type="button"
-                  onClick={() => setActiveTab("screening")}
+                <Link 
+                  href="/screening"
                   className="w-full flex items-center justify-between p-2.5 rounded-lg bg-[var(--canvas-surface-subtle)] hover:bg-[var(--primary-accent)] text-[var(--fg-primary)] hover:text-white transition-all text-xs font-bold border border-[var(--canvas-border)] hover:border-[var(--primary-accent)] cursor-pointer"
                 >
-                  <span>Open Screening Wing</span>
+                  <span>Open Screening Command Hub</span>
                   <ChevronRight className="w-4 h-4" />
-                </button>
+                </Link>
               </div>
 
               {/* CARD 2: PSYCHOLOGY */}
@@ -1202,12 +1201,13 @@ export default function DashboardPage() {
                   <p className="text-[11px] text-[var(--fg-muted)] font-sans">
                     Traditional paper booklet simulations (Verbal/Non-Verbal OIR) plus 30-sec picture perception and 4-min story writing timer.
                   </p>
-                  <button 
-                    onClick={() => handleLaunchDrill("screening", "OIR & PPDT Classic Drill", "30 mins")}
-                    className="w-full mt-2 py-2 rounded border border-[var(--canvas-border)] bg-[var(--canvas-surface)] text-[var(--fg-primary)] text-xs font-bold hover:border-[var(--military-olive)] transition-all cursor-pointer"
+                  <Link 
+                    href="/screening"
+                    className="w-full mt-2 py-2 rounded border border-[var(--canvas-border)] bg-[var(--canvas-surface)] text-[var(--fg-primary)] text-xs font-bold hover:border-[var(--military-olive)] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    Launch OIR/PPDT Lab
-                  </button>
+                    <span>Launch Legacy Screening Hub</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
                 </div>
               </div>
             </div>
