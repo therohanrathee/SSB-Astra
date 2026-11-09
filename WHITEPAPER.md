@@ -206,9 +206,16 @@ flowchart TD
     - Authentic operational advisory: *Legacy System (OIR + PPDT)* on the left (active across all boards) vs *New System (CSSS + OPAM)* on the right (trial batches).
   - **CBT OIR Simulator (`/screening/oir`):**
     - High-fidelity **Testbook-style CBT examination interface** eliminating low-res scanned PDF degradations.
-    - Digitized authentic DIPR booklets: Booklet 35 (Non-Verbal / Spatial, 39 Qs, 17 mins), Booklet 34 (Verbal Reasoning, 40 Qs, 20 mins), Booklet 53 (Verbal & Analytical, 40 Qs, 18 mins).
-    - **Dynamic Option Schemas:** Full mathematical support for 2-choice (`Yes/No`), 3-choice (`Cubes 1/2/3`), 4-choice, and 5-choice question structures.
-    - **Crisp Vector Isometric Cubes:** Replaced blurry photocopy scans with a programmatic 3D SVG isometric cube renderer (`CubeRenderer.tsx`) for cube comparison and group classification.
+    - **Modular Building-Block Question Architecture (`types.ts` & `src/data/oir/booklets/`):**
+      - Every single question is an independent, typed building block storing: unique ID (`id`), source (`source`), booklet ID & name (`sourceBookletId`, `sourceBookletName`), sequential number, type (`verbal` / `non_verbal`), subtype, difficulty, tags, prompt text, complete figure specifications (`groupA`, `groupB`, `cubeA`, `cubeB`), dynamic options with embedded cube face models (`cubeFaces`), correct key, and detailed solution.
+    - **Expanded Question Banks (Authentic DIPR + DDE + Byju's):**
+      - **Authentic DIPR Booklet 35 (INT TEST 4):** 40 authentic questions precisely transcribed from physical board scans. Group A, Group B, and candidate option cubes (Cube 1, Cube 2, Cube 3) render true 3D isometric projections with exact symbols.
+      - **Authentic DIPR Booklet 34 (Verbal Reasoning):** 40 questions (Analogies, coding, deductions & series).
+      - **Authentic DIPR Booklet 53 (Verbal & Analytical):** 40 questions (SSB Bhopal, Allahabad, Bengaluru).
+      - **DDE Practice Test 01:** 40 questions from Defence Direct Education covering Cube Comparison (Q1-15), Set Matching (Q16-25), and logic.
+      - **Byju's Exam Prep Benchmark Mock 01:** 40 questions covering spatial rotation, analogies, and classification.
+    - **Dynamic Option Schemas:** Full mathematical support for 2-choice (`Yes/No`), 3-choice (`Cubes 1/2/3` with 3D models embedded in option buttons), 4-choice, and 5-choice question structures.
+    - **Crisp Vector Isometric Cubes (`CubeRenderer.tsx`):** Programmatic 3D SVG isometric cube renderer supporting dynamic text scaling, Unicode shapes (`○`, `●`, `✕`, `△`, `▲`, `□`, `■`, `↑`, `→`, `↘`, `✉`, `⇦`, `θ`, `ɣ`), and dark/light mode switching.
     - **Testbook-Style Question Palette:** Numbered 1-to-N grid with live status indicators:
       - Attempted/Answered (Green)
       - Not Attempted/Unanswered (Red/Orange)
