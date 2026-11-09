@@ -1,16 +1,52 @@
-import { OIRBooklet, OIRTestResult } from "./types";
+import { OIRBooklet, OIRQuestion, OIRTestResult } from "./types";
 import { BOOKLET_35 } from "./booklet35";
 import { BOOKLET_34 } from "./booklet34";
 import { BOOKLET_53 } from "./booklet53";
+import { DDE_TEST_01 } from "./booklets/dde_test01";
+import { BYJUS_MOCK_01 } from "./booklets/byjus_mock01";
 
 export * from "./types";
-export { BOOKLET_35, BOOKLET_34, BOOKLET_53 };
+export { BOOKLET_35, BOOKLET_34, BOOKLET_53, DDE_TEST_01, BYJUS_MOCK_01 };
 
+/**
+ * Universal Catalog of All Curated OIR Test Booklets
+ * Spans Authentic DIPR examination sets, DDE preparation series, and Byju's benchmark mocks.
+ */
 export const ALL_OIR_BOOKLETS: OIRBooklet[] = [
   BOOKLET_35,
   BOOKLET_34,
-  BOOKLET_53
+  BOOKLET_53,
+  DDE_TEST_01,
+  BYJUS_MOCK_01
 ];
+
+/**
+ * Flat Master Repository of All Modular Building-Block Questions
+ * Every single question is self-contained with its source booklet,
+ * attributes, figures, dynamic options, and explanation.
+ */
+export const ALL_OIR_QUESTIONS: OIRQuestion[] = [
+  ...BOOKLET_35.questions,
+  ...BOOKLET_34.questions,
+  ...BOOKLET_53.questions,
+  ...DDE_TEST_01.questions,
+  ...BYJUS_MOCK_01.questions
+];
+
+/**
+ * Query helper to find any individual question by its building block ID
+ */
+export function getQuestionById(id: string): OIRQuestion | undefined {
+  return ALL_OIR_QUESTIONS.find((q) => q.id === id);
+}
+
+/**
+ * Query helper to get all questions for a specific booklet
+ */
+export function getQuestionsByBooklet(bookletId: string): OIRQuestion[] {
+  const booklet = ALL_OIR_BOOKLETS.find((b) => b.id === bookletId);
+  return booklet ? booklet.questions : [];
+}
 
 export interface OIRRatingDetails {
   oirRating: 1 | 2 | 3 | 4 | 5;

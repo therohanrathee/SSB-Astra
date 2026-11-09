@@ -2,6 +2,7 @@ import { OIRBooklet } from "./types";
 
 export const BOOKLET_53: OIRBooklet = {
   id: "oir-set-53",
+  source: "Authentic DIPR",
   bookletNumber: 53,
   title: "DIPR Official OIR Test Booklet 53",
   category: "verbal",
@@ -12,7 +13,13 @@ export const BOOKLET_53: OIRBooklet = {
   description: "Authentic DIPR Booklet 53 with analytical reasoning, word analogies, coding logic, and numerical comparisons widely administered in Army and Navy selection boards.",
   questions: [
     {
+      id: "oir_set_53_q01",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 1,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "word_analogy",
       promptText: "Courage is to Bravery as Integrity is to ——",
@@ -26,7 +33,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Courage and Bravery are synonyms; Integrity and Honesty are synonyms."
     },
     {
+      id: "oir_set_53_q02",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 2,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "sentence_rearrangement",
       promptText: "Write the FIRST letter of the rearranged meaningful sentence: 'protect the soldiers nation our'",
@@ -40,7 +53,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "The sentence is 'Our soldiers protect the nation'. The first word is 'Our', whose first letter is 'O' (choice 1)."
     },
     {
+      id: "oir_set_53_q03",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 3,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "number_series",
       promptText: "Find the missing number in the series: 3, 7, 15, 31, 63, ——",
@@ -54,7 +73,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Each term is (previous * 2) + 1. (63 * 2) + 1 = 127."
     },
     {
+      id: "oir_set_53_q04",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 4,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "number_comparison",
       promptText: "Write the number of choice containing last digit of the smallest number: 938472, 938274, 938742, 938247",
@@ -68,7 +93,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "The smallest number is 938247. Its last digit is 7 (choice 1)."
     },
     {
+      id: "oir_set_53_q05",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 5,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "coding_decoding",
       promptText: "If LEADER is coded as 12-5-1-4-5-18, what is the sum of letters in DUTY?",
@@ -82,7 +113,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "D(4) + U(21) + T(20) + Y(25) = 70."
     },
     {
+      id: "oir_set_53_q06",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 6,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "statement_evaluation",
       promptText: "Write the choice number that applies best: 'A leader should listen to suggestions from subordinate team members before taking a decisive action.'",
@@ -96,7 +133,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "During planning phases it is essential, but during sudden battlefield crisis immediate command initiative is required. Hence 'Sometimes True'."
     },
     {
+      id: "oir_set_53_q07",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 7,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "direction_sense",
       promptText: "An army patrol marches 8 km South, turns West and marches 6 km. What is the straight-line displacement from base camp?",
@@ -110,7 +153,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Pythagorean theorem: sqrt(8^2 + 6^2) = sqrt(64 + 36) = sqrt(100) = 10 km."
     },
     {
+      id: "oir_set_53_q08",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 8,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "word_classification",
       promptText: "Which one does not belong to the group?",
@@ -124,7 +173,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Submarine, Frigate, and Destroyer are naval warships; Howitzer is artillery."
     },
     {
+      id: "oir_set_53_q09",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 9,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "syllogism",
       promptText: "Statements: All cadets are disciplined. Some disciplined persons are athletes. Conclusion: Some athletes are disciplined.",
@@ -138,7 +193,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "The converse of 'Some disciplined persons are athletes' is 'Some athletes are disciplined', which is definitely true."
     },
     {
+      id: "oir_set_53_q10",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 10,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "letter_series",
       promptText: "What comes next in: Z, W, S, N, ——?",
@@ -152,7 +213,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Steps backward: -3 (Z->W), -4 (W->S), -5 (S->N), -6 (N->H). H is position 8."
     },
     {
+      id: "oir_set_53_q11",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 11,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "word_analogy",
       promptText: "Siachen is to Glacier as Thar is to ——",
@@ -166,7 +233,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Thar is the prominent desert of India."
     },
     {
+      id: "oir_set_53_q12",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 12,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "arithmetic_reasoning",
       promptText: "If 5 tanks consume 250 litres of diesel in 5 hours, how many litres will 2 tanks consume in 2 hours?",
@@ -180,7 +253,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "1 tank in 1 hour consumes 250 / (5 * 5) = 10 litres. 2 tanks in 2 hours consume 2 * 2 * 10 = 40 litres."
     },
     {
+      id: "oir_set_53_q13",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 13,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "ranking_order",
       promptText: "In a squad of 30 soldiers, Amit is 10th from the left and Ravi is 8th from the right. How many soldiers are seated between them?",
@@ -194,7 +273,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Between = 30 - (10 + 8) = 12 soldiers."
     },
     {
+      id: "oir_set_53_q14",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 14,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "blood_relations",
       promptText: "Pointing to a lady, a cadet says: 'She is the sister of my mother's only son.' How is the lady related to the cadet?",
@@ -208,7 +293,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Mother's only son is the cadet himself (if male). The lady is the cadet's sister."
     },
     {
+      id: "oir_set_53_q15",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 15,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "word_formation",
       promptText: "How many meaningful English words can be formed using each of the letters R, A, C, E exactly once?",
@@ -222,7 +313,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "The words are RACE, CARE, and ACRE."
     },
     {
+      id: "oir_set_53_q16",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 16,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "statement_evaluation",
       promptText: "Statement: 'A military pilot must have quick reaction capability.'",
@@ -236,7 +333,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Supersonic flight conditions demand split-second reflexes and rapid situational cognitive appraisal. Always True."
     },
     {
+      id: "oir_set_53_q17",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 17,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "letter_coding",
       promptText: "If TANK is coded as VCPM, how is JEEP coded?",
@@ -250,7 +353,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Each letter is shifted +2: J->L, E->G, E->G, P->R = LGGR."
     },
     {
+      id: "oir_set_53_q18",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 18,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "odd_one_out",
       promptText: "Find the odd number pair: 12-144, 15-225, 14-196, 13-168",
@@ -264,7 +373,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "All are pairs of number and its square (12^2=144, 15^2=225, 14^2=196), but 13^2 = 169 (not 168)."
     },
     {
+      id: "oir_set_53_q19",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 19,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "direction_sense",
       promptText: "Starting from a bunker, an officer walks 4 km North, turns left and walks 3 km. How far is he from the bunker?",
@@ -278,7 +393,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Displacement = sqrt(4^2 + 3^2) = 5 km."
     },
     {
+      id: "oir_set_53_q20",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 20,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "word_analogy",
       promptText: "Odometer is to Mileage as Compass is to ——",
@@ -292,7 +413,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "An odometer measures distance/mileage; a compass indicates magnetic direction."
     },
     {
+      id: "oir_set_53_q21",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 21,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "number_series",
       promptText: "Find the next number: 2, 6, 12, 20, 30, ——",
@@ -306,7 +433,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Differences increase by +2: +4, +6, +8, +10, +12. 30 + 12 = 42."
     },
     {
+      id: "oir_set_53_q22",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 22,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "verbal_classification",
       promptText: "Which word does not share the same quality: Resolute, Determined, Vacillating, Steadfast",
@@ -320,7 +453,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Vacillating means wavering or indecisive, which is an antonym to the other three."
     },
     {
+      id: "oir_set_53_q23",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 23,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "statement_evaluation",
       promptText: "Statement: 'A candidate who speaks very loudly in the PPDT group discussion is always an effective leader.'",
@@ -334,7 +473,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Loudness indicates aggression and poor listening skills, not leadership. Effective leaders persuade with logic and consensus. Hence False."
     },
     {
+      id: "oir_set_53_q24",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 24,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "coding_decoding",
       promptText: "If CADET is written as ECFGV, how is BRAVO written?",
@@ -348,7 +493,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Each letter is shifted +2: B->D, R->T, A->C, V->X, O->Q = DTCXQ."
     },
     {
+      id: "oir_set_53_q25",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 25,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "arithmetic_reasoning",
       promptText: "In a company of 120 soldiers, 70% passed the battle physical efficiency test (BPET). How many soldiers failed?",
@@ -362,7 +513,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Failure rate = 30%. 30% of 120 = 0.3 * 120 = 36 soldiers."
     },
     {
+      id: "oir_set_53_q26",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 26,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "sentence_rearrangement",
       promptText: "Write the LAST letter of the rearranged sentence: 'rules follow military strict'",
@@ -376,7 +533,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "The sentence is 'Follow strict military rules'. Last word is 'rules', whose last letter is 'S'."
     },
     {
+      id: "oir_set_53_q27",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 27,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "word_analogy",
       promptText: "Major is to Lieutenant Colonel as Squadron Leader is to ——",
@@ -390,7 +553,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "In IAF hierarchy, Squadron Leader is followed by Wing Commander (equivalent to Lt Colonel)."
     },
     {
+      id: "oir_set_53_q28",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 28,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "number_comparison",
       promptText: "Which is the largest number among: 65432, 65423, 65342, 65243",
@@ -404,7 +573,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "65432 is the largest."
     },
     {
+      id: "oir_set_53_q29",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 29,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "letter_series",
       promptText: "Find the next letter in the series: A, D, I, P, ——",
@@ -418,7 +593,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Letter positions are perfect squares: 1^2=1 (A), 2^2=4 (D), 3^2=9 (I), 4^2=16 (P), 5^2=25 (Y)."
     },
     {
+      id: "oir_set_53_q30",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 30,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "syllogism",
       promptText: "Statements: All brave persons are honest. Raman is brave. Conclusion: Raman is honest.",
@@ -432,7 +613,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Direct categorical deduction: since Raman belongs to the set of brave persons, he must be honest."
     },
     {
+      id: "oir_set_53_q31",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 31,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "word_classification",
       promptText: "Find the odd rank out: Admiral, General, Air Chief Marshal, Brigadier",
@@ -446,7 +633,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Admiral, General, and Air Chief Marshal are 4-star Chief of Staff ranks; Brigadier is a 1-star rank."
     },
     {
+      id: "oir_set_53_q32",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 32,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "statement_evaluation",
       promptText: "Statement: 'In times of severe national emergency, all military leaves can be cancelled.'",
@@ -460,7 +653,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Under armed forces service acts, military operational readiness overrides peace-time leave sanctions."
     },
     {
+      id: "oir_set_53_q33",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 33,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "direction_sense",
       promptText: "If you walk 12 km East and then 5 km South, what is the shortest straight line distance back to your start?",
@@ -474,7 +673,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Pythagorean triplet: 5, 12, 13. sqrt(12^2 + 5^2) = sqrt(144 + 25) = sqrt(169) = 13 km."
     },
     {
+      id: "oir_set_53_q34",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 34,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "arithmetic_reasoning",
       promptText: "A watch shows 03:00. If the minute hand points North, where does the hour hand point?",
@@ -488,7 +693,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "At 03:00, the hour hand is at 3 (90 degrees clockwise from 12/North), pointing East."
     },
     {
+      id: "oir_set_53_q35",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 35,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "blood_relations",
       promptText: "Vikram said: 'My grandfather has only one son.' Who is that son to Vikram?",
@@ -502,7 +713,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "The only son of Vikram's paternal grandfather must be Vikram's father."
     },
     {
+      id: "oir_set_53_q36",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 36,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "coding_decoding",
       promptText: "If AIR is coded as 28 (1 + 9 + 18), what is the numeric sum of SEA?",
@@ -516,7 +733,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "S(19) + E(5) + A(1) = 25."
     },
     {
+      id: "oir_set_53_q37",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 37,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "number_series",
       promptText: "Find the next number: 1, 8, 27, 64, 125, ——",
@@ -530,7 +753,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "The series represents n^3: 1^3, 2^3, 3^3, 4^3, 5^3, 6^3 = 216."
     },
     {
+      id: "oir_set_53_q38",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 38,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "word_analogy",
       promptText: "Sub-Lieutenant is to Lieutenant as Pilot Officer is to ——",
@@ -544,7 +773,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "Sub-Lieutenant is promoted to Lieutenant in Navy; Pilot Officer is promoted to Flying Officer in IAF."
     },
     {
+      id: "oir_set_53_q39",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 39,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "word_formation",
       promptText: "Which word CANNOT be formed using the letters of the word 'RECOMMENDATION'?",
@@ -558,7 +793,13 @@ export const BOOKLET_53: OIRBooklet = {
       explanation: "The word MEDICINE requires two 'I's and two 'E's, but RECOMMENDATION contains only one 'I'."
     },
     {
+      id: "oir_set_53_q40",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-53",
+      sourceBookletName: "DIPR Official Booklet 53",
       questionNumber: 40,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "statement_evaluation",
       promptText: "Statement: 'A candidate with high OIR rating has a statistically higher probability of clearing Stage-1 screening.'",

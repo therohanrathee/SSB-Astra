@@ -2,6 +2,7 @@ import { OIRBooklet } from "./types";
 
 export const BOOKLET_34: OIRBooklet = {
   id: "oir-set-34",
+  source: "Authentic DIPR",
   bookletNumber: 34,
   title: "DIPR Official OIR Test Booklet 34",
   category: "verbal",
@@ -11,7 +12,13 @@ export const BOOKLET_34: OIRBooklet = {
   description: "Authentic DIPR Booklet 34 administered across Services Selection Boards. Features verbal reasoning, word reconstruction, logical analogies, numerical deductions, and sentence rearranging.",
   questions: [
     {
+      id: "oir_set_34_q01",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 1,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "word_analogy",
       promptText: "Dog is to Bark as Horse is to ——",
@@ -25,7 +32,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "A horse produces the sound called neigh, just as a dog barks."
     },
     {
+      id: "oir_set_34_q02",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 2,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "sentence_rearrangement",
       promptText: "Write the LAST letter of the rearranged meaningful sentence: 'sky the in flying birds are'",
@@ -39,7 +52,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "The meaningful sentence is 'Birds are flying in the sky'. The last word is 'sky', and its last letter is 'Y' (choice 1)."
     },
     {
+      id: "oir_set_34_q03",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 3,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "letter_series",
       promptText: "Find the next two letters in the series: A, C, F, J, O, ——, ——",
@@ -53,7 +72,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "The step increases by +2, +3, +4, +5, +6, +7. A(+2)=C, C(+3)=F, F(+4)=J, J(+5)=O, O(+6)=U (21), U(+7)=28 -> B (2)."
     },
     {
+      id: "oir_set_34_q04",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 4,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "numerical_deduction",
       promptText: "Write the number of choice containing last digit of the largest number of the following: 742183, 742813, 748213, 748123",
@@ -67,7 +92,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "The largest number is 748213. Its last digit is 3. Choice (3) is 3."
     },
     {
+      id: "oir_set_34_q05",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 5,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "statement_evaluation",
       promptText: "Write the number of the choice that applies best to the statement given below: 'A country with strong armed forces is never invaded by aggressive neighbors.'",
@@ -81,7 +112,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Military deterrence makes invasion improbable, but history shows irrational adversaries may still initiate conflicts. Hence, it is 'Probably True'."
     },
     {
+      id: "oir_set_34_q06",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 6,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "coding_decoding",
       promptText: "If SOLDIER is coded as JFSFEPT, then how will OFFICER be coded in that same rule?",
@@ -95,7 +132,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Each letter is shifted forward by +1, then written in reverse order: O->P, F->G, F->G, I->J, C->D, E->F, R->S, reversed: SFDJGGP."
     },
     {
+      id: "oir_set_34_q07",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 7,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "word_analogy",
       promptText: "Rationality is to Man as Heat is to ——",
@@ -110,7 +153,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Rationality is the intrinsic essential nature of Man, just as Heat is the intrinsic characteristic of the Sun."
     },
     {
+      id: "oir_set_34_q08",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 8,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "arithmetic_reasoning",
       promptText: "A man in a train can count 101 telegraph posts in one minute. If they are spaced exactly 10 meters apart, what is the speed of the train in km/h?",
@@ -124,7 +173,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Between 101 posts, there are 100 intervals of 10m each = 1000m = 1 km. 1 km covered in 1 minute equals 60 km per hour."
     },
     {
+      id: "oir_set_34_q09",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 9,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "sentence_rearrangement",
       promptText: "Write the LAST letter of the rearranged meaningful sentence: 'monsoon break the month this may'",
@@ -138,7 +193,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "The meaningful sentence is 'This monsoon may break the month' or 'The monsoon may break this month'. In 'The monsoon may break this month', last letter is H. In 'This month may break the monsoon', last letter is N. The intended standard DIPR key is 'This month may break the monsoon' (letter N)."
     },
     {
+      id: "oir_set_34_q10",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 10,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "odd_one_out",
       promptText: "Which one of the following words does not belong with the others?",
@@ -152,7 +213,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Sword, Dagger, and Bayonet are all edged melee weapons; a Rifle is a projectile firearm."
     },
     {
+      id: "oir_set_34_q11",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 11,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "number_analogy",
       promptText: "12 : 144 :: 15 : ——",
@@ -166,7 +233,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Square of 12 is 144. Square of 15 is 225."
     },
     {
+      id: "oir_set_34_q12",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 12,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "syllogism",
       promptText: "Statements: All officers are disciplined. Some officers are pilots.\nConclusions:\nI. Some pilots are disciplined.\nII. All pilots are disciplined.",
@@ -180,7 +253,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Because all officers are disciplined, the subset of officers who are pilots must also be disciplined. Hence only Conclusion I follows."
     },
     {
+      id: "oir_set_34_q13",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 13,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "direction_sense",
       promptText: "A cadet marches 4 km North, takes a right turn and marches 3 km. How far is he from his initial starting point?",
@@ -194,7 +273,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Pythagorean theorem: sqrt(4^2 + 3^2) = sqrt(16 + 9) = sqrt(25) = 5 km."
     },
     {
+      id: "oir_set_34_q14",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 14,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "blood_relation",
       promptText: "Pointing to a photograph of a gentleman, Rohan said: 'His mother is the only daughter of my mother.' How is Rohan related to that gentleman?",
@@ -208,7 +293,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "The only daughter of Rohan's mother is Rohan's sister. The gentleman's mother is Rohan's sister. Hence Rohan is the maternal uncle (Mama)."
     },
     {
+      id: "oir_set_34_q15",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 15,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "word_formation",
       promptText: "If the letters in the word 'DEFENCE' are rearranged alphabetically, which letter will occupy the fourth position?",
@@ -222,7 +313,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "The letters of DEFENCE sorted alphabetically are: C, D, E, E, E, F, N. The 4th letter is E."
     },
     {
+      id: "oir_set_34_q16",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 16,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "verbal_classification",
       promptText: "Which of the following numbers is the odd one out: 27, 64, 125, 144, 216",
@@ -236,7 +333,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "27 (3^3), 64 (4^3), 125 (5^3), and 216 (6^3) are perfect cubes. 144 is a square (12^2) but not a cube."
     },
     {
+      id: "oir_set_34_q17",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 17,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "statement_evaluation",
       promptText: "Write the number of the choice that applies best: 'Good discipline in an army unit increases the operational casualty rate in battle.'",
@@ -250,7 +353,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Good discipline and training minimizes chaotic errors, coordinates defensive cover, and reduces casualties."
     },
     {
+      id: "oir_set_34_q18",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 18,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "letter_coding",
       promptText: "In a certain military code, JAI HIND is written as KBJ IJOF. How is BRAVO written?",
@@ -264,7 +373,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Each letter is shifted by +1: B->C, R->S, A->B, V->W, O->P = CSBWP."
     },
     {
+      id: "oir_set_34_q19",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 19,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "word_analogy",
       promptText: "Captain is to Army as Flight Lieutenant is to ——",
@@ -278,7 +393,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Flight Lieutenant is an equivalent rank in the Indian Air Force."
     },
     {
+      id: "oir_set_34_q20",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 20,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "arithmetic_reasoning",
       promptText: "If 12 soldiers consume 36 rations in 6 days, how many rations will 18 soldiers consume in 10 days?",
@@ -292,7 +413,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "1 soldier in 1 day consumes 36 / (12 * 6) = 0.5 rations. 18 soldiers in 10 days consume 18 * 10 * 0.5 = 90 rations."
     },
     {
+      id: "oir_set_34_q21",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 21,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "direction_sense",
       promptText: "A cadet marches 10 metres North, turns right and marches 15 metres, turns right and marches 10 metres, then turns left and marches 5 metres. How far and in what direction is he from his starting point?",
@@ -306,7 +433,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "North and South cancel out (+10 - 10 = 0). East distance is 15 + 5 = 20 metres East."
     },
     {
+      id: "oir_set_34_q22",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 22,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "syllogism",
       promptText: "Statements: 1. All officers are leaders. 2. Some leaders are aviators. Which conclusion definitely follows?",
@@ -320,7 +453,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "If 'Some leaders are aviators', the converse 'Some aviators are leaders' is always unconditionally valid."
     },
     {
+      id: "oir_set_34_q23",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 23,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "letter_series",
       promptText: "Find the missing letter: B, E, I, N, T, ——",
@@ -334,7 +473,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "The increments are +3, +4, +5, +6, +7. T (20) + 7 = 27 = A (wrapping around alphabet)."
     },
     {
+      id: "oir_set_34_q24",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 24,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "word_classification",
       promptText: "Which one of the following ranks does NOT belong to the same armed service category?",
@@ -348,7 +493,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Commodore, Captain, and Commander are Indian Navy ranks; Brigadier is an Indian Army rank (equivalent to Commodore)."
     },
     {
+      id: "oir_set_34_q25",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 25,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "coding_decoding",
       promptText: "If GLORY is coded as 7-12-15-18-25, what is the code sum of BRAVE?",
@@ -362,7 +513,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "B(2) + R(18) + A(1) + V(22) + E(5) = 2 + 18 + 1 + 22 + 5 = 48."
     },
     {
+      id: "oir_set_34_q26",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 26,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "ranking_order",
       promptText: "In a passing-out parade squad of 45 cadets, Rohan is ranked 16th from the front. What is his position from the rear rank?",
@@ -376,7 +533,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Position from rear = Total (45) - Rank from front (16) + 1 = 30th."
     },
     {
+      id: "oir_set_34_q27",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 27,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "statement_evaluation",
       promptText: "Choose the evaluation choice for: 'All graduates who qualify the SSB interview are physically fit.'",
@@ -390,7 +553,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "SSB recommendation assesses OLQs and psychological fitness; medical examination (SMB/AMB) occurs afterwards where candidates may still be medically disqualified. Hence, False."
     },
     {
+      id: "oir_set_34_q28",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 28,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "word_analogy",
       promptText: "Barometer is to Atmospheric Pressure as Seismograph is to ——",
@@ -404,7 +573,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "A seismograph measures earthquake seismic vibrations."
     },
     {
+      id: "oir_set_34_q29",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 29,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "arithmetic_reasoning",
       promptText: "At a battalion mess party, 8 officers shake hands with each other exactly once. How many total handshakes took place?",
@@ -418,7 +593,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Formula: n*(n-1)/2 = 8*7/2 = 28 handshakes."
     },
     {
+      id: "oir_set_34_q30",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 30,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "letter_coding",
       promptText: "If VICTORY is written as CIVUROY, how is COURAGE written?",
@@ -432,7 +613,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "First 3 letters are reversed: COU -> UOC. Middle letter R stays in place. Last 3 AGE remain AGE -> UOCRAGE."
     },
     {
+      id: "oir_set_34_q31",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 31,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "word_reconstruction",
       promptText: "Rearrange the letters 'L E O P A R D' to form an animal and write its third letter.",
@@ -446,7 +633,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "The animal is LEOPARD. The 3rd letter is O."
     },
     {
+      id: "oir_set_34_q32",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 32,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "number_series",
       promptText: "Find the next number in the series: 4, 9, 19, 39, 79, ——",
@@ -460,7 +653,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Each number is multiplied by 2 and increased by 1: (79 * 2) + 1 = 159."
     },
     {
+      id: "oir_set_34_q33",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 33,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "verbal_classification",
       promptText: "Find the odd one out among the following words: Courage, Integrity, Hesitation, Loyalty",
@@ -474,7 +673,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Courage, Integrity, and Loyalty are positive military officer attributes (OLQs); Hesitation is a negative trait."
     },
     {
+      id: "oir_set_34_q34",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 34,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "direction_sense",
       promptText: "If South-East becomes North, North-East becomes West, and so on, what will West become?",
@@ -488,7 +693,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Every direction rotates 135 degrees anti-clockwise. West rotating 135 degrees anti-clockwise becomes South-East."
     },
     {
+      id: "oir_set_34_q35",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 35,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "blood_relations",
       promptText: "A is father of C and D is son of B. E is brother of A. If C is sister of D, how is B related to E?",
@@ -502,7 +713,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "A is father of C and D. Since D is son of B, B is the mother of C and D, and wife of A. Since E is brother of A, B is the sister-in-law (Bhabhi) of E."
     },
     {
+      id: "oir_set_34_q36",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 36,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "statement_evaluation",
       promptText: "Write the choice number that applies best: 'Physical courage alone is sufficient to make an outstanding combat officer.'",
@@ -516,7 +733,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "A combat officer requires moral courage, tactical intellect, decision-making, and emotional stability in addition to physical stamina. Hence, False."
     },
     {
+      id: "oir_set_34_q37",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 37,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "word_analogy",
       promptText: "Infantry is to Foot as Cavalry is to ——",
@@ -530,7 +753,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "Infantry fights on foot; cavalry historically fought on horseback and is modernised as armored corps."
     },
     {
+      id: "oir_set_34_q38",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 38,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "number_comparison",
       promptText: "Which is the second smallest number among: 84392, 84293, 84932, 84329",
@@ -544,7 +773,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "In ascending order: 84293 (smallest), 84329 (second smallest), 84392, 84932."
     },
     {
+      id: "oir_set_34_q39",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 39,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "letter_series",
       promptText: "Find the next pair of letters: AZ, BY, CX, DW, ——",
@@ -558,7 +793,13 @@ export const BOOKLET_34: OIRBooklet = {
       explanation: "First letter advances (+1: A, B, C, D -> E), second letter steps backwards (-1: Z, Y, X, W -> V). Hence EV."
     },
     {
+      id: "oir_set_34_q40",
+      source: "Authentic DIPR",
+      sourceBookletId: "oir-set-34",
+      sourceBookletName: "DIPR Official Booklet 34",
       questionNumber: 40,
+      difficulty: "medium",
+      tags: ["verbal", "logic"],
       type: "verbal",
       subType: "arithmetic_reasoning",
       promptText: "A convoy travels 120 km in 2 hours and 30 minutes. What is its average speed in km/h?",

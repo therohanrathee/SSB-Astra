@@ -25,7 +25,8 @@ import {
   Menu,
   Eye,
   Zap,
-  Target
+  Target,
+  BookOpen
 } from "lucide-react";
 import CrossedSwords from "@/components/CrossedSwords";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -38,12 +39,15 @@ import {
   BOOKLET_35,
   BOOKLET_34,
   BOOKLET_53,
+  DDE_TEST_01,
+  BYJUS_MOCK_01,
   calculateOirRating,
   OIRRatingDetails
 } from "@/data/oir";
 
 type TestState = "catalog" | "instruction" | "testing" | "scorecard";
 type ExamMode = "cbt" | "practice";
+type CatalogFilter = "all" | "authentic" | "dde" | "byjus" | "non_verbal" | "verbal";
 
 export default function OIRSimulatorPage() {
   const router = useRouter();
@@ -52,7 +56,7 @@ export default function OIRSimulatorPage() {
   const [testState, setTestState] = useState<TestState>("catalog");
   const [selectedBooklet, setSelectedBooklet] = useState<OIRBooklet>(BOOKLET_35);
   const [examMode, setExamMode] = useState<ExamMode>("cbt");
-  const [filterCategory, setFilterCategory] = useState<"all" | "verbal" | "non_verbal">("all");
+  const [catalogFilter, setCatalogFilter] = useState<CatalogFilter>("all");
 
   // CBT Live Engine States
   const [currentIdx, setCurrentIdx] = useState<number>(0);
@@ -210,15 +214,20 @@ export default function OIRSimulatorPage() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  const currentQuestion = selectedBooklet.questions[currentIdx];
+  const currentQuestion: OIRQuestion | undefined = selectedBooklet.questions[currentIdx];
   const currentQNum = currentQuestion ? currentQuestion.questionNumber : 1;
   const isCurrentMarked = markedForReview.has(currentQNum);
   const isCurrentAnswered = userAnswers[currentQNum] !== undefined;
 
   // Filtered Booklets for Catalog
   const filteredBooklets = ALL_OIR_BOOKLETS.filter((b) => {
-    if (filterCategory === "all") return true;
-    return b.category === filterCategory;
+    if (catalogFilter === "all") return true;
+    if (catalogFilter === "authentic") return b.source === "Authentic DIPR";
+    if (catalogFilter === "dde") return b.source === "DDE";
+    if (catalogFilter === "byjus") return b.source === "Byjus";
+    if (catalogFilter === "non_verbal") return b.category === "non_verbal";
+    if (catalogFilter === "verbal") return b.category === "verbal";
+    return true;
   });
 
   return (
@@ -312,7 +321,7 @@ export default function OIRSimulatorPage() {
 
               <div className="flex items-center gap-2 text-xs font-bold text-[var(--primary-accent)] uppercase tracking-wider">
                 <Shield className="w-4 h-4 text-[var(--gold-accent)]" />
-                <span>OFFICIAL ARMED FORCES DIPR OIR BATTERY</span>
+                <span>MODULAR ARMED FORCES DIPR OIR BATTERY</span>
               </div>
 
               <h1 className="text-xl sm:text-2xl font-black tracking-wide text-[var(--fg-primary)]">
@@ -325,36 +334,69 @@ export default function OIRSimulatorPage() {
 
               <div className="flex items-center gap-3 pt-2 flex-wrap text-[11px] font-mono">
                 <span className="px-2.5 py-1 rounded-lg bg-[var(--canvas-surface)] border border-[var(--canvas-border)] text-emerald-500 font-bold flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> 100% Authentic Booklets
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Authentic Sets + DDE + Byju&apos;s
                 </span>
                 <span className="px-2.5 py-1 rounded-lg bg-[var(--canvas-surface)] border border-[var(--canvas-border)] text-[var(--gold-accent)] font-bold flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" /> Official Sectional Timers
+                  <Clock className="w-3.5 h-3.5" /> Strict Official Timers
                 </span>
                 <span className="px-2.5 py-1 rounded-lg bg-[var(--canvas-surface)] border border-[var(--canvas-border)] text-[var(--primary-accent)] font-bold flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5" /> Zero Set Mixing
+                  <Layers className="w-3.5 h-3.5" /> Modular Question Building Blocks
                 </span>
               </div>
             </div>
 
             {/* Filter Tabs */}
             <div className="flex items-center justify-between border-b border-[var(--canvas-border)] pb-3 flex-wrap gap-2">
-              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)]">
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)] flex-wrap">
                 <button
                   type="button"
-                  onClick={() => setFilterCategory("all")}
+                  onClick={() => setCatalogFilter("all")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    filterCategory === "all"
+                    catalogFilter === "all"
                       ? "bg-[var(--primary-accent)] text-white shadow-sm"
                       : "text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
                   }`}
                 >
-                  All Authentic Sets ({ALL_OIR_BOOKLETS.length})
+                  All Sets ({ALL_OIR_BOOKLETS.length})
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFilterCategory("non_verbal")}
+                  onClick={() => setCatalogFilter("authentic")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    filterCategory === "non_verbal"
+                    catalogFilter === "authentic"
+                      ? "bg-[var(--primary-accent)] text-white shadow-sm"
+                      : "text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
+                  }`}
+                >
+                  Authentic DIPR Sets
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCatalogFilter("dde")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    catalogFilter === "dde"
+                      ? "bg-[var(--primary-accent)] text-white shadow-sm"
+                      : "text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
+                  }`}
+                >
+                  DDE Sets
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCatalogFilter("byjus")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    catalogFilter === "byjus"
+                      ? "bg-[var(--primary-accent)] text-white shadow-sm"
+                      : "text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
+                  }`}
+                >
+                  Byju&apos;s Mocks
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCatalogFilter("non_verbal")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    catalogFilter === "non_verbal"
                       ? "bg-[var(--primary-accent)] text-white shadow-sm"
                       : "text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
                   }`}
@@ -363,14 +405,14 @@ export default function OIRSimulatorPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFilterCategory("verbal")}
+                  onClick={() => setCatalogFilter("verbal")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    filterCategory === "verbal"
+                    catalogFilter === "verbal"
                       ? "bg-[var(--primary-accent)] text-white shadow-sm"
                       : "text-[var(--fg-secondary)] hover:text-[var(--fg-primary)]"
                   }`}
                 >
-                  Verbal & Analytical
+                  Verbal Reasoning
                 </button>
               </div>
 
@@ -391,16 +433,22 @@ export default function OIRSimulatorPage() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--gold-accent)]/15 text-[var(--gold-accent)] font-bold border border-[var(--gold-accent)]/30">
-                        SET {booklet.bookletNumber}
+                        {booklet.source.toUpperCase()} • {booklet.bookletNumber}
                       </span>
                       <span
                         className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
                           booklet.category === "non_verbal"
                             ? "bg-purple-500/15 text-purple-400 border border-purple-500/30"
-                            : "bg-blue-500/15 text-blue-400 border border-blue-500/30"
+                            : booklet.category === "verbal"
+                            ? "bg-blue-500/15 text-blue-400 border border-blue-500/30"
+                            : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
                         }`}
                       >
-                        {booklet.category === "non_verbal" ? "Non-Verbal & Spatial" : "Verbal Reasoning"}
+                        {booklet.category === "non_verbal"
+                          ? "Non-Verbal / Spatial"
+                          : booklet.category === "verbal"
+                          ? "Verbal Reasoning"
+                          : "Combined Battery"}
                       </span>
                     </div>
 
@@ -472,7 +520,7 @@ export default function OIRSimulatorPage() {
                   Standard 2-Booklet Combined SSB Screening Battery
                 </h3>
                 <p className="text-xs text-[var(--fg-secondary)] font-sans max-w-2xl leading-relaxed">
-                  In actual SSB boards, candidates sit for <strong>Set 1 (Verbal, 40 Qs)</strong> followed immediately by <strong>Set 2 (Non-Verbal, 39 Qs)</strong> with a 1-minute instructions transition. Your final DIPR OIR Rating is derived from the composite score across both sets.
+                  In actual SSB boards, candidates sit for <strong>Set 1 (Verbal, 40 Qs)</strong> followed immediately by <strong>Set 2 (Non-Verbal, 40 Qs)</strong> with a 1-minute instructions transition. Your final DIPR OIR Rating is derived from the composite score across both sets.
                 </p>
               </div>
 
@@ -534,8 +582,8 @@ export default function OIRSimulatorPage() {
                     3
                   </div>
                   <div>
-                    <span className="font-bold text-[var(--fg-primary)] block">Dynamic Options Structure:</span>
-                    Unlike conventional exams with a fixed 4 choices, authentic DIPR booklets feature <strong>2 choices</strong> (Yes/No), <strong>3 choices</strong> (Cubes 1/2/3), <strong>4 choices</strong>, or <strong>5 choices</strong> depending on the question subtype.
+                    <span className="font-bold text-[var(--fg-primary)] block">Modular Figure Graphics & Dynamic Choices:</span>
+                    All non-verbal spatial cube configurations are accurately projected in 3D isometric view. Options display the exact candidate cubes (Cube 1, Cube 2, Cube 3) with their respective symbols so you can compare and mark directly.
                   </div>
                 </div>
 
@@ -587,7 +635,7 @@ export default function OIRSimulatorPage() {
         )}
 
         {/* VIEW C: ACTIVE CBT TEST ENGINE (TESTBOOK STYLE) */}
-        {testState === "testing" && (
+        {testState === "testing" && currentQuestion && (
           <div className="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-[1500px] w-full mx-auto">
             {/* LEFT / MAIN VIEWPORT (70%) */}
             <div className="flex-1 flex flex-col justify-between p-4 sm:p-6 overflow-y-auto border-r border-[var(--canvas-border)] space-y-6">
@@ -600,6 +648,9 @@ export default function OIRSimulatorPage() {
                     </span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] border border-[var(--primary-accent)]/30 uppercase">
                       {currentQuestion.subType.replace(/_/g, " ")}
+                    </span>
+                    <span className="text-[9px] px-2 py-0.5 rounded bg-[var(--canvas-surface-subtle)] text-[var(--fg-muted)] border border-[var(--canvas-border)] hidden sm:inline-block">
+                      ID: {currentQuestion.id}
                     </span>
                   </div>
 
@@ -616,55 +667,88 @@ export default function OIRSimulatorPage() {
                     {currentQuestion.promptText}
                   </h3>
 
-                  {/* Non-Verbal Isometric Cube Visualization if applicable */}
-                  {currentQuestion.type === "non_verbal" && (
-                    <div className="p-4 rounded-xl bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)] flex flex-wrap items-center justify-center gap-6">
-                      {/* Check if Q4, Q6, Q8, etc. Cube Comparison */}
-                      {currentQuestion.subType === "cube_comparison" && (
-                        <>
-                          <CubeRenderer
-                            label="Cube A"
-                            faces={{ top: "△", left: "●", right: "■" }}
-                            size={120}
-                          />
-                          <div className="text-xs font-mono text-[var(--fg-muted)] font-bold">VS</div>
-                          <CubeRenderer
-                            label="Cube B"
-                            faces={{ top: "●", left: "■", right: "△" }}
-                            size={120}
-                          />
-                        </>
-                      )}
-
-                      {/* Cube Group Classification (Group A vs Group B) */}
-                      {currentQuestion.subType === "cube_group_classification" && (
-                        <div className="w-full space-y-3">
-                          <div className="grid grid-cols-2 gap-4 pb-2 border-b border-[var(--canvas-border)]">
-                            <div className="text-center p-2 rounded-lg bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                              <span className="text-[10px] font-bold text-[var(--gold-accent)] block mb-1">GROUP A</span>
-                              <div className="flex justify-center gap-2">
-                                <CubeRenderer faces={{ top: "2", left: "4", right: "6" }} size={75} />
-                                <CubeRenderer faces={{ top: "6", left: "2", right: "4" }} size={75} />
+                  {/* Dynamic Problem Figures from Question Data */}
+                  {currentQuestion.figures && currentQuestion.figures.type !== "none" && (
+                    <div className="p-4 rounded-xl bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)] space-y-4">
+                      {/* Subtype A: Cube Group Classification (Group A vs Group B) */}
+                      {currentQuestion.figures.type === "cubes_group" && (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* Group A Box */}
+                            <div className="p-3.5 rounded-xl bg-[var(--canvas-surface)] border border-[var(--canvas-border)] text-center space-y-2 shadow-sm">
+                              <span className="text-xs font-black text-[var(--gold-accent)] block uppercase tracking-wider">
+                                GROUP A
+                              </span>
+                              <div className="flex flex-wrap items-center justify-center gap-3">
+                                {currentQuestion.figures.groupA?.map((cube, idx) => (
+                                  <CubeRenderer
+                                    key={idx}
+                                    label={cube.label}
+                                    faces={cube.faces}
+                                    size={80}
+                                  />
+                                ))}
                               </div>
                             </div>
-                            <div className="text-center p-2 rounded-lg bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                              <span className="text-[10px] font-bold text-[var(--fg-muted)] block mb-1">GROUP B</span>
-                              <div className="flex justify-center gap-2">
-                                <CubeRenderer faces={{ top: "1", left: "3", right: "5" }} size={75} />
-                                <CubeRenderer faces={{ top: "5", left: "1", right: "3" }} size={75} />
+
+                            {/* Group B Box */}
+                            <div className="p-3.5 rounded-xl bg-[var(--canvas-surface)] border border-[var(--canvas-border)] text-center space-y-2 shadow-sm">
+                              <span className="text-xs font-black text-[var(--fg-muted)] block uppercase tracking-wider">
+                                GROUP B
+                              </span>
+                              <div className="flex flex-wrap items-center justify-center gap-3">
+                                {currentQuestion.figures.groupB?.map((cube, idx) => (
+                                  <CubeRenderer
+                                    key={idx}
+                                    label={cube.label}
+                                    faces={cube.faces}
+                                    size={80}
+                                  />
+                                ))}
                               </div>
                             </div>
                           </div>
-                          <p className="text-[10px] text-[var(--fg-muted)] text-center font-sans">
+
+                          <p className="text-[11px] text-[var(--fg-muted)] text-center font-sans">
                             Identify the orientation property distinguishing Group A and pick the candidate cube below.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Subtype B: Cube Comparison (Cube 1 vs Cube 2) */}
+                      {currentQuestion.figures.type === "cubes_compare" && (
+                        <div className="flex flex-col items-center justify-center py-2 space-y-2">
+                          <div className="flex items-center justify-center gap-6 sm:gap-12">
+                            {currentQuestion.figures.cubeA && (
+                              <CubeRenderer
+                                label={currentQuestion.figures.cubeA.label || "Cube 1"}
+                                faces={currentQuestion.figures.cubeA.faces}
+                                size={110}
+                              />
+                            )}
+
+                            <div className="px-3 py-1 rounded-full bg-[var(--canvas-surface)] border border-[var(--canvas-border)] text-xs font-black text-[var(--gold-accent)] shadow-sm">
+                              VS
+                            </div>
+
+                            {currentQuestion.figures.cubeB && (
+                              <CubeRenderer
+                                label={currentQuestion.figures.cubeB.label || "Cube 2"}
+                                faces={currentQuestion.figures.cubeB.faces}
+                                size={110}
+                              />
+                            )}
+                          </div>
+                          <p className="text-[11px] text-[var(--fg-muted)] text-center font-sans">
+                            Determine if Cube 1 and Cube 2 are rotated views of the identical cube.
                           </p>
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* Dynamic Options List */}
-                  <div className="space-y-2.5 pt-2">
+                  {/* Dynamic Options List with Embedded Visual Cube Renders */}
+                  <div className="space-y-3 pt-2">
                     {currentQuestion.options.map((opt) => {
                       const isSelected = userAnswers[currentQNum] === opt.key;
 
@@ -673,15 +757,16 @@ export default function OIRSimulatorPage() {
                           key={opt.key}
                           type="button"
                           onClick={() => handleSelectOption(opt.key)}
-                          className={`w-full p-3.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer group ${
+                          className={`w-full p-3.5 sm:p-4 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer group ${
                             isSelected
-                              ? "border-[var(--primary-accent)] bg-[var(--primary-accent)]/10 shadow-sm"
+                              ? "border-[var(--primary-accent)] bg-[var(--primary-accent)]/10 shadow-md ring-1 ring-[var(--primary-accent)]"
                               : "border-[var(--canvas-border)] bg-[var(--canvas-surface)] hover:border-[var(--fg-secondary)]/50 hover:bg-[var(--canvas-surface-subtle)]"
                           }`}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3.5 flex-wrap sm:flex-nowrap">
+                            {/* Option Key Badge */}
                             <div
-                              className={`w-7 h-7 rounded-lg border flex items-center justify-center font-mono font-bold text-xs transition-colors ${
+                              className={`w-7 h-7 rounded-lg border flex items-center justify-center font-mono font-bold text-xs shrink-0 transition-colors ${
                                 isSelected
                                   ? "border-[var(--primary-accent)] bg-[var(--primary-accent)] text-white"
                                   : "border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] text-[var(--fg-secondary)] group-hover:border-[var(--primary-accent)]/50"
@@ -689,19 +774,31 @@ export default function OIRSimulatorPage() {
                             >
                               {opt.key}
                             </div>
-                            <span className="text-xs sm:text-sm text-[var(--fg-primary)] font-medium">
-                              {opt.text}
-                            </span>
+
+                            {/* Render Cube Drawing if Option Contains a 3D Cube */}
+                            {opt.cubeFaces && (
+                              <div className="shrink-0 p-1 bg-[var(--canvas-surface-subtle)] rounded-lg border border-[var(--canvas-border)] shadow-sm">
+                                <CubeRenderer faces={opt.cubeFaces} size={65} highlight={isSelected} />
+                              </div>
+                            )}
+
+                            {/* Option Text Label */}
+                            {opt.text && (
+                              <span className="text-xs sm:text-sm text-[var(--fg-primary)] font-semibold">
+                                {opt.text}
+                              </span>
+                            )}
                           </div>
 
+                          {/* Selection Indicator Dot */}
                           <div
-                            className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                            className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
                               isSelected
-                                ? "border-[var(--primary-accent)] bg-[var(--primary-accent)]"
+                                ? "border-[var(--primary-accent)] bg-[var(--primary-accent)] text-white"
                                 : "border-[var(--canvas-border)]"
                             }`}
                           >
-                            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                            {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
                           </div>
                         </button>
                       );
@@ -1098,6 +1195,9 @@ export default function OIRSimulatorPage() {
                             <span className="text-[10px] px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)] text-[var(--fg-secondary)]">
                               {q.subType.replace(/_/g, " ")}
                             </span>
+                            <span className="text-[9px] text-[var(--fg-muted)]">
+                              ID: {q.id}
+                            </span>
                           </div>
 
                           <span
@@ -1120,7 +1220,7 @@ export default function OIRSimulatorPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                           {q.options.map((opt) => {
                             const isUserPick = userAns === opt.key;
-                            const isAnswerKey = opt.key === q.correctOption;
+                            const isAnswerKey = opt.key.trim().toLowerCase() === q.correctOption.trim().toLowerCase();
 
                             let optBorder = "border-[var(--canvas-border)] bg-[var(--canvas-surface)]";
                             if (isAnswerKey) {
@@ -1136,7 +1236,12 @@ export default function OIRSimulatorPage() {
                               >
                                 <div className="flex items-center gap-2">
                                   <span className="font-mono font-bold">({opt.key})</span>
-                                  <span>{opt.text}</span>
+                                  {opt.cubeFaces && (
+                                    <div className="p-0.5 bg-[var(--canvas-surface-subtle)] rounded border border-[var(--canvas-border)]">
+                                      <CubeRenderer faces={opt.cubeFaces} size={45} />
+                                    </div>
+                                  )}
+                                  {opt.text && <span>{opt.text}</span>}
                                 </div>
                                 {isAnswerKey && <Check className="w-3.5 h-3.5 text-emerald-500" />}
                                 {!isAnswerKey && isUserPick && <X className="w-3.5 h-3.5 text-red-400" />}
