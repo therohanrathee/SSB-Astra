@@ -200,15 +200,39 @@ flowchart TD
         - Reconstructs blurry scanned booklet figures into crisp digital vector SVGs and high-resolution snippets, preserving exact authentic booklet numbers (Set 34, Set 35, Set 53, Set 54, Set 71, Set 75D, Set 6) with their official printed question counts and countdown timers.
         - Testbook-style CBT interface featuring a live Question Palette on the right (Answered, Not Answered, Marked for Review, Answered & Marked for Review) and question viewport on the left.
   - **Next Step (Phase 4):** Next developer/agent should launch the Stage-1 Computerised Cognitive & Psychometric Screening System (CSSS + OPAM engines), utilizing the Web Audio API synthesizer and micro-timers.
-- [ ] **Phase 4: Stage-1 Test Engine (CSSS + OPAM)**
+- [x] **Phase 4: Stage-1 Screening Engine (Legacy OIR + PPDT & CBT Simulator) (COMPLETED & VERIFIED)**
+  - **Location & Architecture:**
+    - Dual-Column Screening Wing embedded seamlessly inside Dashboard (`/dashboard` with `activeTab === "screening"`) and standalone at `/screening`.
+    - Authentic operational advisory: *Legacy System (OIR + PPDT)* on the left (active across all boards) vs *New System (CSSS + OPAM)* on the right (trial batches).
+  - **CBT OIR Simulator (`/screening/oir`):**
+    - High-fidelity **Testbook-style CBT examination interface** eliminating low-res scanned PDF degradations.
+    - Digitized authentic DIPR booklets: Booklet 35 (Non-Verbal / Spatial, 39 Qs, 17 mins), Booklet 34 (Verbal Reasoning, 40 Qs, 20 mins), Booklet 53 (Verbal & Analytical, 40 Qs, 18 mins).
+    - **Dynamic Option Schemas:** Full mathematical support for 2-choice (`Yes/No`), 3-choice (`Cubes 1/2/3`), 4-choice, and 5-choice question structures.
+    - **Crisp Vector Isometric Cubes:** Replaced blurry photocopy scans with a programmatic 3D SVG isometric cube renderer (`CubeRenderer.tsx`) for cube comparison and group classification.
+    - **Testbook-Style Question Palette:** Numbered 1-to-N grid with live status indicators:
+      - Attempted/Answered (Green)
+      - Not Attempted/Unanswered (Red/Orange)
+      - Marked for Review (Purple)
+      - Answered & Marked for Review (Purple with Green badge)
+      - Not Visited (Slate/Muted)
+    - **Test Controls:** Section countdown timer with auto-submit on `00:00`, `Mark for Review & Next`, `Clear Response`, `Previous`, `Save & Next`, and `Submit Test` confirmation modal with unanswered item warnings.
+    - **Official DIPR OIR Rating Engine (`calculateOirRating`):** Translates raw test scores into official DIPR grades (OIR 1 to 5) with calibrated Stage-1 screen-in probability meters and senior assessor psychological feedback.
+  - **PPDT Simulator (`/screening/ppdt`):**
+    - Printable official DIPR answer sheet format and on-screen demo guide for drawing the sheet on blank A4 paper.
+    - 30-second authentic projection phase with hazy/blurred ambiguous social silhouette scenes and progress timer.
+    - 4-minute strict writing phase with live minute breakdown and Web Audio API synthesizer for the official end-of-test buzzer.
+    - **Post-Buzzer Submission Latency Tracker:** Live stopwatch tracking seconds taken to submit after the buzzer ($>30$ seconds latency flags potential continued writing in psychological assessment).
+    - **Cross-Device QR Live Sync:** Desktop renders dynamic QR code (`/screening/ppdt/mobile-upload?session=...`), allowing candidates to snap their physical story sheet on their phone with automatic, real-time reflection on desktop.
+    - **AI Multimodal Evaluation:** Analyzes character perception consistency, action theme constructiveness, 15 OLQ mapping, and delivers 1-minute individual narration strategy.
+- [ ] **Phase 5: Stage-1 Trial Battery (CSSS + OPAM Micro-Timer Runner)**
   - Micro-timer runner (16-30s auto-advancing, no back button).
   - Web Audio API integration for tone and phonetic callouts.
   - OPAM Likert & Situational question runner with cross-validation pair tracking.
-- [ ] **Phase 5: Stage-2 Psychology Suite (TAT, WAT, SRT, SD)**
+- [ ] **Phase 6: Stage-2 Psychology Suite (TAT, WAT, SRT, SD)**
   - Slide projection timers, auto-advancing WAT words, SRT response recorder.
-- [ ] **Phase 6: GTO Tactical Planning (GPE)**
+- [ ] **Phase 7: GTO Tactical Planning (GPE)**
   - Interactive map scenarios, resources, constraints, and plan submission.
-- [ ] **Phase 7: Scoring & Composite 15-OLQ Intelligence Engine**
+- [ ] **Phase 8: Scoring & Composite 15-OLQ Intelligence Engine**
 
 ---
 
