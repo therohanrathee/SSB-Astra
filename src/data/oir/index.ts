@@ -1,12 +1,38 @@
 import { OIRBooklet, OIRQuestion, OIRTestResult } from "./types";
 import { BOOKLET_35 } from "./booklet35";
-import { BOOKLET_34 } from "./booklet34";
 import { BOOKLET_53 } from "./booklet53";
+import { BOOKLET_54C } from "./booklet54c";
+import { BOOKLET_75D } from "./booklet75d";
 import { DDE_TEST_01 } from "./booklets/dde_test01";
-import { BYJUS_MOCK_01 } from "./booklets/byjus_mock01";
+import { DDE_TEST_02 } from "./booklets/dde_test02";
+import { DDE_TEST_03 } from "./booklets/dde_test03";
+import { SSBCRACK_PART_1 } from "./booklets/ssbcrack_part1";
+import { SSBCRACK_PART_2 } from "./booklets/ssbcrack_part2";
+import { BYJUS_MOCK_02 } from "./booklets/byjus_mock02";
+import { BYJUS_MOCK_03 } from "./booklets/byjus_mock03";
+import { BYJUS_MOCK_05 } from "./booklets/byjus_mock05";
+import { BYJUS_MOCK_11 } from "./booklets/byjus_mock11";
+import { BYJUS_MOCK_12 } from "./booklets/byjus_mock12";
+import { BYJUS_NV_01 } from "./booklets/byjus_nv01";
 
 export * from "./types";
-export { BOOKLET_35, BOOKLET_34, BOOKLET_53, DDE_TEST_01, BYJUS_MOCK_01 };
+export {
+  BOOKLET_35,
+  BOOKLET_53,
+  BOOKLET_54C,
+  BOOKLET_75D,
+  DDE_TEST_01,
+  DDE_TEST_02,
+  DDE_TEST_03,
+  SSBCRACK_PART_1,
+  SSBCRACK_PART_2,
+  BYJUS_MOCK_02,
+  BYJUS_MOCK_03,
+  BYJUS_MOCK_05,
+  BYJUS_MOCK_11,
+  BYJUS_MOCK_12,
+  BYJUS_NV_01,
+};
 
 /**
  * Universal Catalog of All Curated OIR Test Booklets
@@ -14,10 +40,20 @@ export { BOOKLET_35, BOOKLET_34, BOOKLET_53, DDE_TEST_01, BYJUS_MOCK_01 };
  */
 export const ALL_OIR_BOOKLETS: OIRBooklet[] = [
   BOOKLET_35,
-  BOOKLET_34,
   BOOKLET_53,
+  BOOKLET_54C,
+  BOOKLET_75D,
   DDE_TEST_01,
-  BYJUS_MOCK_01
+  DDE_TEST_02,
+  DDE_TEST_03,
+  SSBCRACK_PART_1,
+  SSBCRACK_PART_2,
+  BYJUS_MOCK_02,
+  BYJUS_MOCK_03,
+  BYJUS_MOCK_05,
+  BYJUS_MOCK_11,
+  BYJUS_MOCK_12,
+  BYJUS_NV_01,
 ];
 
 /**
@@ -27,10 +63,20 @@ export const ALL_OIR_BOOKLETS: OIRBooklet[] = [
  */
 export const ALL_OIR_QUESTIONS: OIRQuestion[] = [
   ...BOOKLET_35.questions,
-  ...BOOKLET_34.questions,
   ...BOOKLET_53.questions,
+  ...BOOKLET_54C.questions,
+  ...BOOKLET_75D.questions,
   ...DDE_TEST_01.questions,
-  ...BYJUS_MOCK_01.questions
+  ...DDE_TEST_02.questions,
+  ...DDE_TEST_03.questions,
+  ...SSBCRACK_PART_1.questions,
+  ...SSBCRACK_PART_2.questions,
+  ...BYJUS_MOCK_02.questions,
+  ...BYJUS_MOCK_03.questions,
+  ...BYJUS_MOCK_05.questions,
+  ...BYJUS_MOCK_11.questions,
+  ...BYJUS_MOCK_12.questions,
+  ...BYJUS_NV_01.questions,
 ];
 
 /**

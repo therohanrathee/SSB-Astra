@@ -157,7 +157,7 @@ export default function ScreeningHubPage() {
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-sm active:scale-95"
                 >
                   <PlayCircle className="w-4 h-4" />
-                  <span>Launch CBT OIR Simulator</span>
+                  <span>Start OIR Test</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>

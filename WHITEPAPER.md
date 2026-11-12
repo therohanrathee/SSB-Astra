@@ -206,16 +206,31 @@ flowchart TD
     - Authentic operational advisory: *Legacy System (OIR + PPDT)* on the left (active across all boards) vs *New System (CSSS + OPAM)* on the right (trial batches).
   - **CBT OIR Simulator (`/screening/oir`):**
     - High-fidelity **Testbook-style CBT examination interface** eliminating low-res scanned PDF degradations.
+    - **Catalog UI & Naming Standardization (`src/app/screening/oir/page.tsx`):**
+      - Combined top hero card explaining the actual SSB Day-1 Stage-1 OIR procedure (Set 1 Verbal + Set 2 Non-Verbal back-to-back, ~20-30s per question, zero negative marking, OIR-1 to OIR-5 composite grading) with the `LAUNCH FULL 2-SET BATTERY` CTA button.
+      - Center-aligned **3-tab filter bar** (`All`, `Verbal`, `Non-Verbal`) without vendor/source filter tabs (`Authentic`, `DDE`, `Byju's`).
+      - Uniform user-facing booklet naming via `getBookletDisplayMeta`: board sets display as `DIPR Booklet No. {x}` (`35`, `53`, `54C`, `75D`) and practice mocks display sequentially as `Mock Booklet 1` through `Mock Booklet 11`, while preserving full source provenance internally in each building-block question.
     - **Modular Building-Block Question Architecture (`types.ts` & `src/data/oir/booklets/`):**
       - Every single question is an independent, typed building block storing: unique ID (`id`), source (`source`), booklet ID & name (`sourceBookletId`, `sourceBookletName`), sequential number, type (`verbal` / `non_verbal`), subtype, difficulty, tags, prompt text, complete figure specifications (`groupA`, `groupB`, `cubeA`, `cubeB`), dynamic options with embedded cube face models (`cubeFaces`), correct key, and detailed solution.
-    - **Expanded Question Banks (Authentic DIPR + DDE + Byju's):**
-      - **Authentic DIPR Booklet 35 (INT TEST 4):** 40 authentic questions precisely transcribed from physical board scans. Group A, Group B, and candidate option cubes (Cube 1, Cube 2, Cube 3) render true 3D isometric projections with exact symbols.
-      - **Authentic DIPR Booklet 34 (Verbal Reasoning):** 40 questions (Analogies, coding, deductions & series).
-      - **Authentic DIPR Booklet 53 (Verbal & Analytical):** 40 questions (SSB Bhopal, Allahabad, Bengaluru).
-      - **DDE Practice Test 01:** 40 questions from Defence Direct Education covering Cube Comparison (Q1-15), Set Matching (Q16-25), and logic.
-      - **Byju's Exam Prep Benchmark Mock 01:** 40 questions covering spatial rotation, analogies, and classification.
+    - **Expanded Question Banks — 15 Curated Booklets, 752 Verified Questions (`src/data/oir/index.ts`):**
+      - Removed legacy placeholder stubs (`booklet34.ts`, `byjus_mock01.ts`) and excluded duplicate PDF `OIR Test 03.pdf`.
+      - **Authentic DIPR Booklets (4 booklets, 176 Qs):**
+        - [`booklet35.ts`](./src/data/oir/booklet35.ts) (`DIPR-35` — 39 Qs, 17m, mixed V:20/NV:19): Original 3D cube groups, comparisons, and verbal reasoning with illegible Q16 preserved as omitted.
+        - [`booklet53.ts`](./src/data/oir/booklet53.ts) (`DIPR-53` — 49 Qs, 20m, mixed V:24/NV:25): SSB Bhopal / Allahabad / Bengaluru authentic verbal & analytical set.
+        - [`booklet54c.ts`](./src/data/oir/booklet54c.ts) (`DIPR-54C` — 42 Qs, 18m, mixed V:21/NV:21): DIPR Booklet 54C / Int Test 6 (illegible Q5–12 preserved as omitted).
+        - [`booklet75d.ts`](./src/data/oir/booklet75d.ts) (`DIPR-75D` — 46 Qs, 20m, mixed V:23/NV:23): DIPR Booklet 75D / 71 (illegible Q42–45 preserved as omitted).
+      - **DDE & SSBCrack Practice Series (5 booklets, 336 Qs):**
+        - [`booklets/dde_test01.ts`](./src/data/oir/booklets/dde_test01.ts) (`DDE-01` — 100 Qs, 40m, mixed V:63/NV:37).
+        - [`booklets/dde_test02.ts`](./src/data/oir/booklets/dde_test02.ts) (`DDE-02` — 50 Qs, 20m, mixed V:28/NV:22): DDE / SSBCrack 20-Set Set 1.
+        - [`booklets/dde_test03.ts`](./src/data/oir/booklets/dde_test03.ts) (`DDE-03` — 50 Qs, 20m, mixed V:28/NV:22): DDE / SSBCrack 20-Set Set 2 from `OIR Test 02.pdf`, with isometric cube groups, Class A/B dual-select figures, and verified solutions.
+        - [`booklets/ssbcrack_part1.ts`](./src/data/oir/booklets/ssbcrack_part1.ts) (`SSBCrack-01` — 75 Qs, 30m, mixed V:65/NV:10) & [`booklets/ssbcrack_part2.ts`](./src/data/oir/booklets/ssbcrack_part2.ts) (`SSBCrack-02` — 61 Qs, 25m, mixed V:51/NV:10).
+      - **Byju's Exam Prep Mock Series (6 booklets, 240 Qs):**
+        - Verbal Mocks: [`byjus_mock02.ts`](./src/data/oir/booklets/byjus_mock02.ts) (`BYJUS-02`, 40 Qs, 18m), [`byjus_mock03.ts`](./src/data/oir/booklets/byjus_mock03.ts) (`BYJUS-03`, 40 Qs, 18m), [`byjus_mock05.ts`](./src/data/oir/booklets/byjus_mock05.ts) (`BYJUS-05`, 40 Qs, 18m), [`byjus_mock11.ts`](./src/data/oir/booklets/byjus_mock11.ts) (`BYJUS-11`, 40 Qs, 18m), [`byjus_mock12.ts`](./src/data/oir/booklets/byjus_mock12.ts) (`BYJUS-12`, 40 Qs, 18m, V:37/NV:3).
+        - Non-Verbal Mock: [`byjus_nv01.ts`](./src/data/oir/booklets/byjus_nv01.ts) (`BYJUS-NV-01`, 40 Qs, 20m, NV:40) featuring affine-projected isometric dice cubes (`isoCubeSvg`), cross nets (`diceNetCross`), Venn/folding/mirror/water-image vector graphics, and visually verified geometric distractors.
+      - **Shared SVG Vector Engine (`src/data/oir/svgHelpers.ts`):** Theme-aware (`currentColor`) vector generators (`svgCanvas`, `svgFramed`, `makeHatch`, `svgSeries`, `svgClassAB`, `svgAnalogy`) paired with multi-select grading (`selectCount: 2`) in `src/data/oir/answerUtils.ts`.
+      - **Next Agent Handoff:** Phase 4 OIR corpus, SVG visual fidelity, and production build are complete and validated (0 errors across all 752 questions). Next agent should pick up **Phase 5: Stage-1 Trial Battery (CSSS + OPAM Micro-Timer Runner)**.
     - **Dynamic Option Schemas:** Full mathematical support for 2-choice (`Yes/No`), 3-choice (`Cubes 1/2/3` with 3D models embedded in option buttons), 4-choice, and 5-choice question structures.
-    - **Crisp Vector Isometric Cubes (`CubeRenderer.tsx`):** Programmatic 3D SVG isometric cube renderer supporting dynamic text scaling, Unicode shapes (`○`, `●`, `✕`, `△`, `▲`, `□`, `■`, `↑`, `→`, `↘`, `✉`, `⇦`, `θ`, `ɣ`), and dark/light mode switching.
+    - **Crisp Vector Isometric Cubes & Shared Figure Renderer (`CubeRenderer.tsx`, `QuestionFigures.tsx`):** Programmatic 3D SVG isometric cube renderer supporting dynamic text scaling, Unicode shapes (`○`, `●`, `✕`, `△`, `▲`, `□`, `■`, `↑`, `→`, `↘`, `✉`, `⇦`, `θ`, `ɣ`), and dark/light mode switching — rendered consistently in both the live CBT viewport and post-submission solution cards.
     - **Testbook-Style Question Palette:** Numbered 1-to-N grid with live status indicators:
       - Attempted/Answered (Green)
       - Not Attempted/Unanswered (Red/Orange)

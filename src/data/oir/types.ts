@@ -5,11 +5,23 @@ export interface CubeFaceConfig {
 }
 
 export interface QuestionFigureConfig {
-  type: "cubes_group" | "cubes_compare" | "dice" | "pattern" | "none";
+  type:
+    | "cubes_group"
+    | "cubes_sets_3"
+    | "cubes_compare"
+    | "svg"
+    | "image"
+    | "dice"
+    | "pattern"
+    | "none";
   groupA?: { label?: string; faces: CubeFaceConfig }[];
   groupB?: { label?: string; faces: CubeFaceConfig }[];
+  groupC?: { label?: string; faces: CubeFaceConfig }[];
   cubeA?: { label?: string; faces: CubeFaceConfig };
   cubeB?: { label?: string; faces: CubeFaceConfig };
+  svgMarkup?: string;
+  imageUrl?: string;
+  imageCaption?: string;
   instructionHint?: string;
 }
 
@@ -17,16 +29,18 @@ export interface OIRQuestionOption {
   key: string;
   text?: string;
   cubeFaces?: CubeFaceConfig;
+  svgMarkup?: string;
+  imageUrl?: string;
 }
 
 /**
- * Universal Building Block Question Schema for OIR
- * Every single question stores its full metadata, source booklet,
- * attributes, figures, dynamic options, and explanation.
+ * Universal Building Block Question Schema for OIR.
+ * Every question stores its full metadata, source booklet,
+ * attributes, figures, dynamic options, and verified explanation.
  */
 export interface OIRQuestion {
-  id: string; // e.g. "oir_set35_q01", "oir_dde01_q05"
-  source: "Authentic DIPR" | "DDE" | "Byjus";
+  id: string;
+  source: "Authentic DIPR" | "DDE" | "SSBCrack" | "Byjus";
   sourceBookletId: string;
   sourceBookletName: string;
   questionNumber: number;
@@ -37,13 +51,16 @@ export interface OIRQuestion {
   promptText: string;
   figures?: QuestionFigureConfig;
   options: OIRQuestionOption[];
+  /** Number of choices the candidate must pick (default 1; 2 for "Which two..." DIPR questions). */
+  selectCount?: number;
+  /** Canonical answer key; comma-separated sorted keys (e.g. "1,4") when selectCount > 1. */
   correctOption: string;
   explanation: string;
 }
 
 export interface OIRBooklet {
   id: string;
-  source: "Authentic DIPR" | "DDE" | "Byjus";
+  source: "Authentic DIPR" | "DDE" | "SSBCrack" | "Byjus";
   bookletNumber: number | string;
   title: string;
   category: "verbal" | "non_verbal" | "mixed";

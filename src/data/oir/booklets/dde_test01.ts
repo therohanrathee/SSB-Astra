@@ -1,915 +1,2338 @@
 import { OIRBooklet } from "../types";
+import { makeHatch, svgCanvas } from "../svgHelpers";
+
+// Compact isometric-face SVG glyph helpers (authored in 110px cube scale: safe bounds -13..+13)
+const S = (inner: string) => `svg:${inner}`;
+
+const gCircle = S(`<circle cx="0" cy="0" r="8.5" fill="none" stroke="currentColor" stroke-width="2.1"/>`);
+const gDot = S(`<circle cx="0" cy="0" r="6" fill="currentColor"/>`);
+const gArrowN = S(`<path d="M0 10V-9M-5-4L0-10L5-4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>`);
+const gArrowS = S(`<path d="M0-10V9M-5 4L0 10L5 4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>`);
+const gArrowE = S(`<path d="M-10 0H9M4-5L10 0L4 5" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>`);
+const gArrowNW = S(`<path d="M7 7L-7-7M-7-1V-7H-1" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>`);
+const gArrowNE = S(`<path d="M-7 7L7-7M1-7H7V-1" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>`);
+const gArrowSE = S(`<path d="M-7-7L7 7M7 1V7H1" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>`);
+const gTriUp = S(`<polygon points="0,-9 -9,7 9,7" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"/>`);
+const gTriRight = S(`<polygon points="-7,-9 9,0 -7,9" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"/>`);
+const gTriLeft = S(`<polygon points="7,-9 -9,0 7,9" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"/>`);
+const gTriTopLeft = S(`<polygon points="-8,-8 9,-1 -1,9" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"/>`);
+const gPlus = S(`<path d="M0-9V9M-9 0H9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>`);
+const gCross = S(`<path d="M-7-7L7 7M7-7L-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>`);
+const gParSlash = S(`<path d="M-7-3L4-9M-4 9L7 3" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>`);
+const gParBack = S(`<path d="M-4-9L7-3M-7 3L4 9" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>`);
+const gEq = S(`<path d="M-8-3.5H8M-8 3.5H8" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>`);
+const gVert = S(`<line x1="0" y1="-10" x2="0" y2="10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>`);
+const gDashDiag = S(`<line x1="-8" y1="4" x2="8" y2="-4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>`);
+const gPctSlash = S(`<circle cx="-5.5" cy="-5.5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="5.5" cy="5.5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="-6" y1="8" x2="6" y2="-8" stroke="currentColor" stroke-width="2"/>`);
+const gPctVert = S(`<circle cx="-6" cy="0" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="0" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="0" y1="-9" x2="0" y2="9" stroke="currentColor" stroke-width="2"/>`);
+const gMSideLeft = S(`<path d="M8-8L-8-5L1 0L-8 5L8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`);
+const gM = S(`<path d="M-8 9V-8L0 1L8-8V9" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`);
+const gSigmaLeft = S(`<path d="M7-8L-7-4L3 0L-7 4L7 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`);
+const gSigmaRight = S(`<path d="M-7-8L7-4L-3 0L7 4L-7 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`);
+const gCUpOpen = S(`<path d="M-6-4A7.5 6 0 1 0 6-4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>`);
+const gCRightOpen = S(`<path d="M5-6A7 7 0 1 0 5 6" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>`);
+const gCLeftOpen = S(`<path d="M-5-6A7 7 0 1 1-5 6" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>`);
+const gCDownRightOpen = S(`<path d="M-6 5A7 7 0 1 1 6-5" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>`);
+const gUTurnRight = S(`<path d="M5-7H-2A6 6 0 0 0-2 7H6M2 4L7 7L2 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`);
+const gUTurnSW = S(`<path d="M-6 5L-1 8A6 6 0 1 0-5-5L-8-1M-9-6L-8-1L-3-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`);
+const gGamma = S(`<path d="M-5 8C-8 4-2-2 6-8M-5 8C-1 8-2 2-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`);
+const gAlpha = S(`<path d="M8-5C-2-8-8-3-8 2C-8 7-1 8 8-3M-1 2L8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`);
+const gHeart = S(`<path d="M0 9C-9 3-11-4-6-8C-3-10 0-6 0-4C0-6 3-10 6-8C11-4 9 3 0 9Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>`);
+const gCrossArrowsUp = S(`<path d="M-7 8L7-7M2-7H7V-2M7 8L-7-7M-7-2V-7H-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`);
+const gCrossArrowsNE_SW = S(`<path d="M-7 7L7-7M2-7H7V-2M7 7L-7-7M-7 2L-7 7L-2 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`);
+const gFemale = S(`<circle cx="0" cy="-4" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M0 1V10M-4 6H4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`);
+const gFemaleSide = S(`<circle cx="-5" cy="0" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M-0.5 0H10M5-4V4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`);
+const gCrescent = S(`<path d="M5-7A7.5 7.5 0 1 0 5 7A5.5 5.5 0 1 1 5-7Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>`);
+const gForkRight = S(`<path d="M-7-7C-1-4-1 4-7 7M-2 0H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`);
+const gTSide = S(`<path d="M-7-6L6 6M0-8L8 0" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>`);
+const gTRot = S(`<path d="M7-8V8M-6 0H7" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>`);
+const gE = S(`<path d="M6-8H-6V8H6M-6 0H4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>`);
+const gEDown = S(`<path d="M-8-5H8M-8-5V7M0-5V5M8-5V7" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>`);
+
+// Additional symbols for Q16–Q33 cubes
+const gDCross = S(`<path d="M-6-8V8M-6-8H0A7 8 0 0 1 0 8H-6M-9 0H8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>`);
+const gOBar = S(`<circle cx="0" cy="0" r="7" fill="none" stroke="currentColor" stroke-width="1.9"/><line x1="-8" y1="0" x2="8" y2="0" stroke="currentColor" stroke-width="1.9"/>`);
+const gOSlash = S(`<circle cx="0" cy="0" r="7" fill="none" stroke="currentColor" stroke-width="1.9"/><line x1="-7" y1="7" x2="7" y2="-7" stroke="currentColor" stroke-width="1.9"/>`);
+const gForall = S(`<path d="M-7-8L0 8L7-8M-5-1H5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>`);
+const gUCross = S(`<path d="M-6-7V3A6 5 0 0 0 6 3V-7M-8 0H8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>`);
+const gHCross = S(`<path d="M-6-8V8M6-8V8M-8 0H8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>`);
+const gPhi = S(`<circle cx="0" cy="0" r="6" fill="none" stroke="currentColor" stroke-width="1.9"/><line x1="0" y1="-9" x2="0" y2="9" stroke="currentColor" stroke-width="1.9"/>`);
+const gLCross = S(`<path d="M-5-8V7H6M-8 2H2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>`);
+const gCCross = S(`<path d="M6-6A7 7 0 1 0 6 6M-9 0H3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>`);
+const gTwoTriS = S(`<polygon points="-6,-9 -11,-1 -1,-1" fill="currentColor"/><polygon points="6,1 1,9 11,9" fill="currentColor"/>`);
+const gTwoTriO = S(`<polygon points="-6,-9 -11,-1 -1,-1" fill="none" stroke="currentColor" stroke-width="1.6"/><polygon points="6,1 1,9 11,9" fill="none" stroke="currentColor" stroke-width="1.6"/>`);
+const gTwoDots = S(`<circle cx="-5" cy="-5" r="3" fill="currentColor"/><circle cx="5" cy="5" r="3" fill="currentColor"/>`);
+const gTwoCirc = S(`<circle cx="-5" cy="-5" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="5" cy="5" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/>`);
+const gTwoSqS = S(`<rect x="-9" y="-9" width="7" height="7" fill="currentColor"/><rect x="2" y="2" width="7" height="7" fill="currentColor"/>`);
+const gTwoSqO = S(`<rect x="-9" y="-9" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="2" y="2" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.6"/>`);
+const gTwoStarsS = S(`<text x="-5" y="-2" text-anchor="middle" font-size="11" fill="currentColor">★</text><text x="5" y="9" text-anchor="middle" font-size="11" fill="currentColor">★</text>`);
+const gTwoStarsO = S(`<text x="-5" y="-2" text-anchor="middle" font-size="11" fill="currentColor">☆</text><text x="5" y="9" text-anchor="middle" font-size="11" fill="currentColor">☆</text>`);
+const gTwoDS = S(`<path d="M-8-9H-4A4 4 0 0 1-4-1H-8ZM2 1H6A4 4 0 0 1 6 9H2Z" fill="currentColor"/>`);
+const gTwoDO = S(`<path d="M-8-9H-4A4 4 0 0 1-4-1H-8ZM2 1H6A4 4 0 0 1 6 9H2Z" fill="none" stroke="currentColor" stroke-width="1.5"/>`);
+const gCircTriO = S(`<circle cx="-5" cy="-4" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><polygon points="5,0 1,8 9,8" fill="none" stroke="currentColor" stroke-width="1.6"/>`);
+const gStarDotS = S(`<text x="5" y="-1" text-anchor="middle" font-size="11" fill="currentColor">★</text><circle cx="-5" cy="5" r="3.2" fill="currentColor"/>`);
+const gStarRectO = S(`<text x="-5" y="0" text-anchor="middle" font-size="11" fill="currentColor">★</text><rect x="2" y="1" width="6" height="8" fill="none" stroke="currentColor" stroke-width="1.5"/>`);
+
+// Dots helper for dice/cubes (Q23)
+const dots = (n: 1 | 2 | 3 | 4 | 5 | 6) => {
+  const pts: Record<number, [number, number][]> = {
+    1: [[0, 0]],
+    2: [[-5, -5], [5, 5]],
+    3: [[-6, -6], [0, 0], [6, 6]],
+    4: [[-5.5, -5.5], [5.5, -5.5], [-5.5, 5.5], [5.5, 5.5]],
+    5: [[-6, -6], [6, -6], [0, 0], [-6, 6], [6, 6]],
+    6: [[-5, -7], [5, -7], [-5, 0], [5, 0], [-5, 7], [5, 7]],
+  };
+  return S(pts[n].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.2" fill="currentColor"/>`).join(""));
+};
+
+// Hatched-shape helpers for Q24 & Q32
+const hatchShape = (shape: "sq" | "diam" | "circ" | "tri" | "L" | "U", kind: "diag" | "horiz" | "vert" = "horiz") => {
+  const h = makeHatch(kind);
+  let body = "";
+  if (shape === "sq") body = `<rect x="-8" y="-8" width="16" height="16" fill="${h.fill}" stroke="currentColor" stroke-width="1.7"/>`;
+  else if (shape === "diam") body = `<polygon points="0,-9 9,0 0,9 -9,0" fill="${h.fill}" stroke="currentColor" stroke-width="1.7"/>`;
+  else if (shape === "circ") body = `<circle cx="0" cy="0" r="8" fill="${h.fill}" stroke="currentColor" stroke-width="1.7"/>`;
+  else if (shape === "tri") body = `<polygon points="0,-9 -9,8 9,8" fill="${h.fill}" stroke="currentColor" stroke-width="1.7"/>`;
+  else if (shape === "L") body = `<polygon points="-7,-8 -2,-8 -2,3 7,3 7,8 -7,8" fill="${h.fill}" stroke="currentColor" stroke-width="1.6"/>`;
+  else body = `<path d="M-7-7H7V8H2V-2H-2V8H-7Z" fill="${h.fill}" stroke="currentColor" stroke-width="1.6"/>`;
+  return S(`${h.def}${body}`);
+};
+
+// Bisected shape helpers for Q29
+const bisectedShape = (shape: "sq" | "circ" | "tri" | "diam", bisect = true) => {
+  const line = bisect
+    ? `<line x1="0" y1="-11" x2="0" y2="11" stroke="currentColor" stroke-width="1.8"/>`
+    : `<line x1="0" y1="-11" x2="0" y2="0" stroke="currentColor" stroke-width="1.6"/>`;
+  let body = "";
+  if (shape === "sq") body = `<rect x="-7" y="-7" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"/>`;
+  else if (shape === "diam") body = `<polygon points="0,-8 8,0 0,8 -8,0" fill="none" stroke="currentColor" stroke-width="1.8"/>`;
+  else if (shape === "circ") body = `<circle cx="0" cy="0" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/>`;
+  else body = `<polygon points="0,-8 -8,7 8,7" fill="none" stroke="currentColor" stroke-width="1.8"/>`;
+  return S(`${body}${bisect ? line : ""}`);
+};
+
+// Q34, Q35, Q36, Q99 custom inline SVG diagrams
+const svgQ34Dice = (() => {
+  const drawIsoDice = (ox: number, oy: number, t: string, l: string, r: string, isDots = false) => {
+    const cx = ox, cy = oy, rad = 36, cos30 = 0.866, sin30 = 0.5;
+    const pT = [cx, cy - rad], pTR = [cx + rad * cos30, cy - rad * sin30], pBR = [cx + rad * cos30, cy + rad * sin30];
+    const pB = [cx, cy + rad], pBL = [cx - rad * cos30, cy + rad * sin30], pTL = [cx - rad * cos30, cy - rad * sin30];
+    const poly = (pts: number[][]) => `<polygon points="${pts.map((p) => p.join(",")).join(" ")}" fill="none" stroke="currentColor" stroke-width="1.8"/>`;
+    const faceText = (x: number, y: number, val: string) => {
+      if (!isDots) {
+        return `<text x="${x}" y="${y + 5}" text-anchor="middle" font-size="16" font-weight="700" fill="currentColor">${val}</text>`;
+      }
+      const n = Number(val);
+      const ptsMap: Record<number, [number, number][]> = {
+        1: [[0, 0]],
+        2: [[-6, -4], [6, 4]],
+        3: [[-7, -5], [0, 0], [7, 5]],
+        4: [[-6, -5], [6, -5], [-6, 5], [6, 5]],
+        5: [[-7, -6], [7, -6], [0, 0], [-7, 6], [7, 6]],
+        6: [[-6, -7], [6, -7], [-6, 0], [6, 0], [-6, 7], [6, 7]],
+      };
+      return (ptsMap[n] || []).map(([dx, dy]) => `<circle cx="${x + dx}" cy="${y + dy}" r="2.3" fill="currentColor"/>`).join("");
+    };
+    return (
+      poly([[cx, cy], pTR, pT, pTL]) +
+      poly([[cx, cy], pTL, pBL, pB]) +
+      poly([[cx, cy], pTR, pBR, pB]) +
+      faceText(cx, cy - rad * 0.5, t) +
+      faceText(cx - rad * 0.44 * cos30, cy + rad * 0.25, l) +
+      faceText(cx + rad * 0.44 * cos30, cy + rad * 0.25, r)
+    );
+  };
+  return svgCanvas(
+    `<text x="95" y="16" text-anchor="middle" font-size="11" font-weight="800" fill="currentColor">(a) Opposite to 4?</text>` +
+      `<rect x="10" y="22" width="170" height="92" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-opacity="0.45"/>` +
+      drawIsoDice(56, 68, "3", "4", "6", false) +
+      drawIsoDice(136, 68, "4", "5", "2", false) +
+      `<text x="295" y="16" text-anchor="middle" font-size="11" font-weight="800" fill="currentColor">(b) Opposite to 3 dots?</text>` +
+      `<rect x="210" y="22" width="170" height="92" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-opacity="0.45"/>` +
+      drawIsoDice(256, 68, "5", "2", "1", true) +
+      drawIsoDice(336, 68, "5", "4", "6", true),
+    390,
+    122
+  );
+})();
+
+const svgIsoStrip = (dice: [string, string, string][], title?: string) => {
+  const draw = (ox: number, oy: number, [t, l, r]: [string, string, string]) => {
+    const cx = ox, cy = oy, rad = 36, cos30 = 0.866, sin30 = 0.5;
+    const pT = [cx, cy - rad], pTR = [cx + rad * cos30, cy - rad * sin30], pBR = [cx + rad * cos30, cy + rad * sin30];
+    const pB = [cx, cy + rad], pBL = [cx - rad * cos30, cy + rad * sin30], pTL = [cx - rad * cos30, cy - rad * sin30];
+    const poly = (pts: number[][]) => `<polygon points="${pts.map((p) => p.join(",")).join(" ")}" fill="none" stroke="currentColor" stroke-width="1.8"/>`;
+    return (
+      poly([[cx, cy], pTR, pT, pTL]) +
+      poly([[cx, cy], pTL, pBL, pB]) +
+      poly([[cx, cy], pTR, pBR, pB]) +
+      `<text x="${cx}" y="${cy - rad * 0.5 + 5}" text-anchor="middle" font-size="16" font-weight="700" fill="currentColor">${t}</text>` +
+      `<text x="${cx - rad * 0.44 * cos30}" y="${cy + rad * 0.25 + 5}" text-anchor="middle" font-size="16" font-weight="700" fill="currentColor">${l}</text>` +
+      `<text x="${cx + rad * 0.44 * cos30}" y="${cy + rad * 0.25 + 5}" text-anchor="middle" font-size="16" font-weight="700" fill="currentColor">${r}</text>`
+    );
+  };
+  const step = 88;
+  const w = dice.length * step + 16;
+  const body =
+    (title ? `<text x="${w / 2}" y="14" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">${title}</text>` : "") +
+    dice.map((d, i) => draw(52 + i * step, title ? 64 : 52, d)).join("");
+  return svgCanvas(body, w, title ? 108 : 98);
+};
+
+const svgQ99Rectangles = svgCanvas(
+  `<rect x="12" y="10" width="176" height="84" fill="none" stroke="currentColor" stroke-width="2.2"/>` +
+    `<line x1="100" y1="10" x2="100" y2="94" stroke="currentColor" stroke-width="2"/>` +
+    `<line x1="12" y1="52" x2="188" y2="52" stroke="currentColor" stroke-width="1.9"/>` +
+    `<line x1="12" y1="10" x2="100" y2="52" stroke="currentColor" stroke-width="1.7"/>` +
+    `<line x1="12" y1="73" x2="100" y2="73" stroke="currentColor" stroke-width="1.8"/>` +
+    `<line x1="100" y1="31" x2="188" y2="31" stroke="currentColor" stroke-width="1.8"/>` +
+    `<line x1="100" y1="94" x2="188" y2="52" stroke="currentColor" stroke-width="1.7"/>`,
+  200,
+  104
+);
 
 export const DDE_TEST_01: OIRBooklet = {
   id: "oir-dde-01",
   source: "DDE",
   bookletNumber: "DDE-01",
   title: "DDE Official OIR Practice Test 01",
-  category: "non_verbal",
-  totalQuestions: 40,
-  durationMinutes: 17,
-  markingScheme: { correct: 1.0, incorrect: 0.0 },
-  description: "DDE Defence Direct Education standardized OIR non-verbal practice test. Features cube comparison (Q1-15), set matching (Q16-25), and spatial deduction.",
+  category: "mixed",
+  totalQuestions: 100,
+  durationMinutes: 40,
+  markingScheme: { correct: 1, incorrect: 0 },
+  description:
+    "Complete 100-question Defence Direct Education (DDE) OIR Practice Test 01 covering 3D spatial cube comparisons, 3-set cube matching, dice orientation, truth/absurdity logic, series, coding-decoding, dictionary ordering, anagrams, smallest-digit checks, idioms, syllogistic reasoning, clocks, rectangle counting, and letter pattern completion.",
   questions: [
+    // ======================== Q1 – Q15: CUBE COMPARISON (YES / NO) ========================
     {
       id: "oir_dde01_q01",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 1,
       type: "non_verbal",
       subType: "cube_comparison",
       difficulty: "easy",
-      tags: ["cubes", "comparison"],
+      tags: ["cubes", "spatial"],
       promptText: "Find out if the two cubes look alike or not. Answer with YES or NO.",
       figures: {
         type: "cubes_compare",
-        cubeA: { label: "Cube 1", faces: { top: "○", left: "↑", right: "▷" } },
-        cubeB: { label: "Cube 2", faces: { top: "△", left: "↖", right: "S" } }
+        cubeA: { label: "Cube 1", faces: { top: gCircle, left: gArrowN, right: gTriRight } },
+        cubeB: { label: "Cube 2", faces: { top: gTriTopLeft, left: gArrowNW, right: "S" } },
       },
-      options: [
-        { key: "YES", text: "YES" },
-        { key: "NO", text: "NO" }
-      ],
+      options: [{ key: "YES", text: "YES" }, { key: "NO", text: "NO" }],
       correctOption: "YES",
-      explanation: "Rotating Cube 1 brings the corresponding triangle and arrow into consistent relative coordinates."
+      explanation: "Official DDE Key: YES. Cube 2 is a valid rotated orientation bringing the arrow and triangle faces to new adjacent positions while exposing S on the right face.",
     },
     {
       id: "oir_dde01_q02",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 2,
       type: "non_verbal",
       subType: "cube_comparison",
       difficulty: "easy",
-      tags: ["cubes", "comparison"],
+      tags: ["cubes", "spatial"],
       promptText: "Find out if the two cubes look alike or not. Answer with YES or NO.",
       figures: {
         type: "cubes_compare",
-        cubeA: { label: "Cube 1", faces: { top: "M", left: "↘", right: "|" } },
-        cubeB: { label: "Cube 2", faces: { top: "●", left: "M", right: "—" } }
+        cubeA: { label: "Cube 1", faces: { top: gMSideLeft, left: gArrowE, right: gVert } },
+        cubeB: { label: "Cube 2", faces: { top: gDot, left: gM, right: gDashDiag } },
       },
-      options: [
-        { key: "YES", text: "YES" },
-        { key: "NO", text: "NO" }
-      ],
+      options: [{ key: "YES", text: "YES" }, { key: "NO", text: "NO" }],
       correctOption: "YES",
-      explanation: "Face M is common; rotation preserves orthogonal alignment."
+      explanation: "Official DDE Key: YES. Rolling the cube rotates the sideways M into an upright M on the left face and reveals the dot on top.",
     },
     {
       id: "oir_dde01_q03",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 3,
       type: "non_verbal",
       subType: "cube_comparison",
       difficulty: "easy",
-      tags: ["cubes", "comparison"],
+      tags: ["cubes", "spatial"],
       promptText: "Find out if the two cubes look alike or not. Answer with YES or NO.",
       figures: {
         type: "cubes_compare",
-        cubeA: { label: "Cube 1", faces: { top: "=", left: "+", right: "↑" } },
-        cubeB: { label: "Cube 2", faces: { top: "//", left: "↑", right: "✕" } }
+        cubeA: { label: "Cube 1", faces: { top: gParBack, left: gPlus, right: gArrowN } },
+        cubeB: { label: "Cube 2", faces: { top: gParSlash, left: gArrowN, right: gCross } },
       },
-      options: [
-        { key: "YES", text: "YES" },
-        { key: "NO", text: "NO" }
-      ],
+      options: [{ key: "YES", text: "YES" }, { key: "NO", text: "NO" }],
       correctOption: "YES",
-      explanation: "Valid 3D rotation maintains orientation of the arrow relative to parallel bars."
+      explanation: "Official DDE Key: YES. Rotating 90° clockwise about the vertical axis moves the upward arrow from right to left, turns the parallel bars by 90°, and reveals the cross on the right.",
     },
     {
       id: "oir_dde01_q04",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 4,
       type: "non_verbal",
       subType: "cube_comparison",
       difficulty: "easy",
-      tags: ["cubes", "comparison"],
+      tags: ["cubes", "spatial"],
       promptText: "Find out if the two cubes look alike or not. Answer with YES or NO.",
       figures: {
         type: "cubes_compare",
-        cubeA: { label: "Cube 1", faces: { top: "%", left: "✕", right: "→" } },
-        cubeB: { label: "Cube 2", faces: { top: "○", left: "%", right: "↑" } }
+        cubeA: { label: "Cube 1", faces: { top: gPctSlash, left: gCross, right: gArrowE } },
+        cubeB: { label: "Cube 2", faces: { top: gCircle, left: gPctVert, right: gArrowN } },
       },
-      options: [
-        { key: "YES", text: "YES" },
-        { key: "NO", text: "NO" }
-      ],
+      options: [{ key: "YES", text: "YES" }, { key: "NO", text: "NO" }],
       correctOption: "NO",
-      explanation: "Cross-face geometry conflicts with circle on top face under rotation."
+      explanation: "Official DDE Key: NO. Placing % on the left with circle on top violates the arrow orientation relative to the % bar.",
     },
     {
       id: "oir_dde01_q05",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 5,
       type: "non_verbal",
       subType: "cube_comparison",
       difficulty: "easy",
-      tags: ["cubes", "comparison"],
+      tags: ["cubes", "spatial"],
       promptText: "Find out if the two cubes look alike or not. Answer with YES or NO.",
       figures: {
         type: "cubes_compare",
-        cubeA: { label: "Cube 1", faces: { top: "○", left: "△", right: "↓" } },
-        cubeB: { label: "Cube 2", faces: { top: "↘", left: "△", right: "●" } }
+        cubeA: { label: "Cube 1", faces: { top: gCircle, left: gTriUp, right: gArrowS } },
+        cubeB: { label: "Cube 2", faces: { top: gArrowSE, left: gTriLeft, right: gDot } },
       },
-      options: [
-        { key: "YES", text: "YES" },
-        { key: "NO", text: "NO" }
-      ],
+      options: [{ key: "YES", text: "YES" }, { key: "NO", text: "NO" }],
       correctOption: "YES",
-      explanation: "Triangle face alignment is preserved with standard dihedral rotation."
+      explanation: "Official DDE Key: YES. Turning the cube shifts the downward arrow to top-right SE and rotates the triangle 90° counterclockwise on the left face.",
     },
     {
       id: "oir_dde01_q06",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 6,
       type: "non_verbal",
       subType: "cube_comparison",
       difficulty: "easy",
-      tags: ["cubes", "comparison"],
+      tags: ["cubes", "spatial"],
       promptText: "Find out if the two cubes look alike or not. Answer with YES or NO.",
       figures: {
         type: "cubes_compare",
-        cubeA: { label: "Cube 1", faces: { top: "✕", left: "↗", right: "↖" } },
-        cubeB: { label: "Cube 2", faces: { top: "%", left: "↘", right: "+" } }
+        cubeA: { label: "Cube 1", faces: { top: gCross, left: gArrowNE, right: gArrowNW } },
+        cubeB: { label: "Cube 2", faces: { top: gPctSlash, left: gArrowSE, right: gPlus } },
       },
-      options: [
-        { key: "YES", text: "YES" },
-        { key: "NO", text: "NO" }
-      ],
+      options: [{ key: "YES", text: "YES" }, { key: "NO", text: "NO" }],
       correctOption: "YES",
-      explanation: "Rotating around the diagonal axis maps arrow pairs consistently."
+      explanation: "Official DDE Key: YES. Consistent 3D rotation flips the NE arrow into a SE arrow on the front-left face while exposing % on top and + on the right.",
     },
     {
       id: "oir_dde01_q07",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 7,
       type: "non_verbal",
       subType: "cube_comparison",
-      difficulty: "easy",
-      tags: ["cubes", "comparison"],
+      difficulty: "medium",
+      tags: ["cubes", "spatial"],
       promptText: "Find out if the two cubes look alike or not. Answer with YES or NO.",
       figures: {
         type: "cubes_compare",
-        cubeA: { label: "Cube 1", faces: { top: "C", left: "●", right: "M" } },
-        cubeB: { label: "Cube 2", faces: { top: "●", left: "M", right: "C" } }
+        cubeA: { label: "Cube 1", faces: { top: gCUpOpen, left: gDot, right: gSigmaLeft } },
+        cubeB: { label: "Cube 2", faces: { top: gDot, left: gSigmaRight, right: gCLeftOpen } },
       },
-      options: [
-        { key: "YES", text: "YES" },
-        { key: "NO", text: "NO" }
-      ],
+      options: [{ key: "YES", text: "YES" }, { key: "NO", text: "NO" }],
       correctOption: "NO",
-      explanation: "Handedness of C relative to M and dot is chiral / inverted."
+      explanation: "Official DDE Key: NO. In Cube 1 the zigzag peaks face left toward the dot, whereas in Cube 2 the rotated orientation reverses its opening relative to the C and dot faces.",
     },
     {
       id: "oir_dde01_q08",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 8,
       type: "non_verbal",
       subType: "cube_comparison",
-      difficulty: "easy",
-      tags: ["cubes", "comparison"],
+      difficulty: "medium",
+      tags: ["cubes", "spatial"],
       promptText: "Find out if the two cubes look alike or not. Answer with YES or NO.",
       figures: {
         type: "cubes_compare",
-        cubeA: { label: "Cube 1", faces: { top: "✕", left: "Z", right: "C" } },
-        cubeB: { label: "Cube 2", faces: { top: "C", left: "N", right: "→" } }
+        cubeA: { label: "Cube 1", faces: { top: gCross, left: "Z", right: gCLeftOpen } },
+        cubeB: { label: "Cube 2", faces: { top: gCDownRightOpen, left: "N", right: gArrowE } },
       },
-      options: [
-        { key: "YES", text: "YES" },
-        { key: "NO", text: "NO" }
-      ],
+      options: [{ key: "YES", text: "YES" }, { key: "NO", text: "NO" }],
       correctOption: "NO",
-      explanation: "Letter Z turns into N, but top cross conflicts with arrow vector."
+      explanation: "Official DDE Key: NO. The letter Z and C relative face orientations contradict an authentic rotation when Z turns into N.",
     },
     {
       id: "oir_dde01_q09",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 9,
       type: "non_verbal",
       subType: "cube_comparison",
       difficulty: "easy",
-      tags: ["cubes", "comparison"],
+      tags: ["cubes", "spatial"],
       promptText: "Find out if the two cubes look alike or not. Answer with YES or NO.",
       figures: {
         type: "cubes_compare",
-        cubeA: { label: "Cube 1", faces: { top: "T", left: "E", right: "V" } },
-        cubeB: { label: "Cube 2", faces: { top: "✕", left: "E", right: "T" } }
+        cubeA: { label: "Cube 1", faces: { top: gTSide, left: gE, right: "V" } },
+        cubeB: { label: "Cube 2", faces: { top: gCross, left: gEDown, right: gTRot } },
       },
-      options: [
-        { key: "YES", text: "YES" },
-        { key: "NO", text: "NO" }
-      ],
+      options: [{ key: "YES", text: "YES" }, { key: "NO", text: "NO" }],
       correctOption: "YES",
-      explanation: "Face E remains on left while 90 degree roll shifts T to right and reveals cross."
+      explanation: "Official DDE Key: YES. Rolling the cube clockwise about the front-left axis turns E by 90° clockwise on the left face and places T on the right face.",
     },
     {
       id: "oir_dde01_q10",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 10,
       type: "non_verbal",
       subType: "cube_comparison",
       difficulty: "easy",
-      tags: ["cubes", "comparison"],
+      tags: ["cubes", "spatial"],
       promptText: "Find out if the two cubes look alike or not. Answer with YES or NO.",
       figures: {
         type: "cubes_compare",
-        cubeA: { label: "Cube 1", faces: { top: "↘", left: "%", right: "N" } },
-        cubeB: { label: "Cube 2", faces: { top: "%", left: "○", right: "Z" } }
+        cubeA: { label: "Cube 1", faces: { top: gArrowSE, left: gPctSlash, right: "N" } },
+        cubeB: { label: "Cube 2", faces: { top: gPctSlash, left: gCircle, right: "Z" } },
       },
-      options: [
-        { key: "YES", text: "YES" },
-        { key: "NO", text: "NO" }
-      ],
+      options: [{ key: "YES", text: "YES" }, { key: "NO", text: "NO" }],
       correctOption: "YES",
-      explanation: "Rotating cube places % on top, mapping N to Z in lateral perspective."
+      explanation: "Official DDE Key: YES. Lifting the left % face to the top brings N sideways into Z on the right face while exposing the circle on the left.",
     },
     {
       id: "oir_dde01_q11",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 11,
       type: "non_verbal",
       subType: "cube_comparison",
-      difficulty: "easy",
-      tags: ["cubes", "comparison"],
+      difficulty: "medium",
+      tags: ["cubes", "spatial"],
       promptText: "Find out if the two cubes look alike or not. Answer with YES or NO.",
       figures: {
         type: "cubes_compare",
-        cubeA: { label: "Cube 1", faces: { top: "%", left: "U", right: "N" } },
-        cubeB: { label: "Cube 2", faces: { top: "U", left: "N", right: "●" } }
+        cubeA: { label: "Cube 1", faces: { top: gPctSlash, left: gUTurnRight, right: "N" } },
+        cubeB: { label: "Cube 2", faces: { top: gUTurnSW, left: "N", right: gDot } },
       },
-      options: [
-        { key: "YES", text: "YES" },
-        { key: "NO", text: "NO" }
-      ],
+      options: [{ key: "YES", text: "YES" }, { key: "NO", text: "NO" }],
       correctOption: "NO",
-      explanation: "Relative positioning of U and N is swapped across the hinge axis."
+      explanation: "Official DDE Key: NO. Moving the U-turn arrow to the top and N to the left reverses the cyclic orientation of the faces.",
     },
     {
       id: "oir_dde01_q12",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 12,
       type: "non_verbal",
       subType: "cube_comparison",
       difficulty: "easy",
-      tags: ["cubes", "comparison"],
+      tags: ["cubes", "spatial"],
       promptText: "Find out if the two cubes look alike or not. Answer with YES or NO.",
       figures: {
         type: "cubes_compare",
-        cubeA: { label: "Cube 1", faces: { top: "↗", left: "ɣ", right: "=" } },
-        cubeB: { label: "Cube 2", faces: { top: "○", left: "ɣ", right: "→" } }
+        cubeA: { label: "Cube 1", faces: { top: gArrowNE, left: gGamma, right: gEq } },
+        cubeB: { label: "Cube 2", faces: { top: gCircle, left: gAlpha, right: gArrowE } },
       },
-      options: [
-        { key: "YES", text: "YES" },
-        { key: "NO", text: "NO" }
-      ],
+      options: [{ key: "YES", text: "YES" }, { key: "NO", text: "NO" }],
       correctOption: "YES",
-      explanation: "Consistent orthogonal rotation with gamma face intact."
+      explanation: "Official DDE Key: YES. The loop-tail symbol turns consistently while the NE arrow rotates onto the right face pointing east.",
     },
     {
       id: "oir_dde01_q13",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 13,
       type: "non_verbal",
       subType: "cube_comparison",
-      difficulty: "easy",
-      tags: ["cubes", "comparison"],
+      difficulty: "medium",
+      tags: ["cubes", "spatial"],
       promptText: "Find out if the two cubes look alike or not. Answer with YES or NO.",
       figures: {
         type: "cubes_compare",
-        cubeA: { label: "Cube 1", faces: { top: "♡", left: "C", right: "⤢" } },
-        cubeB: { label: "Cube 2", faces: { top: "%", left: "♡", right: "⤢" } }
+        cubeA: { label: "Cube 1", faces: { top: gHeart, left: gCRightOpen, right: gCrossArrowsUp } },
+        cubeB: { label: "Cube 2", faces: { top: gPctSlash, left: gHeart, right: gCrossArrowsNE_SW } },
       },
-      options: [
-        { key: "YES", text: "YES" },
-        { key: "NO", text: "NO" }
-      ],
+      options: [{ key: "YES", text: "YES" }, { key: "NO", text: "NO" }],
       correctOption: "YES",
-      explanation: "Heart shape shifts to left face with double-headed diagonal arrow maintained."
+      explanation: "Official DDE Key: YES. Rotating the top heart down onto the left face rotates the crossed-arrows face consistently on the right.",
     },
     {
       id: "oir_dde01_q14",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 14,
       type: "non_verbal",
       subType: "cube_comparison",
       difficulty: "easy",
-      tags: ["cubes", "comparison"],
+      tags: ["cubes", "spatial"],
       promptText: "Find out if the two cubes look alike or not. Answer with YES or NO.",
       figures: {
         type: "cubes_compare",
-        cubeA: { label: "Cube 1", faces: { top: "○", left: "♀", right: "☾" } },
-        cubeB: { label: "Cube 2", faces: { top: "☾", left: "♀", right: "↑" } }
+        cubeA: { label: "Cube 1", faces: { top: gCircle, left: gFemale, right: gCrescent } },
+        cubeB: { label: "Cube 2", faces: { top: gCrescent, left: gFemaleSide, right: gArrowN } },
       },
-      options: [
-        { key: "YES", text: "YES" },
-        { key: "NO", text: "NO" }
-      ],
+      options: [{ key: "YES", text: "YES" }, { key: "NO", text: "NO" }],
       correctOption: "YES",
-      explanation: "Crescent rotates to top while female symbol preserves horizontal side."
+      explanation: "Official DDE Key: YES. Tilting the crescent from right to top turns the upright ♀ sideways on the left face and brings the upward arrow to the right.",
     },
     {
       id: "oir_dde01_q15",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 15,
       type: "non_verbal",
       subType: "cube_comparison",
-      difficulty: "easy",
-      tags: ["cubes", "comparison"],
+      difficulty: "medium",
+      tags: ["cubes", "spatial"],
       promptText: "Find out if the two cubes look alike or not. Answer with YES or NO.",
       figures: {
         type: "cubes_compare",
-        cubeA: { label: "Cube 1", faces: { top: "↗", left: "%", right: ")" } },
-        cubeB: { label: "Cube 2", faces: { top: "%", left: "↑", right: ")" } }
+        cubeA: { label: "Cube 1", faces: { top: gArrowNE, left: gPctVert, right: gForkRight } },
+        cubeB: { label: "Cube 2", faces: { top: gPctSlash, left: gArrowN, right: gForkRight } },
       },
-      options: [
-        { key: "YES", text: "YES" },
-        { key: "NO", text: "NO" }
-      ],
+      options: [{ key: "YES", text: "YES" }, { key: "NO", text: "NO" }],
       correctOption: "NO",
-      explanation: "Arrow direction alters relative to parenthesis curvature."
+      explanation: "Official DDE Key: NO. Keeping the fork symbol upright in the same orientation on the right face contradicts rotating the vertical % face up onto the top.",
     },
+
+    // ======================== Q16 – Q25: 3-SET CUBE MATCHING (SET B / SET C) ========================
     {
       id: "oir_dde01_q16",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 16,
       type: "non_verbal",
-      subType: "cube_group_classification",
+      subType: "cube_set_matching",
       difficulty: "medium",
-      tags: ["cubes", "set_matching"],
-      promptText: "Find the set which matches with SET A:",
+      tags: ["cubes", "classification"],
+      promptText: "Examine Set A and find the set (Set B or Set C) which matches with Set A.",
       figures: {
-        type: "cubes_group",
+        type: "cubes_sets_3",
         groupA: [
-          { label: "A1", faces: { top: "A", left: "D", right: "⊖" } },
-          { label: "A2", faces: { top: "I", left: "V", right: "D" } },
-          { label: "A3", faces: { top: "⊘", left: "D", right: "A" } }
+          { faces: { top: "A", left: gDCross, right: gOBar } },
+          { faces: { top: "H", left: gForall, right: gDCross } },
+          { faces: { top: gOBar, left: gUCross, right: "A" } },
         ],
         groupB: [
-          { label: "B1", faces: { top: "B", left: "F", right: "U" } },
-          { label: "B2", faces: { top: "Z", left: "$", right: "P" } },
-          { label: "B3", faces: { top: "T", left: "○", right: "V" } }
-        ]
+          { faces: { top: "B", left: "F", right: gUCross } },
+          { faces: { top: "Z", left: "$", right: "P" } },
+          { faces: { top: "T", left: gOSlash, right: gForall } },
+        ],
+        groupC: [
+          { faces: { top: "C", left: "W", right: "$" } },
+          { faces: { top: "J", left: "K", right: gDCross } },
+          { faces: { top: gHCross, left: gPhi, right: "L" } },
+        ],
       },
-      options: [
-        { key: "SET B", text: "SET B" },
-        { key: "SET C", text: "SET C" }
-      ],
+      options: [{ key: "SET B", text: "SET B" }, { key: "SET C", text: "SET C" }],
       correctOption: "SET B",
-      explanation: "The rightmost cube of Set B shares the identical geometric letter structure of Set A."
+      explanation: "Official DDE Explanation: Rightmost/first cubes of Set B share Set A's inverted-triangle/crossed-U glyph set (∀, Ʉ) on matching faces.",
     },
     {
       id: "oir_dde01_q17",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 17,
       type: "non_verbal",
-      subType: "cube_group_classification",
+      subType: "cube_set_matching",
       difficulty: "medium",
-      tags: ["cubes", "set_matching"],
-      promptText: "Find the set which matches with SET A:",
+      tags: ["cubes", "classification"],
+      promptText: "Examine Set A and find the set (Set B or Set C) which matches with Set A.",
       figures: {
-        type: "cubes_group",
+        type: "cubes_sets_3",
         groupA: [
-          { label: "A1", faces: { top: "J", left: "↑", right: "C" } },
-          { label: "A2", faces: { top: "S", left: "L", right: "○" } },
-          { label: "A3", faces: { top: "Y", left: "N", right: "S" } }
+          { faces: { top: "T", left: gArrowN, right: "C" } },
+          { faces: { top: "S", left: gLCross, right: "Q" } },
+          { faces: { top: "Y", left: "N", right: "S" } },
         ],
         groupB: [
-          { label: "B1", faces: { top: "&", left: "A", right: "⊖" } },
-          { label: "B2", faces: { top: "Q", left: "↑", right: "E" } },
-          { label: "B3", faces: { top: "U", left: "S", right: "B" } }
-        ]
+          { faces: { top: gAlpha, left: "A", right: gOSlash } },
+          { faces: { top: gOSlash, left: gArrowN, right: "E" } },
+          { faces: { top: "C", left: "S", right: "B" } },
+        ],
+        groupC: [
+          { faces: { top: "A", left: gOSlash, right: "D" } },
+          { faces: { top: "P", left: gAlpha, right: gOSlash } },
+          { faces: { top: gArrowNE, left: "S", right: gCCross } },
+        ],
       },
-      options: [
-        { key: "SET B", text: "SET B" },
-        { key: "SET C", text: "SET C" }
-      ],
+      options: [{ key: "SET B", text: "SET B" }, { key: "SET C", text: "SET C" }],
       correctOption: "SET B",
-      explanation: "Upper face of rightmost cube in Set B shares matching pattern with Set A."
+      explanation: "Official DDE Explanation: The upper face of the rightmost cube in Set B shares the open U/C glyph and vertical arrow seen in Set A.",
     },
     {
       id: "oir_dde01_q18",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 18,
       type: "non_verbal",
-      subType: "cube_group_classification",
+      subType: "cube_set_matching",
       difficulty: "medium",
-      tags: ["cubes", "set_matching"],
-      promptText: "Find the set which matches with SET A:",
+      tags: ["cubes", "alphabet-parity"],
+      promptText: "Examine Set A and find the set (Set B or Set C) which matches with Set A.",
       figures: {
-        type: "cubes_group",
+        type: "cubes_sets_3",
         groupA: [
-          { label: "A1", faces: { top: "A", left: "C", right: "E" } },
-          { label: "A2", faces: { top: "G", left: "I", right: "K" } },
-          { label: "A3", faces: { top: "M", left: "O", right: "Q" } }
+          { faces: { top: "G", left: "A", right: "E" } },
+          { faces: { top: "M", left: "G", right: "Q" } },
+          { faces: { top: "S", left: "A", right: "Y" } },
         ],
         groupB: [
-          { label: "B1", faces: { top: "B", left: "D", right: "F" } },
-          { label: "B2", faces: { top: "H", left: "J", right: "L" } },
-          { label: "B3", faces: { top: "N", left: "P", right: "R" } }
-        ]
+          { faces: { top: "P", left: "D", right: "J" } },
+          { faces: { top: "F", left: "N", right: "B" } },
+          { faces: { top: "B", left: "L", right: "H" } },
+        ],
+        groupC: [
+          { faces: { top: "B", left: "F", right: "D" } },
+          { faces: { top: "P", left: "E", right: "B" } },
+          { faces: { top: "H", left: "L", right: "J" } },
+        ],
       },
-      options: [
-        { key: "SET B", text: "SET B" },
-        { key: "SET C", text: "SET C" }
-      ],
+      options: [{ key: "SET B", text: "SET B" }, { key: "SET C", text: "SET C" }],
       correctOption: "SET C",
-      explanation: "Set A contains alphabet letters of odd positional places (1, 3, 5, etc.), matching Set C."
+      explanation: "Official DDE Explanation: Set A contains letters strictly at odd alphabetical positions (A=1, E=5, G=7, M=13, Q=17, S=19, Y=25). Set B contains only even-position letters, whereas Set C includes odd-placed E (5) on the left face of its middle cube.",
     },
     {
       id: "oir_dde01_q19",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 19,
       type: "non_verbal",
-      subType: "cube_group_classification",
+      subType: "cube_set_matching",
       difficulty: "medium",
-      tags: ["cubes", "numbers"],
-      promptText: "Find the set which matches with SET A (Odd Number Rule):",
+      tags: ["cubes", "number-parity"],
+      promptText: "Examine Set A and find the set (Set B or Set C) which matches with Set A.",
       figures: {
-        type: "cubes_group",
+        type: "cubes_sets_3",
         groupA: [
-          { label: "A1", faces: { top: "1", left: "3", right: "5" } },
-          { label: "A2", faces: { top: "7", left: "9", right: "11" } },
-          { label: "A3", faces: { top: "13", left: "15", right: "17" } }
+          { faces: { top: "8", left: "2", right: "16" } },
+          { faces: { top: "16", left: "4", right: "20" } },
+          { faces: { top: "18", left: "6", right: "24" } },
         ],
         groupB: [
-          { label: "B1", faces: { top: "2", left: "4", right: "6" } },
-          { label: "B2", faces: { top: "8", left: "10", right: "12" } },
-          { label: "B3", faces: { top: "14", left: "16", right: "18" } }
-        ]
+          { faces: { top: "15", left: "3", right: "9" } },
+          { faces: { top: "25", left: "5", right: "15" } },
+          { faces: { top: "9", left: "7", right: "21" } },
+        ],
+        groupC: [
+          { faces: { top: "11", left: "1", right: "7" } },
+          { faces: { top: "15", left: "3", right: "19" } },
+          { faces: { top: "7", left: "5", right: "20" } },
+        ],
       },
-      options: [
-        { key: "SET B", text: "SET B" },
-        { key: "SET C", text: "SET C" }
-      ],
+      options: [{ key: "SET B", text: "SET B" }, { key: "SET C", text: "SET C" }],
       correctOption: "SET C",
-      explanation: "Set A contains odd numbers exclusively. Set C features matching odd parity."
+      explanation: "Set A consists exclusively of even numbers (2, 4, 6, 8, 16, 18, 20, 24). Set B has all odd numbers, whereas the rightmost cube of Set C contains the even number 20 (matching Set A).",
     },
     {
       id: "oir_dde01_q20",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 20,
       type: "non_verbal",
-      subType: "cube_group_classification",
+      subType: "cube_set_matching",
       difficulty: "medium",
-      tags: ["cubes", "squares"],
-      promptText: "Find the set which matches with SET A (Square Numbers):",
+      tags: ["cubes", "perfect-squares"],
+      promptText: "Examine Set A and find the set (Set B or Set C) which matches with Set A.",
       figures: {
-        type: "cubes_group",
+        type: "cubes_sets_3",
         groupA: [
-          { label: "A1", faces: { top: "1", left: "4", right: "9" } },
-          { label: "A2", faces: { top: "16", left: "25", right: "36" } },
-          { label: "A3", faces: { top: "49", left: "64", right: "81" } }
+          { faces: { top: "49", left: "9", right: "16" } },
+          { faces: { top: "9", left: "4", right: "36" } },
+          { faces: { top: "81", left: "25", right: "16" } },
         ],
         groupB: [
-          { label: "B1", faces: { top: "2", left: "3", right: "5" } },
-          { label: "B2", faces: { top: "6", left: "7", right: "8" } },
-          { label: "B3", faces: { top: "10", left: "11", right: "12" } }
-        ]
+          { faces: { top: "36", left: "5", right: "12" } },
+          { faces: { top: "42", left: "3", right: "11" } },
+          { faces: { top: "24", left: "15", right: "8" } },
+        ],
+        groupC: [
+          { faces: { top: "62", left: "11", right: "30" } },
+          { faces: { top: "20", left: "64", right: "12" } },
+          { faces: { top: "8", left: "20", right: "15" } },
+        ],
       },
-      options: [
-        { key: "SET B", text: "SET B" },
-        { key: "SET C", text: "SET C" }
-      ],
+      options: [{ key: "SET B", text: "SET B" }, { key: "SET C", text: "SET C" }],
       correctOption: "SET C",
-      explanation: "Set A consists of perfect squares (1, 4, 9, 16, 25...), matching Set C."
+      explanation: "Official DDE Key & Explanation: Set A comprises perfect squares (4, 9, 16, 25, 36, 49, 81), and Set C's middle cube features the perfect square 64 (8^2).",
     },
     {
       id: "oir_dde01_q21",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 21,
-      type: "verbal",
-      subType: "number_series",
-      difficulty: "easy",
-      tags: ["series"],
-      promptText: "Which number completes the series: 2, 3, 5, 7, 11, ——?",
-      options: [
-        { key: "1", text: "12" },
-        { key: "2", text: "13" },
-        { key: "3", text: "14" },
-        { key: "4", text: "15" }
-      ],
-      correctOption: "2",
-      explanation: "Prime number series: 2, 3, 5, 7, 11, 13."
+      type: "non_verbal",
+      subType: "cube_set_matching",
+      difficulty: "medium",
+      tags: ["cubes", "primes"],
+      promptText: "Examine Set A and find the set (Set B or Set C) which matches with Set A.",
+      figures: {
+        type: "cubes_sets_3",
+        groupA: [
+          { faces: { top: "7", left: "1", right: "3" } },
+          { faces: { top: "17", left: "7", right: "5" } },
+          { faces: { top: "13", left: "11", right: "3" } },
+        ],
+        groupB: [
+          { faces: { top: "8", left: "2", right: "4" } },
+          { faces: { top: "12", left: "19", right: "10" } },
+          { faces: { top: "8", left: "23", right: "6" } },
+        ],
+        groupC: [
+          { faces: { top: "21", left: "9", right: "6" } },
+          { faces: { top: "2", left: "15", right: "9" } },
+          { faces: { top: "8", left: "4", right: "18" } },
+        ],
+      },
+      options: [{ key: "SET B", text: "SET B" }, { key: "SET C", text: "SET C" }],
+      correctOption: "SET B",
+      explanation: "Official DDE Explanation: Set A consists of prime numbers (3, 5, 7, 11, 13, 17). Set B contains multiple primes (2, 19, 23) matching Set A.",
     },
     {
       id: "oir_dde01_q22",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 22,
-      type: "verbal",
-      subType: "word_analogy",
-      difficulty: "easy",
-      tags: ["analogy"],
-      promptText: "Soldier is to Army as Sailor is to ——",
-      options: [
-        { key: "1", text: "Air Force" },
-        { key: "2", text: "Navy" },
-        { key: "3", text: "Coast Guard" },
-        { key: "4", text: "Infantry" }
-      ],
-      correctOption: "2",
-      explanation: "Sailors serve in the Navy, as soldiers serve in the Army."
+      type: "non_verbal",
+      subType: "cube_set_matching",
+      difficulty: "medium",
+      tags: ["cubes", "intersections"],
+      promptText: "Examine Set A and find the set (Set B or Set C) which matches with Set A.",
+      figures: {
+        type: "cubes_sets_3",
+        groupA: [
+          { faces: { top: S(`<circle cx="-3" cy="0" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="3" cy="0" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/>`), left: gCross, right: S(`<path d="M-5-7A7 7 0 0 1-5 7M5-7A7 7 0 0 0 5 7" fill="none" stroke="currentColor" stroke-width="1.6"/>`) } },
+          { faces: { top: gCross, left: gHCross, right: S(`<path d="M-8-6H-2A5 6 0 0 1-2 6H-8ZM8-6H2A5 6 0 0 0 2 6H8Z" fill="none" stroke="currentColor" stroke-width="1.5"/>`) } },
+          { faces: { top: S(`<path d="M-5-7A7 7 0 0 1-5 7M5-7A7 7 0 0 0 5 7" fill="none" stroke="currentColor" stroke-width="1.6"/>`), left: S(`<circle cx="0" cy="-3.5" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="0" cy="3.5" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/>`), right: S(`<rect x="-7" y="-7" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="-2" y="-2" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.5"/>`) } },
+        ],
+        groupB: [
+          { faces: { top: "I", left: S(`<path d="M-5-7A7 7 0 0 1-5 7M5-7A7 7 0 0 0 5 7" fill="none" stroke="currentColor" stroke-width="1.6"/>`), right: gCross } },
+          { faces: { top: S(`<path d="M-8-6H-2A5 6 0 0 1-2 6H-8ZM8-6H2A5 6 0 0 0 2 6H8Z" fill="none" stroke="currentColor" stroke-width="1.5"/>`), left: "I", right: S(`<circle cx="-3.5" cy="0" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="3.5" cy="0" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/>`) } },
+          { faces: { top: S(`<circle cx="-3.5" cy="0" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="3.5" cy="0" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/>`), left: gCross, right: S(`<rect x="-6" y="-6" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="-6" y1="0" x2="6" y2="0" stroke="currentColor" stroke-width="1.5"/>`) } },
+        ],
+        groupC: [
+          { faces: { top: "I", left: S(`<circle cx="0" cy="-3.5" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="0" cy="3.5" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/>`), right: S(`<path d="M-8-6H-2A5 6 0 0 1-2 6H-8ZM8-6H2A5 6 0 0 0 2 6H8Z" fill="none" stroke="currentColor" stroke-width="1.5"/>`) } },
+          { faces: { top: S(`<circle cx="-3.5" cy="0" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="3.5" cy="0" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/>`), left: S(`<path d="M-5-7A7 7 0 0 1-5 7M5-7A7 7 0 0 0 5 7" fill="none" stroke="currentColor" stroke-width="1.6"/>`), right: gCross } },
+          { faces: { top: gPlus, left: gHCross, right: S(`<path d="M-5-7A7 7 0 0 1-5 7M5-7A7 7 0 0 0 5 7" fill="none" stroke="currentColor" stroke-width="1.6"/>`) } },
+        ],
+      },
+      options: [{ key: "SET B", text: "SET B" }, { key: "SET C", text: "SET C" }],
+      correctOption: "SET C",
+      explanation: "Official DDE Explanation: Set C contains intersecting figure pairs matching Set A's intersecting-shape property.",
     },
     {
       id: "oir_dde01_q23",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 23,
-      type: "verbal",
-      subType: "coding_decoding",
-      difficulty: "easy",
-      tags: ["coding"],
-      promptText: "If WAR is coded as 23-1-18, what is the code for PEACE?",
-      options: [
-        { key: "1", text: "16-5-1-3-5" },
-        { key: "2", text: "15-5-1-3-5" },
-        { key: "3", text: "16-4-1-3-5" },
-        { key: "4", text: "16-5-2-3-5" }
-      ],
-      correctOption: "1",
-      explanation: "Alphabetical numerical positions: P=16, E=5, A=1, C=3, E=5."
+      type: "non_verbal",
+      subType: "cube_set_matching",
+      difficulty: "medium",
+      tags: ["dice", "dot-sum"],
+      promptText: "Examine Set A and find the set (Set B or Set C) which matches with Set A.",
+      figures: {
+        type: "cubes_sets_3",
+        groupA: [
+          { faces: { top: dots(1), left: dots(2), right: dots(5) } },
+          { faces: { top: dots(3), left: dots(2), right: dots(5) } },
+          { faces: { top: dots(6), left: dots(1), right: dots(3) } },
+        ],
+        groupB: [
+          { faces: { top: dots(3), left: dots(1), right: dots(1) } },
+          { faces: { top: dots(2), left: dots(3), right: dots(5) } },
+          { faces: { top: dots(5), left: dots(6), right: dots(2) } },
+        ],
+        groupC: [
+          { faces: { top: dots(2), left: dots(1), right: dots(3) } },
+          { faces: { top: dots(3), left: dots(3), right: dots(6) } },
+          { faces: { top: dots(3), left: dots(4), right: dots(3) } },
+        ],
+      },
+      options: [{ key: "SET B", text: "SET B" }, { key: "SET C", text: "SET C" }],
+      correctOption: "SET C",
+      explanation: "Official DDE Explanation: Every cube in Set A has an even total number of visible dots (8, 10, 10). Set C shares this even-sum rule (6, 12, 10).",
     },
     {
       id: "oir_dde01_q24",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 24,
-      type: "verbal",
-      subType: "direction_sense",
+      type: "non_verbal",
+      subType: "cube_set_matching",
       difficulty: "medium",
-      tags: ["direction"],
-      promptText: "A radar post tracks an aircraft flying 10 km North, then 10 km East. What is the direct bearing from the radar post?",
-      options: [
-        { key: "1", text: "North-West" },
-        { key: "2", text: "North-East" },
-        { key: "3", text: "South-East" },
-        { key: "4", text: "South-West" }
-      ],
-      correctOption: "2",
-      explanation: "Equal displacements North and East result in a 45 degree North-East bearing."
+      tags: ["cubes", "hatching"],
+      promptText: "Examine Set A and find the set (Set B or Set C) which matches with Set A.",
+      figures: {
+        type: "cubes_sets_3",
+        groupA: [
+          { faces: { top: hatchShape("sq", "horiz"), left: hatchShape("diam", "diag"), right: hatchShape("circ", "diag") } },
+          { faces: { top: hatchShape("U", "horiz"), left: hatchShape("tri", "horiz"), right: hatchShape("L", "horiz") } },
+          { faces: { top: hatchShape("U", "horiz"), left: hatchShape("L", "horiz"), right: hatchShape("tri", "horiz") } },
+        ],
+        groupB: [
+          { faces: { top: hatchShape("U", "horiz"), left: hatchShape("circ", "vert"), right: hatchShape("sq", "vert") } },
+          { faces: { top: hatchShape("tri", "diag"), left: hatchShape("L", "vert"), right: hatchShape("diam", "vert") } },
+          { faces: { top: hatchShape("L", "horiz"), left: hatchShape("tri", "horiz"), right: hatchShape("circ", "vert") } },
+        ],
+        groupC: [
+          { faces: { top: hatchShape("tri", "diag"), left: hatchShape("sq", "vert"), right: hatchShape("circ", "vert") } },
+          { faces: { top: hatchShape("circ", "diag"), left: hatchShape("L", "vert"), right: hatchShape("sq", "vert") } },
+          { faces: { top: hatchShape("tri", "diag"), left: hatchShape("circ", "vert"), right: hatchShape("tri", "vert") } },
+        ],
+      },
+      options: [{ key: "SET B", text: "SET B" }, { key: "SET C", text: "SET C" }],
+      correctOption: "SET B",
+      explanation: "Official DDE Explanation: Set A uses horizontal hatching lines; similarly the rightmost cube in Set B contains shapes shaded with horizontal lines.",
     },
     {
       id: "oir_dde01_q25",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 25,
-      type: "verbal",
-      subType: "odd_one_out",
-      difficulty: "easy",
-      tags: ["classification"],
-      promptText: "Which armed forces aircraft is the odd one out?",
-      options: [
-        { key: "1", text: "Rafale" },
-        { key: "2", text: "Su-30 MKI" },
-        { key: "3", text: "MiG-29" },
-        { key: "4", text: "C-130J Hercules" }
-      ],
-      correctOption: "4",
-      explanation: "Rafale, Su-30 MKI, and MiG-29 are fighter aircraft; C-130J is a tactical military transport aircraft."
+      type: "non_verbal",
+      subType: "cube_set_matching",
+      difficulty: "medium",
+      tags: ["cubes", "mirror-symmetry"],
+      promptText: "Examine Set A and find the set (Set B or Set C) which matches with Set A.",
+      figures: {
+        type: "cubes_sets_3",
+        groupA: [
+          { faces: { top: gCross, left: S(`<text x="0" y="5" text-anchor="middle" font-size="15" font-weight="700" fill="currentColor">Ж</text>`), right: gPhi } },
+          { faces: { top: gOSlash, left: gTriUp, right: gCross } },
+          { faces: { top: S(`<path d="M-6-7L0-2L6-7M-6 7L0 2L6 7" fill="none" stroke="currentColor" stroke-width="1.8"/>`), left: gPhi, right: S(`<text x="0" y="5" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">P9</text>`) } },
+        ],
+        groupB: [
+          { faces: { top: gOSlash, left: "$", right: "H" } },
+          { faces: { top: gTriUp, left: gCCross, right: "2" } },
+          { faces: { top: gHCross, left: "L", right: "U" } },
+        ],
+        groupC: [
+          { faces: { top: gHCross, left: "L", right: "U" } },
+          { faces: { top: S(`<path d="M-7-6H7V6H-7ZM0-6V6" fill="none" stroke="currentColor" stroke-width="1.6"/>`), left: gDCross, right: "H" } },
+          { faces: { top: "$", left: "Z", right: S(`<path d="M-7 0L0-7L7 0V7H-7ZM-7 0H7" fill="none" stroke="currentColor" stroke-width="1.6"/>`) } },
+        ],
+      },
+      options: [{ key: "SET B", text: "SET B" }, { key: "SET C", text: "SET C" }],
+      correctOption: "SET C",
+      explanation: "Official DDE Explanation: Set A exhibits mirror-image symmetry across pairs; the upper face of the middle cube in Set C mirrors Set A's symmetric pattern.",
     },
+
+    // ======================== Q26 – Q33: GROUP A vs GROUP B CANDIDATE CUBE ========================
     {
       id: "oir_dde01_q26",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 26,
-      type: "verbal",
-      subType: "letter_series",
+      type: "non_verbal",
+      subType: "cube_classification",
       difficulty: "easy",
-      tags: ["series"],
-      promptText: "Find the next letter: C, F, I, L, O, ——",
+      tags: ["cubes", "primes"],
+      promptText: "Which one of the following cubes possibly belongs to Set A?",
+      figures: {
+        type: "cubes_group",
+        groupA: [
+          { label: "A1", faces: { top: "7", left: "3", right: "5" } },
+          { label: "A2", faces: { top: "11", left: "7", right: "13" } },
+          { label: "A3", faces: { top: "11", left: "17", right: "5" } },
+        ],
+        groupB: [
+          { label: "B1", faces: { top: "6", left: "3", right: "7" } },
+          { label: "B2", faces: { top: "21", left: "5", right: "15" } },
+          { label: "B3", faces: { top: "18", left: "9", right: "12" } },
+        ],
+      },
       options: [
-        { key: "1", text: "Q" },
-        { key: "2", text: "R" },
-        { key: "3", text: "S" },
-        { key: "4", text: "P" }
+        { key: "A", text: "Cube A", cubeFaces: { top: "12", left: "7", right: "15" } },
+        { key: "B", text: "Cube B", cubeFaces: { top: "11", left: "3", right: "7" } },
+        { key: "C", text: "Cube C", cubeFaces: { top: "12", left: "5", right: "8" } },
       ],
-      correctOption: "2",
-      explanation: "Increments of +3: C(3), F(6), I(9), L(12), O(15) -> R(18)."
+      correctOption: "B",
+      explanation: "Set A has only prime numbers on all visible faces (3, 5, 7, 11, 13, 17). Cube B (3, 7, 11) consists exclusively of prime numbers.",
     },
     {
       id: "oir_dde01_q27",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 27,
-      type: "verbal",
-      subType: "word_analogy",
+      type: "non_verbal",
+      subType: "cube_classification",
       difficulty: "easy",
-      tags: ["analogy"],
-      promptText: "Telescope is to Stars as Microscope is to ——",
+      tags: ["cubes", "shading"],
+      promptText: "Which one of the following cubes possibly belongs to Set A?",
+      figures: {
+        type: "cubes_group",
+        groupA: [
+          { label: "A1", faces: { top: gTwoTriS, left: gTwoDots, right: gTwoSqS } },
+          { label: "A2", faces: { top: gTwoDots, left: gTwoStarsS, right: gTwoDS } },
+          { label: "A3", faces: { top: gTwoSqS, left: gTwoSqS, right: gTwoTriS } },
+        ],
+        groupB: [
+          { label: "B1", faces: { top: gTwoTriO, left: gTwoSqO, right: gTwoStarsO } },
+          { label: "B2", faces: { top: gTwoSqO, left: gTwoCirc, right: gTwoDO } },
+          { label: "B3", faces: { top: gTwoCirc, left: gTwoTriO, right: gTwoSqO } },
+        ],
+      },
       options: [
-        { key: "1", text: "Bacteria / Cells" },
-        { key: "2", text: "Planets" },
-        { key: "3", text: "Clouds" },
-        { key: "4", text: "Mountains" }
+        { key: "A", text: "Cube A", cubeFaces: { top: gTwoTriO, left: gTwoCirc, right: gTwoSqO } },
+        { key: "B", text: "Cube B", cubeFaces: { top: gTwoStarsS, left: gTwoSqO, right: gTwoDO } },
+        { key: "C", text: "Cube C", cubeFaces: { top: gTwoCirc, left: gTwoTriO, right: gTwoSqO } },
       ],
-      correctOption: "1",
-      explanation: "A telescope magnifies distant celestial objects; a microscope magnifies microscopic cells and bacteria."
+      correctOption: "B",
+      explanation: "Official DDE Explanation: Every cube in Set A features solid shaded shape pairs, whereas Set B contains only unshaded outlines. Cube B has solid shaded stars matching Set A.",
     },
     {
       id: "oir_dde01_q28",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 28,
-      type: "verbal",
-      subType: "arithmetic_reasoning",
+      type: "non_verbal",
+      subType: "cube_classification",
       difficulty: "medium",
-      tags: ["math"],
-      promptText: "If 6 men build a perimeter wall in 12 days, how many days will 9 men take to build the identical wall?",
+      tags: ["cubes", "alphabet-parity"],
+      promptText: "Which one of the following cubes possibly belongs to Set B?",
+      figures: {
+        type: "cubes_group",
+        groupA: [
+          { label: "A1", faces: { top: "I", left: "A", right: "Q" } },
+          { label: "A2", faces: { top: "C", left: "G", right: "M" } },
+          { label: "A3", faces: { top: "O", left: "E", right: "K" } },
+        ],
+        groupB: [
+          { label: "B1", faces: { top: "F", left: "B", right: "L" } },
+          { label: "B2", faces: { top: "R", left: "H", right: "N" } },
+          { label: "B3", faces: { top: "D", left: "J", right: "P" } },
+        ],
+      },
       options: [
-        { key: "1", text: "6 days" },
-        { key: "2", text: "8 days" },
-        { key: "3", text: "10 days" },
-        { key: "4", text: "9 days" }
+        { key: "A", text: "Cube A", cubeFaces: { top: "E", left: "G", right: "A" } },
+        { key: "B", text: "Cube B", cubeFaces: { top: "I", left: "C", right: "M" } },
+        { key: "C", text: "Cube C", cubeFaces: { top: "O", left: "K", right: "R" } },
       ],
-      correctOption: "2",
-      explanation: "Man-days = 6 * 12 = 72. Days for 9 men = 72 / 9 = 8 days."
+      correctOption: "C",
+      explanation: "Set A has only odd-position letters (A=1, C=3, E=5, G=7, I=9, K=11, M=13, O=15, Q=17), while Set B uses even-position letters (including R=18). Cubes A and B belong entirely to Set A, whereas Cube C contains R (even position 18, matching Set B).",
     },
     {
       id: "oir_dde01_q29",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 29,
-      type: "verbal",
-      subType: "ranking_order",
-      difficulty: "easy",
-      tags: ["ranking"],
-      promptText: "In a class of 50 cadets, Arjun ranks 18th from the top. What is his rank from the bottom?",
+      type: "non_verbal",
+      subType: "cube_classification",
+      difficulty: "medium",
+      tags: ["cubes", "bisection"],
+      promptText: "Which one of the following cubes possibly belongs to Set B?",
+      figures: {
+        type: "cubes_group",
+        groupA: [
+          { label: "A1", faces: { top: bisectedShape("diam", true), left: bisectedShape("tri", true), right: bisectedShape("circ", true) } },
+          { label: "A2", faces: { top: bisectedShape("circ", true), left: bisectedShape("sq", true), right: bisectedShape("tri", true) } },
+          { label: "A3", faces: { top: bisectedShape("tri", true), left: bisectedShape("circ", true), right: bisectedShape("diam", true) } },
+        ],
+        groupB: [
+          { label: "B1", faces: { top: bisectedShape("sq", false), left: bisectedShape("circ", false), right: bisectedShape("tri", false) } },
+          { label: "B2", faces: { top: bisectedShape("circ", false), left: bisectedShape("tri", false), right: bisectedShape("sq", false) } },
+          { label: "B3", faces: { top: bisectedShape("tri", false), left: bisectedShape("sq", false), right: bisectedShape("circ", false) } },
+        ],
+      },
       options: [
-        { key: "1", text: "32nd" },
-        { key: "2", text: "33rd" },
-        { key: "3", text: "34th" },
-        { key: "4", text: "31st" }
+        { key: "A", text: "Cube A", cubeFaces: { top: bisectedShape("circ", true), left: bisectedShape("sq", true), right: bisectedShape("tri", true) } },
+        { key: "B", text: "Cube B", cubeFaces: { top: bisectedShape("tri", false), left: bisectedShape("circ", true), right: bisectedShape("sq", true) } },
+        { key: "C", text: "Cube C", cubeFaces: { top: bisectedShape("diam", true), left: bisectedShape("tri", true), right: bisectedShape("circ", true) } },
       ],
-      correctOption: "2",
-      explanation: "Rank from bottom = Total (50) - Rank from top (18) + 1 = 33rd."
+      correctOption: "B",
+      explanation: "Official DDE Explanation: In Set A, every top shape is fully bisected; Cubes A and C match Set A directly, while Cube B matches Set B's top-face variation.",
     },
     {
       id: "oir_dde01_q30",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 30,
-      type: "verbal",
-      subType: "statement_evaluation",
+      type: "non_verbal",
+      subType: "cube_classification",
       difficulty: "easy",
-      tags: ["statement_evaluation"],
-      promptText: "Statement: 'A military leader must remain composed under intense operational stress.'",
+      tags: ["cubes", "odd-even"],
+      promptText: "Which one of the following cubes possibly belongs to Set A?",
+      figures: {
+        type: "cubes_group",
+        groupA: [
+          { label: "A1", faces: { top: "5", left: "1", right: "3" } },
+          { label: "A2", faces: { top: "9", left: "5", right: "7" } },
+          { label: "A3", faces: { top: "13", left: "9", right: "11" } },
+        ],
+        groupB: [
+          { label: "B1", faces: { top: "6", left: "2", right: "4" } },
+          { label: "B2", faces: { top: "12", left: "8", right: "10" } },
+          { label: "B3", faces: { top: "18", left: "14", right: "16" } },
+        ],
+      },
       options: [
-        { key: "1", text: "Always True" },
-        { key: "2", text: "Probably True" },
-        { key: "3", text: "False" },
-        { key: "4", text: "Absurd" }
+        { key: "A", text: "Cube A", cubeFaces: { top: "8", left: "10", right: "3" } },
+        { key: "B", text: "Cube B", cubeFaces: { top: "6", left: "12", right: "4" } },
+        { key: "C", text: "Cube C", cubeFaces: { top: "2", left: "16", right: "10" } },
       ],
-      correctOption: "1",
-      explanation: "Emotional stability under crisis is the core definition of Factor IV OLQ (Liveliness & Courage)."
+      correctOption: "A",
+      explanation: "Official DDE Explanation: Set A contains odd numbers while Set B uses exclusively even numbers. Cubes B and C are all-even (belonging to Set B), whereas Cube A contains the odd number 3.",
     },
     {
       id: "oir_dde01_q31",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 31,
-      type: "verbal",
-      subType: "blood_relations",
+      type: "non_verbal",
+      subType: "cube_classification",
       difficulty: "medium",
-      tags: ["blood_relations"],
-      promptText: "A is father of B, but B is not son of A. What is B to A?",
+      tags: ["cubes", "shapes"],
+      promptText: "Which one of the following cubes possibly belongs to Set B?",
+      figures: {
+        type: "cubes_group",
+        groupA: [
+          { label: "A1", faces: { top: gTwoTriO, left: gTwoDots, right: gTwoSqS } },
+          { label: "A2", faces: { top: gCircTriO, left: gTwoSqS, right: S(`<rect x="-8" y="-8" width="6" height="8" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="5,0 0,8 10,8" fill="none" stroke="currentColor" stroke-width="1.5"/>`) } },
+          { label: "A3", faces: { top: gCircTriO, left: gStarRectO, right: gTwoTriS } },
+        ],
+        groupB: [
+          { label: "B1", faces: { top: gTwoSqO, left: gStarDotS, right: gTwoTriO } },
+          { label: "B2", faces: { top: gStarDotS, left: gTwoTriS, right: gTwoSqO } },
+          { label: "B3", faces: { top: gTwoCirc, left: gTriUp, right: gTwoDots } },
+        ],
+      },
       options: [
-        { key: "1", text: "Brother" },
-        { key: "2", text: "Daughter" },
-        { key: "3", text: "Niece" },
-        { key: "4", text: "Sister" }
+        { key: "A", text: "Cube A", cubeFaces: { top: gCircTriO, left: gTwoDots, right: gTwoSqS } },
+        { key: "B", text: "Cube B", cubeFaces: { top: gTwoSqS, left: gTwoTriO, right: gStarDotS } },
+        { key: "C", text: "Cube C", cubeFaces: { top: gTwoTriS, left: gTwoCirc, right: gCircTriO } },
       ],
-      correctOption: "2",
-      explanation: "If B is the child of father A and is not his son, B must be his daughter."
+      correctOption: "B",
+      explanation: "Official DDE Key: Cube B replicates the star-dot + outline triangle + shaded-square pattern seen in Set B.",
     },
     {
       id: "oir_dde01_q32",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 32,
-      type: "verbal",
-      subType: "number_comparison",
-      difficulty: "easy",
-      tags: ["numbers"],
-      promptText: "Which number is the largest among: 48921, 48912, 48991, 48982",
+      type: "non_verbal",
+      subType: "cube_classification",
+      difficulty: "medium",
+      tags: ["cubes", "hatching"],
+      promptText: "Which one of the following cubes possibly belongs to Set A?",
+      figures: {
+        type: "cubes_group",
+        groupA: [
+          { label: "A1", faces: { top: hatchShape("sq", "horiz"), left: S(`<circle cx="-3" cy="-2" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M-3-2L8 4M4 4L8 4L6 0" fill="none" stroke="currentColor" stroke-width="1.5"/>`), right: hatchShape("tri", "horiz") } },
+          { label: "A2", faces: { top: hatchShape("tri", "horiz"), left: S(`<rect x="-5" y="-5" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M0 9V-9M-3-6L0-9L3-6" fill="none" stroke="currentColor" stroke-width="1.5"/>`), right: hatchShape("circ", "horiz") } },
+          { label: "A3", faces: { top: hatchShape("circ", "horiz"), left: S(`<polygon points="0,-7 -7,6 7,6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M0 9V-9M-3-6L0-9L3-6" fill="none" stroke="currentColor" stroke-width="1.5"/>`), right: hatchShape("sq", "horiz") } },
+        ],
+        groupB: [
+          { label: "B1", faces: { top: hatchShape("tri", "vert"), left: S(`<circle cx="-3" cy="-2" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M-3-2L8 4" fill="none" stroke="currentColor" stroke-width="1.5"/>`), right: hatchShape("U", "horiz") } },
+          { label: "B2", faces: { top: S(`<polygon points="0,-7 -7,6 7,6" fill="none" stroke="currentColor" stroke-width="1.5"/>`), left: hatchShape("tri", "horiz"), right: hatchShape("U", "horiz") } },
+          { label: "B3", faces: { top: hatchShape("tri", "vert"), left: hatchShape("sq", "horiz"), right: S(`<rect x="-5" y="-5" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"/>`) } },
+        ],
+      },
       options: [
-        { key: "1", text: "48921" },
-        { key: "2", text: "48912" },
-        { key: "3", text: "48991" },
-        { key: "4", text: "48982" }
+        { key: "A", text: "Cube A", cubeFaces: { top: hatchShape("tri", "horiz"), left: S(`<rect x="-5" y="-5" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M0-9V9M-3 6L0 9L3 6" fill="none" stroke="currentColor" stroke-width="1.5"/>`), right: hatchShape("circ", "horiz") } },
+        { key: "B", text: "Cube B", cubeFaces: { top: hatchShape("tri", "diag"), left: S(`<polygon points="0,-7 -7,6 7,6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M0 9V-9" fill="none" stroke="currentColor" stroke-width="1.5"/>`), right: S(`<rect x="-5" y="-5" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M0 9V-9" fill="none" stroke="currentColor" stroke-width="1.5"/>`) } },
+        { key: "C", text: "Cube C", cubeFaces: { top: hatchShape("sq", "horiz"), left: hatchShape("circ", "horiz"), right: S(`<polygon points="-6,-5 3,-5 8,0 3,5 -6,5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M-4 0L8-5" fill="none" stroke="currentColor" stroke-width="1.5"/>`) } },
       ],
-      correctOption: "3",
-      explanation: "48991 is the largest."
+      correctOption: "C",
+      explanation: "Official DDE Key: Cube C combines horizontally hatched square + circle with an arrow-crossed polygon matching Set A's rule.",
     },
     {
       id: "oir_dde01_q33",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 33,
-      type: "verbal",
-      subType: "syllogism",
-      difficulty: "medium",
-      tags: ["syllogism"],
-      promptText: "Statements: All tanks are armored. All armored vehicles are combat ready. Conclusion: All tanks are combat ready.",
+      type: "non_verbal",
+      subType: "cube_classification",
+      difficulty: "easy",
+      tags: ["cubes", "odd-numbers"],
+      promptText: "Which one of the following cubes possibly belongs to Set A?",
+      figures: {
+        type: "cubes_group",
+        groupA: [
+          { label: "A1", faces: { top: "3", left: "A", right: "C" } },
+          { label: "A2", faces: { top: "5", left: "E", right: "A" } },
+          { label: "A3", faces: { top: "7", left: "C", right: "E" } },
+        ],
+        groupB: [
+          { label: "B1", faces: { top: "4", left: "F", right: "J" } },
+          { label: "B2", faces: { top: "D", left: "B", right: "6" } },
+          { label: "B3", faces: { top: "2", left: "H", right: "J" } },
+        ],
+      },
       options: [
-        { key: "1", text: "Definitely True" },
-        { key: "2", text: "Probably True" },
-        { key: "3", text: "False" },
-        { key: "4", text: "Cannot Determine" }
+        { key: "A", text: "Cube A", cubeFaces: { top: "H", left: "8", right: "L" } },
+        { key: "B", text: "Cube B", cubeFaces: { top: "S", left: "9", right: "A" } },
+        { key: "C", text: "Cube C", cubeFaces: { top: "F", left: "D", right: "2" } },
       ],
-      correctOption: "1",
-      explanation: "Transitive logical deduction: All A are B, all B are C -> All A are C. Definitely True."
+      correctOption: "B",
+      explanation: "Set A pairs odd digits (3, 5, 7) with odd-position letters (A, C, E). Set B uses even digits (2, 4, 6). Cube B contains odd digit 9 and letter A, matching Set A.",
     },
+
+    // ======================== Q34 – Q36: DICE OPPOSITE FACES ========================
     {
       id: "oir_dde01_q34",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 34,
-      type: "verbal",
-      subType: "word_analogy",
+      type: "non_verbal",
+      subType: "dice_opposite",
       difficulty: "easy",
-      tags: ["analogy"],
-      promptText: "INS Vikrant is to Aircraft Carrier as INS Arihant is to ——",
+      tags: ["dice", "opposite-faces"],
+      promptText: "(a) Which digit will appear on the face opposite to the face with number 4?  (b) If there are three dots on the bottom, how many dots will be on the top?",
+      figures: {
+        type: "svg",
+        svgMarkup: svgQ34Dice,
+        instructionHint: "Evaluate both dice pairs (a) and (b) using standard common-face / standard-dice rules.",
+      },
       options: [
-        { key: "1", text: "Nuclear Submarine" },
-        { key: "2", text: "Destroyer" },
-        { key: "3", text: "Frigate" },
-        { key: "4", text: "Corvette" }
+        { key: "A", text: "a) 1, b) 5" },
+        { key: "B", text: "a) 2, b) 4" },
+        { key: "C", text: "a) 6, b) 5" },
+        { key: "D", text: "a) 1, b) 6" },
       ],
-      correctOption: "1",
-      explanation: "INS Arihant is India's indigenous nuclear-powered ballistic missile submarine."
+      correctOption: "A",
+      explanation: "Official DDE Key: a) 1, b) 5. In (a), faces adjacent to 4 are {2, 3, 5, 6}, leaving only 1 opposite to 4. In (b), 5 is adjacent to {1, 2, 4, 6}, so 3 is opposite to 5.",
     },
     {
       id: "oir_dde01_q35",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 35,
-      type: "verbal",
-      subType: "coding_decoding",
+      type: "non_verbal",
+      subType: "dice_opposite",
       difficulty: "easy",
-      tags: ["coding"],
-      promptText: "If RED is coded as 27 (18 + 5 + 4), what is the sum code of BLUE?",
+      tags: ["dice", "opposite-faces"],
+      promptText: "The six faces of a dice have been marked with alphabets A, B, C, D, E and F respectively. The dice is rolled down three times as shown. Find the alphabet opposite to A.",
+      figures: {
+        type: "svg",
+        svgMarkup: svgIsoStrip([["F", "E", "B"], ["A", "B", "C"], ["D", "C", "E"]]),
+      },
       options: [
-        { key: "1", text: "38" },
-        { key: "2", text: "40" },
-        { key: "3", text: "42" },
-        { key: "4", text: "36" }
+        { key: "A", text: "B" },
+        { key: "B", text: "C" },
+        { key: "C", text: "D" },
+        { key: "D", text: "F" },
+        { key: "E", text: "E" },
       ],
-      correctOption: "2",
-      explanation: "B(2) + L(12) + U(21) + E(5) = 40."
+      correctOption: "E",
+      explanation: "Official DDE Key: E. Taking adjacent faces from dice 2 and 3 (common face C): cycling clockwise from C gives C -> A -> B and C -> E -> D, so A is opposite E.",
     },
     {
       id: "oir_dde01_q36",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 36,
-      type: "verbal",
-      subType: "arithmetic_reasoning",
+      type: "non_verbal",
+      subType: "dice_opposite",
       difficulty: "easy",
-      tags: ["math"],
-      promptText: "A patrol jeep travels 150 km in 3 hours. How many km will it travel in 5 hours at the same speed?",
+      tags: ["dice", "opposite-faces"],
+      promptText: "Four positions of a cube are shown below. Which number will be on the face opposite to face with '1'?",
+      figures: {
+        type: "svg",
+        svgMarkup: svgIsoStrip([["3", "6", "5"], ["2", "1", "4"], ["4", "1", "5"], ["5", "4", "6"]]),
+      },
       options: [
-        { key: "1", text: "220 km" },
-        { key: "2", text: "250 km" },
-        { key: "3", text: "275 km" },
-        { key: "4", text: "300 km" }
+        { key: "A", text: "2" },
+        { key: "B", text: "3" },
+        { key: "C", text: "5" },
+        { key: "D", text: "6" },
       ],
-      correctOption: "2",
-      explanation: "Speed = 150 / 3 = 50 km/h. Distance in 5 hours = 50 * 5 = 250 km."
+      correctOption: "D",
+      explanation: "Official DDE Key: 6. Face 1 is adjacent to 2, 4, and 5 across positions 2 & 3; comparing common faces 4 & 5 between positions 3 & 4 puts 6 opposite 1.",
     },
+
+    // ======================== Q37 – Q48: TRUE / FALSE / PROBABLE / ABSURD ========================
     {
       id: "oir_dde01_q37",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 37,
       type: "verbal",
-      subType: "word_analogy",
+      subType: "statement_evaluation",
       difficulty: "easy",
-      tags: ["dictionary"],
-      promptText: "Write the number of the word which will come LAST in the dictionary: (1) Radar (2) Radio (3) Radiation (4) Radius",
+      tags: ["logic", "truth-absurd"],
+      promptText: "Evaluate the statement: \"Proxima centaury is a star one century away from the earth.\"",
       options: [
-        { key: "1", text: "Radar" },
-        { key: "2", text: "Radio" },
-        { key: "3", text: "Radiation" },
-        { key: "4", text: "Radius" }
+        { key: "A", text: "TRUE" },
+        { key: "B", text: "FALSE" },
+        { key: "C", text: "PROBABLE" },
+        { key: "D", text: "ABSURD" },
       ],
-      correctOption: "4",
-      explanation: "Radar -> Radiation -> Radio -> Radius. Radius (R-A-D-I-U) is last."
+      correctOption: "D",
+      explanation: "ABSURD (Key: D). Astronomical distances are measured in light-years/parsecs, not time units like a century.",
     },
     {
       id: "oir_dde01_q38",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 38,
       type: "verbal",
-      subType: "letter_series",
-      difficulty: "medium",
-      tags: ["series"],
-      promptText: "Find the missing letters in the series: AB, DE, GH, JK, ——",
+      subType: "statement_evaluation",
+      difficulty: "easy",
+      tags: ["logic", "truth-absurd"],
+      promptText: "Evaluate the statement: \"Arrange marriages are sometimes better than love marriages\"",
       options: [
-        { key: "1", text: "MN" },
-        { key: "2", text: "LM" },
-        { key: "3", text: "NO" },
-        { key: "4", text: "OP" }
+        { key: "A", text: "TRUE" },
+        { key: "B", text: "FALSE" },
+        { key: "C", text: "PROBABLE" },
+        { key: "D", text: "ABSURD" },
       ],
-      correctOption: "1",
-      explanation: "Two consecutive letters followed by skipping 1 letter: AB (skip C) DE (skip F) GH (skip I) JK (skip L) MN."
+      correctOption: "C",
+      explanation: "PROBABLE (Key: C). Outcomes vary across individuals and situations, making this conditional rather than universally true or false.",
     },
     {
       id: "oir_dde01_q39",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 39,
       type: "verbal",
       subType: "statement_evaluation",
       difficulty: "easy",
-      tags: ["statement_evaluation"],
-      promptText: "Statement: 'Discipline in the armed forces is only necessary during active wartime.'",
+      tags: ["logic", "gk"],
+      promptText: "Evaluate the statement: \"Nagaland is one of the seven sister states\"",
       options: [
-        { key: "1", text: "Always True" },
-        { key: "2", text: "Probably True" },
-        { key: "3", text: "False" },
-        { key: "4", text: "Absurd" }
+        { key: "A", text: "TRUE" },
+        { key: "B", text: "FALSE" },
+        { key: "C", text: "PROBABLE" },
+        { key: "D", text: "ABSURD" },
       ],
-      correctOption: "3",
-      explanation: "Discipline is the foundational bedrock of military command 24/7/365 during peacetime training and combat alike. False."
+      correctOption: "A",
+      explanation: "TRUE (Key: A). Nagaland is one of the Seven Sister States of Northeast India.",
     },
     {
       id: "oir_dde01_q40",
       source: "DDE",
       sourceBookletId: "oir-dde-01",
-      sourceBookletName: "DDE OIR Practice Test 01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
       questionNumber: 40,
       type: "verbal",
-      subType: "word_analogy",
+      subType: "statement_evaluation",
       difficulty: "easy",
-      tags: ["military", "ranks"],
-      promptText: "Colonel is to Army as Group Captain is to ——",
+      tags: ["logic", "gk"],
+      promptText: "Evaluate the statement: \"FIBA is international association for badminton\"",
       options: [
-        { key: "1", text: "Navy" },
-        { key: "2", text: "Air Force" },
-        { key: "3", text: "Coast Guard" },
-        { key: "4", text: "Police" }
+        { key: "A", text: "TRUE" },
+        { key: "B", text: "FALSE" },
+        { key: "C", text: "PROBABLE" },
+        { key: "D", text: "ABSURD" },
       ],
-      correctOption: "2",
-      explanation: "Group Captain is the equivalent rank in the Indian Air Force."
-    }
-  ]
+      correctOption: "B",
+      explanation: "FALSE (Key: B). FIBA is the International Basketball Federation; badminton is governed by BWF.",
+    },
+    {
+      id: "oir_dde01_q41",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 41,
+      type: "verbal",
+      subType: "statement_evaluation",
+      difficulty: "easy",
+      tags: ["logic", "truth-absurd"],
+      promptText: "Evaluate the statement: \"Donald Duck was a famous duck named after Donald trumph\"",
+      options: [
+        { key: "A", text: "TRUE" },
+        { key: "B", text: "FALSE" },
+        { key: "C", text: "PROBABLE" },
+        { key: "D", text: "ABSURD" },
+      ],
+      correctOption: "D",
+      explanation: "ABSURD (Key: D). Donald Duck debuted in 1934, long before Donald Trump was born (1946).",
+    },
+    {
+      id: "oir_dde01_q42",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 42,
+      type: "verbal",
+      subType: "statement_evaluation",
+      difficulty: "easy",
+      tags: ["logic", "gk"],
+      promptText: "Evaluate the statement: \"Tokyo will host the upcoming Olympics in 2020\"",
+      options: [
+        { key: "A", text: "TRUE" },
+        { key: "B", text: "FALSE" },
+        { key: "C", text: "PROBABLE" },
+        { key: "D", text: "ABSURD" },
+      ],
+      correctOption: "A",
+      explanation: "TRUE (Key: A). Tokyo was selected as the official host for the 2020 Summer Olympics.",
+    },
+    {
+      id: "oir_dde01_q43",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 43,
+      type: "verbal",
+      subType: "statement_evaluation",
+      difficulty: "easy",
+      tags: ["logic", "truth-absurd"],
+      promptText: "Evaluate the statement: \"India will soon become a developed nation\"",
+      options: [
+        { key: "A", text: "TRUE" },
+        { key: "B", text: "FALSE" },
+        { key: "C", text: "PROBABLE" },
+        { key: "D", text: "ABSURD" },
+      ],
+      correctOption: "C",
+      explanation: "PROBABLE (Key: C). Future economic projections fall under probable statements rather than established fact.",
+    },
+    {
+      id: "oir_dde01_q44",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 44,
+      type: "verbal",
+      subType: "statement_evaluation",
+      difficulty: "easy",
+      tags: ["logic", "gk"],
+      promptText: "Evaluate the statement: \"CEO of smartphone giant Apple is an indian\"",
+      options: [
+        { key: "A", text: "TRUE" },
+        { key: "B", text: "FALSE" },
+        { key: "C", text: "PROBABLE" },
+        { key: "D", text: "ABSURD" },
+      ],
+      correctOption: "B",
+      explanation: "FALSE (Key: B). Apple's CEO Tim Cook is American.",
+    },
+    {
+      id: "oir_dde01_q45",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 45,
+      type: "verbal",
+      subType: "statement_evaluation",
+      difficulty: "easy",
+      tags: ["logic", "truth-absurd"],
+      promptText: "Evaluate the statement: \"BJP will be in majority in next lok sabha elections\"",
+      options: [
+        { key: "A", text: "TRUE" },
+        { key: "B", text: "FALSE" },
+        { key: "C", text: "PROBABLE" },
+        { key: "D", text: "ABSURD" },
+      ],
+      correctOption: "C",
+      explanation: "PROBABLE (Key: C). Election forecasts are uncertain future outcomes.",
+    },
+    {
+      id: "oir_dde01_q46",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 46,
+      type: "verbal",
+      subType: "statement_evaluation",
+      difficulty: "easy",
+      tags: ["logic", "truth-absurd"],
+      promptText: "Evaluate the statement: \"During lightening we here huge sound made by the speakers of satellite\"",
+      options: [
+        { key: "A", text: "TRUE" },
+        { key: "B", text: "FALSE" },
+        { key: "C", text: "PROBABLE" },
+        { key: "D", text: "ABSURD" },
+      ],
+      correctOption: "D",
+      explanation: "ABSURD (Key: D). Thunder is caused by rapid thermal expansion of air from lightning, not satellite speakers.",
+    },
+    {
+      id: "oir_dde01_q47",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 47,
+      type: "verbal",
+      subType: "statement_evaluation",
+      difficulty: "easy",
+      tags: ["logic", "science"],
+      promptText: "Evaluate the statement: \"Generally Light travels faster than sound\"",
+      options: [
+        { key: "A", text: "TRUE" },
+        { key: "B", text: "FALSE" },
+        { key: "C", text: "PROBABLE" },
+        { key: "D", text: "ABSURD" },
+      ],
+      correctOption: "A",
+      explanation: "TRUE (Key: A). Light travels at ~3×10^8 m/s in air/vacuum vs sound at ~343 m/s.",
+    },
+    {
+      id: "oir_dde01_q48",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 48,
+      type: "verbal",
+      subType: "statement_evaluation",
+      difficulty: "easy",
+      tags: ["logic", "truth-absurd"],
+      promptText: "Evaluate the statement: \"Green colour in our flag represent green grass which was the favourite colour of last governor general mountbatten.\"",
+      options: [
+        { key: "A", text: "TRUE" },
+        { key: "B", text: "FALSE" },
+        { key: "C", text: "PROBABLE" },
+        { key: "D", text: "ABSURD" },
+      ],
+      correctOption: "D",
+      explanation: "ABSURD (Key: D). Green in the Indian National Flag symbolizes fertility, growth, and auspiciousness of the land.",
+    },
+
+    // ======================== Q49 – Q59: FIND THE MISSING VALUE ========================
+    {
+      id: "oir_dde01_q49",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 49,
+      type: "verbal",
+      subType: "number_series",
+      difficulty: "easy",
+      tags: ["series"],
+      promptText: "Find the missing value: 8, 10, 12, 14, ?",
+      options: [{ key: "A", text: "18" }, { key: "B", text: "15" }, { key: "C", text: "26" }, { key: "D", text: "16" }],
+      correctOption: "D",
+      explanation: "Arithmetic progression with +2 at each step: 14 + 2 = 16.",
+    },
+    {
+      id: "oir_dde01_q50",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 50,
+      type: "verbal",
+      subType: "number_series",
+      difficulty: "easy",
+      tags: ["series"],
+      promptText: "Find the missing value: 19, 25, 32, 40, ?, 59",
+      options: [{ key: "A", text: "46" }, { key: "B", text: "49" }, { key: "C", text: "55" }, { key: "D", text: "51" }],
+      correctOption: "B",
+      explanation: "Differences increase by 1: +6, +7, +8, +9, +10. Thus 40 + 9 = 49 (and 49 + 10 = 59).",
+    },
+    {
+      id: "oir_dde01_q51",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 51,
+      type: "verbal",
+      subType: "number_series",
+      difficulty: "easy",
+      tags: ["series"],
+      promptText: "Find the missing value: 9, 18, 54, 216, ?, 6480",
+      options: [{ key: "A", text: "432" }, { key: "B", text: "864" }, { key: "C", text: "1080" }, { key: "D", text: "1512" }],
+      correctOption: "C",
+      explanation: "Successive multipliers are ×2, ×3, ×4, ×5, ×6: 216 × 5 = 1080 (and 1080 × 6 = 6480).",
+    },
+    {
+      id: "oir_dde01_q52",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 52,
+      type: "verbal",
+      subType: "number_series",
+      difficulty: "medium",
+      tags: ["series"],
+      promptText: "Find the missing value: 216, 72, 36, 12, ?, 2",
+      options: [{ key: "A", text: "8" }, { key: "B", text: "6" }, { key: "C", text: "4" }, { key: "D", text: "3" }],
+      correctOption: "B",
+      explanation: "Alternating divisions ÷3, ÷2, ÷3, ÷2, ÷3: 12 ÷ 2 = 6 (and 6 ÷ 3 = 2).",
+    },
+    {
+      id: "oir_dde01_q53",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 53,
+      type: "verbal",
+      subType: "letter_series",
+      difficulty: "easy",
+      tags: ["series", "alphabet"],
+      promptText: "Find the missing value: CEH, ?, OQT, UWZ",
+      options: [{ key: "A", text: "ACG" }, { key: "B", text: "IKN" }, { key: "C", text: "FGJ" }, { key: "D", text: "KLM" }],
+      correctOption: "B",
+      explanation: "Each letter shifts +6 from one triplet to the next (C->I->O->U, E->K->Q->W, H->N->T->Z), giving IKN.",
+    },
+    {
+      id: "oir_dde01_q54",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 54,
+      type: "verbal",
+      subType: "letter_series",
+      difficulty: "easy",
+      tags: ["series", "alphabet"],
+      promptText: "Find the missing value: BDA, FHE, ?, NPM",
+      options: [{ key: "A", text: "JKI" }, { key: "B", text: "IMJ" }, { key: "C", text: "JLI" }, { key: "D", text: "INJ" }],
+      correctOption: "C",
+      explanation: "Each letter shifts +4 per term: B+4=F+4=J+4=N; D+4=H+4=L+4=P; A+4=E+4=I+4=M -> JLI.",
+    },
+    {
+      id: "oir_dde01_q55",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 55,
+      type: "verbal",
+      subType: "letter_series",
+      difficulty: "medium",
+      tags: ["series", "alphabet"],
+      promptText: "Find the missing value: HFD, NLJ, ??O, XVT",
+      options: [{ key: "A", text: "PQ" }, { key: "B", text: "SQ" }, { key: "C", text: "QP" }, { key: "D", text: "QS" }],
+      correctOption: "B",
+      explanation: "Each triplet steps downward by 2 letters (H-F-D, N-L-J, S-Q-O, X-V-T). Since O=15, Q=17 and S=19 -> SQ.",
+    },
+    {
+      id: "oir_dde01_q56",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 56,
+      type: "verbal",
+      subType: "letter_series",
+      difficulty: "easy",
+      tags: ["series", "alphabet"],
+      promptText: "Find the missing value: AEFG, BHIJ, ?, DNOP",
+      options: [{ key: "A", text: "CIJK" }, { key: "B", text: "CFGH" }, { key: "C", text: "CKLM" }, { key: "D", text: "CKMN" }],
+      correctOption: "C",
+      explanation: "First letters progress A, B, C, D while the trailing 3-letter run continues consecutively (EFG, HIJ, KLM, NOP) -> CKLM.",
+    },
+    {
+      id: "oir_dde01_q57",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 57,
+      type: "verbal",
+      subType: "alphanumeric_series",
+      difficulty: "hard",
+      tags: ["series", "alphanumeric"],
+      promptText: "Find the missing value: 2E2, 1H9, 1K6, 1N3, ?",
+      options: [{ key: "A", text: "1P4" }, { key: "B", text: "1J9" }, { key: "C", text: "1Q0" }, { key: "D", text: "1R8" }],
+      correctOption: "C",
+      explanation: "The outer two digits read together descend by 3 each step (22, 19, 16, 13, 10), while the middle letter advances +3 (E, H, K, N, Q) -> 1Q0.",
+    },
+    {
+      id: "oir_dde01_q58",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 58,
+      type: "verbal",
+      subType: "alphanumeric_series",
+      difficulty: "easy",
+      tags: ["series", "alphanumeric"],
+      promptText: "Find the missing value: H8, L12, O15, S19, ?",
+      options: [{ key: "A", text: "U21" }, { key: "B", text: "W23" }, { key: "C", text: "V22" }, { key: "D", text: "Y25" }],
+      correctOption: "C",
+      explanation: "Each number equals its letter's alphabet position, stepping +4, +3, +4, +3 -> 19 + 3 = 22 -> V22.",
+    },
+    {
+      id: "oir_dde01_q59",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 59,
+      type: "verbal",
+      subType: "number_series",
+      difficulty: "easy",
+      tags: ["series", "roman-numerals"],
+      promptText: "Find the missing value: II, IV, IX, ?, XXV",
+      options: [{ key: "A", text: "XI" }, { key: "B", text: "XX" }, { key: "C", text: "XVI" }, { key: "D", text: "XIV" }],
+      correctOption: "C",
+      explanation: "Squares in Roman numerals: 2^2=IV (4), 3^2=IX (9), 4^2=XVI (16), 5^2=XXV (25).",
+    },
+
+    // ======================== Q60 – Q64: CODING & DECODING ========================
+    {
+      id: "oir_dde01_q60",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 60,
+      type: "verbal",
+      subType: "coding_decoding",
+      difficulty: "easy",
+      tags: ["coding"],
+      promptText: "If FIRE is coded as '#*?%', then FREEZE will be coded as:",
+      options: [{ key: "A", text: "#?%%&%" }, { key: "B", text: "??%%#*" }, { key: "C", text: "%%%?^^" }, { key: "D", text: "???%#@" }],
+      correctOption: "A",
+      explanation: "Direct letter-symbol substitution: F=#, R=?, E=% -> FREEZE starts with #?%% and ends in % -> #?%%&%.",
+    },
+    {
+      id: "oir_dde01_q61",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 61,
+      type: "verbal",
+      subType: "coding_decoding",
+      difficulty: "medium",
+      tags: ["coding"],
+      promptText: "If THUMB is coded as BMAHT then CRUMB will be coded as:",
+      options: [{ key: "A", text: "BCARM" }, { key: "B", text: "BMARC" }, { key: "C", text: "RCEMB" }, { key: "D", text: "None of the above" }],
+      correctOption: "B",
+      explanation: "Official DDE Key: BMARC. Reversing THUMB gives BMUHT, with U replaced by A (BM-A-HT); similarly reversing CRUMB gives BMURC -> BMARC.",
+    },
+    {
+      id: "oir_dde01_q62",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 62,
+      type: "verbal",
+      subType: "coding_decoding",
+      difficulty: "medium",
+      tags: ["coding"],
+      promptText: "In a certain language, TEARS is coded as 18, so how will be WATER coded?",
+      options: [{ key: "A", text: "25" }, { key: "B", text: "22" }, { key: "C", text: "18" }, { key: "D", text: "20" }],
+      correctOption: "B",
+      explanation: "Official DDE Key: 22.",
+    },
+    {
+      id: "oir_dde01_q63",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 63,
+      type: "verbal",
+      subType: "coding_decoding",
+      difficulty: "easy",
+      tags: ["coding"],
+      promptText: "If LIFE is coded as FELI, how is MORE coded as:",
+      options: [{ key: "A", text: "EROM" }, { key: "B", text: "OREM" }, { key: "C", text: "REMO" }, { key: "D", text: "MERO" }],
+      correctOption: "C",
+      explanation: "Swap the first two letters with the last two letters: LI|FE -> FE|LI, so MO|RE -> RE|MO.",
+    },
+    {
+      id: "oir_dde01_q64",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 64,
+      type: "verbal",
+      subType: "coding_decoding",
+      difficulty: "easy",
+      tags: ["coding"],
+      promptText: "If KEYS = MDAR, then LOCK = ?",
+      options: [{ key: "A", text: "NEJJ" }, { key: "B", text: "NNEJ" }, { key: "C", text: "JENN" }, { key: "D", text: "JENJ" }],
+      correctOption: "B",
+      explanation: "Alternating shifts +2, -1, +2, -1: L+2=N, O-1=N, C+2=E, K-1=J -> NNEJ.",
+    },
+
+    // ======================== Q65 – Q70: DICTIONARY / ALPHABETICAL ORDER ========================
+    {
+      id: "oir_dde01_q65",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 65,
+      type: "verbal",
+      subType: "dictionary_order",
+      difficulty: "easy",
+      tags: ["vocabulary", "alphabet"],
+      promptText: "Arrange the given words in Alphabetical Order and choose the one that comes first.",
+      options: [
+        { key: "A", text: "Wasp" },
+        { key: "B", text: "Waste" },
+        { key: "C", text: "War" },
+        { key: "D", text: "Wrinkle" },
+        { key: "E", text: "Wrist" },
+      ],
+      correctOption: "C",
+      explanation: "Order: War -> Wasp -> Waste -> Wrinkle -> Wrist. 'War' comes first.",
+    },
+    {
+      id: "oir_dde01_q66",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 66,
+      type: "verbal",
+      subType: "dictionary_order",
+      difficulty: "easy",
+      tags: ["vocabulary", "alphabet"],
+      promptText: "Arrange the given words in Alphabetical Order, select the word that comes first, and note the last letter of that word.",
+      options: [
+        { key: "A", text: "Science (last letter: e)" },
+        { key: "B", text: "Scrutiny (last letter: y)" },
+        { key: "C", text: "Scripture (last letter: e)" },
+        { key: "D", text: "Scramble (last letter: e)" },
+        { key: "E", text: "Script (last letter: t)" },
+      ],
+      correctOption: "A",
+      explanation: "Official DDE Key: A (e). Alphabetically, 'Science' (Sci-) precedes 'Scramble' (Scr-), and its last letter is 'e'.",
+    },
+    {
+      id: "oir_dde01_q67",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 67,
+      type: "verbal",
+      subType: "dictionary_order",
+      difficulty: "easy",
+      tags: ["vocabulary", "alphabet"],
+      promptText: "Arrange the given words in Alphabetical Order and choose the one that comes first.",
+      options: [
+        { key: "A", text: "Intense" },
+        { key: "B", text: "Intellect" },
+        { key: "C", text: "Intend" },
+        { key: "D", text: "Intelligent" },
+        { key: "E", text: "Integument" },
+      ],
+      correctOption: "E",
+      explanation: "Order: Integument (Integ-) -> Intellect (Intel-) -> Intelligent -> Intend -> Intense.",
+    },
+    {
+      id: "oir_dde01_q68",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 68,
+      type: "verbal",
+      subType: "dictionary_order",
+      difficulty: "easy",
+      tags: ["vocabulary", "alphabet"],
+      promptText: "Arrange the given words in Alphabetical Order and choose the one that comes first.",
+      options: [
+        { key: "A", text: "Nature" },
+        { key: "B", text: "Native" },
+        { key: "C", text: "Narrate" },
+        { key: "D", text: "Nascent" },
+        { key: "E", text: "Naughty" },
+      ],
+      correctOption: "C",
+      explanation: "Order: Narrate -> Nascent -> Native -> Nature -> Naughty. 'Narrate' comes first.",
+    },
+    {
+      id: "oir_dde01_q69",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 69,
+      type: "verbal",
+      subType: "dictionary_order",
+      difficulty: "easy",
+      tags: ["vocabulary", "alphabet"],
+      promptText: "Arrange the given words in Alphabetical Order and tick the one that comes last.",
+      options: [
+        { key: "A", text: "Regard" },
+        { key: "B", text: "Refer" },
+        { key: "C", text: "Remind" },
+        { key: "D", text: "Report" },
+        { key: "E", text: "Render" },
+      ],
+      correctOption: "D",
+      explanation: "Order: Refer -> Regard -> Remind -> Render -> Report. 'Report' comes last.",
+    },
+    {
+      id: "oir_dde01_q70",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 70,
+      type: "verbal",
+      subType: "dictionary_order",
+      difficulty: "easy",
+      tags: ["vocabulary", "alphabet"],
+      promptText: "Arrange the given words in Alphabetical Order, select the word that comes first, and note the last letter of the word.",
+      options: [
+        { key: "A", text: "Demand (last letter: d)" },
+        { key: "B", text: "Destroy (last letter: y)" },
+        { key: "C", text: "Deterred (last letter: d)" },
+        { key: "D", text: "Direct (last letter: t)" },
+        { key: "E", text: "Damage (last letter: e)" },
+      ],
+      correctOption: "E",
+      explanation: "Official DDE Key: E (e). 'Damage' (Da-) comes first alphabetically, and its last letter is 'e'.",
+    },
+
+    // ======================== Q71 – Q78: JUMBLED ANAGRAMS ========================
+    {
+      id: "oir_dde01_q71",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 71,
+      type: "verbal",
+      subType: "jumbled_word",
+      difficulty: "easy",
+      tags: ["anagram"],
+      promptText: "Rearrange the jumbled word 'levene' in: \"There are levene players on the ground in the game of cricket\"",
+      options: [{ key: "A", text: "Eleven" }, { key: "B", text: "Seven" }, { key: "C", text: "Twelve" }, { key: "D", text: "Nine" }],
+      correctOption: "A",
+      explanation: "levene rearranges to 'eleven'.",
+    },
+    {
+      id: "oir_dde01_q72",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 72,
+      type: "verbal",
+      subType: "jumbled_word",
+      difficulty: "easy",
+      tags: ["anagram"],
+      promptText: "Rearrange the jumbled word 'Quisrelr' in: \"Quisrelr is small animal who runs very fast and plays on trees\"",
+      options: [{ key: "A", text: "Squirrel" }, { key: "B", text: "Lizard" }, { key: "C", text: "Rabbit" }, { key: "D", text: "Mongoose" }],
+      correctOption: "A",
+      explanation: "Quisrelr rearranges to 'Squirrel'.",
+    },
+    {
+      id: "oir_dde01_q73",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 73,
+      type: "verbal",
+      subType: "jumbled_word",
+      difficulty: "easy",
+      tags: ["anagram"],
+      promptText: "Rearrange the jumbled word 'Kismik' in: \"Kismik is one of the states of india\"",
+      options: [{ key: "A", text: "Sikkim" }, { key: "B", text: "Assam" }, { key: "C", text: "Tripura" }, { key: "D", text: "Kerala" }],
+      correctOption: "A",
+      explanation: "Kismik rearranges to 'Sikkim'.",
+    },
+    {
+      id: "oir_dde01_q74",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 74,
+      type: "verbal",
+      subType: "jumbled_word",
+      difficulty: "easy",
+      tags: ["anagram"],
+      promptText: "Rearrange the jumbled word 'Gudnee' in: \"Gudnee is a disease caused by a virus.\"",
+      options: [{ key: "A", text: "Dengue" }, { key: "B", text: "Malaria" }, { key: "C", text: "Typhoid" }, { key: "D", text: "Cholera" }],
+      correctOption: "A",
+      explanation: "Gudnee rearranges to 'Dengue'.",
+    },
+    {
+      id: "oir_dde01_q75",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 75,
+      type: "verbal",
+      subType: "jumbled_word",
+      difficulty: "easy",
+      tags: ["anagram"],
+      promptText: "Rearrange the jumbled word 'teninifi' in: \"There are teninifi stars on sky\"",
+      options: [{ key: "A", text: "Infinite" }, { key: "B", text: "Million" }, { key: "C", text: "Billion" }, { key: "D", text: "Limited" }],
+      correctOption: "A",
+      explanation: "teninifi rearranges to 'infinite'.",
+    },
+    {
+      id: "oir_dde01_q76",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 76,
+      type: "verbal",
+      subType: "jumbled_word",
+      difficulty: "easy",
+      tags: ["anagram"],
+      promptText: "Rearrange the jumbled word 'Kund' in: \"Kund is said when player literally hangs on ring and puts the shot in basketball.\"",
+      options: [{ key: "A", text: "Dunk" }, { key: "B", text: "Pass" }, { key: "C", text: "Foul" }, { key: "D", text: "Goal" }],
+      correctOption: "A",
+      explanation: "Kund rearranges to 'Dunk'.",
+    },
+    {
+      id: "oir_dde01_q77",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 77,
+      type: "verbal",
+      subType: "jumbled_word",
+      difficulty: "easy",
+      tags: ["anagram"],
+      promptText: "Rearrange the jumbled word 'galf' in: \"Our National galf has three colours.\"",
+      options: [{ key: "A", text: "Flag" }, { key: "B", text: "Bird" }, { key: "C", text: "Song" }, { key: "D", text: "Tree" }],
+      correctOption: "A",
+      explanation: "galf rearranges to 'flag'.",
+    },
+    {
+      id: "oir_dde01_q78",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 78,
+      type: "verbal",
+      subType: "jumbled_word",
+      difficulty: "easy",
+      tags: ["anagram"],
+      promptText: "Rearrange the jumbled word 'ketroc' in: \"ketroc is a sent on space by scientists.\"",
+      options: [{ key: "A", text: "Rocket" }, { key: "B", text: "Probe" }, { key: "C", text: "Capsule" }, { key: "D", text: "Shuttle" }],
+      correctOption: "A",
+      explanation: "ketroc rearranges to 'Rocket'.",
+    },
+
+    // ======================== Q79 – Q85: SMALLEST NUMBER LAST DIGIT ========================
+    {
+      id: "oir_dde01_q79",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 79,
+      type: "verbal",
+      subType: "numerical_comparison",
+      difficulty: "easy",
+      tags: ["attention-to-detail", "numbers"],
+      promptText: "Select the smallest number (and note its last digit):",
+      options: [
+        { key: "A", text: "349578" },
+        { key: "B", text: "345879" },
+        { key: "C", text: "349875" },
+        { key: "D", text: "349587" },
+      ],
+      correctOption: "B",
+      explanation: "The smallest number is 345879 (Option B), whose last digit is 9.",
+    },
+    {
+      id: "oir_dde01_q80",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 80,
+      type: "verbal",
+      subType: "numerical_comparison",
+      difficulty: "easy",
+      tags: ["attention-to-detail", "numbers"],
+      promptText: "Select the smallest number (and note its last digit):",
+      options: [
+        { key: "A", text: "897536" },
+        { key: "B", text: "985763" },
+        { key: "C", text: "899875" },
+        { key: "D", text: "898657" },
+      ],
+      correctOption: "A",
+      explanation: "The smallest number is 897536 (Option A), whose last digit is 6.",
+    },
+    {
+      id: "oir_dde01_q81",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 81,
+      type: "verbal",
+      subType: "numerical_comparison",
+      difficulty: "easy",
+      tags: ["attention-to-detail", "numbers"],
+      promptText: "Select the smallest number (and note its last digit):",
+      options: [
+        { key: "A", text: "267524" },
+        { key: "B", text: "259865" },
+        { key: "C", text: "275648" },
+        { key: "D", text: "259475" },
+      ],
+      correctOption: "D",
+      explanation: "The smallest number is 259475 (Option D), whose last digit is 5.",
+    },
+    {
+      id: "oir_dde01_q82",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 82,
+      type: "verbal",
+      subType: "numerical_comparison",
+      difficulty: "easy",
+      tags: ["attention-to-detail", "numbers"],
+      promptText: "Select the smallest number (and note its last digit):",
+      options: [
+        { key: "A", text: "583475" },
+        { key: "B", text: "587367" },
+        { key: "C", text: "857627" },
+        { key: "D", text: "587245" },
+      ],
+      correctOption: "A",
+      explanation: "The smallest number is 583475 (Option A), whose last digit is 5.",
+    },
+    {
+      id: "oir_dde01_q83",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 83,
+      type: "verbal",
+      subType: "numerical_comparison",
+      difficulty: "easy",
+      tags: ["attention-to-detail", "numbers"],
+      promptText: "Select the smallest number (and note its last digit):",
+      options: [
+        { key: "A", text: "699696" },
+        { key: "B", text: "696969" },
+        { key: "C", text: "696699" },
+        { key: "D", text: "966996" },
+      ],
+      correctOption: "C",
+      explanation: "The smallest number is 696699 (Option C), whose last digit is 9.",
+    },
+    {
+      id: "oir_dde01_q84",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 84,
+      type: "verbal",
+      subType: "numerical_comparison",
+      difficulty: "easy",
+      tags: ["attention-to-detail", "numbers"],
+      promptText: "Select the smallest number (and note its last digit):",
+      options: [
+        { key: "A", text: "213696" },
+        { key: "B", text: "231996" },
+        { key: "C", text: "213669" },
+        { key: "D", text: "223699" },
+      ],
+      correctOption: "C",
+      explanation: "The smallest number is 213669 (Option C), whose last digit is 9.",
+    },
+    {
+      id: "oir_dde01_q85",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 85,
+      type: "verbal",
+      subType: "numerical_comparison",
+      difficulty: "easy",
+      tags: ["attention-to-detail", "numbers"],
+      promptText: "Select the smallest number (and note its last digit):",
+      options: [
+        { key: "A", text: "932779" },
+        { key: "B", text: "923797" },
+        { key: "C", text: "903997" },
+        { key: "D", text: "987937" },
+      ],
+      correctOption: "C",
+      explanation: "The smallest number is 903997 (Option C), whose last digit is 7.",
+    },
+
+    // ======================== Q86 – Q90: IDIOMS & PHRASES ========================
+    {
+      id: "oir_dde01_q86",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 86,
+      type: "verbal",
+      subType: "idioms",
+      difficulty: "easy",
+      tags: ["english", "idioms"],
+      promptText: "Select the correct meaning of the given phrase: \"Bark up the wrong tree.\"",
+      options: [
+        { key: "A", text: "To do something in a planned way" },
+        { key: "B", text: "Illegal felling of tree" },
+        { key: "C", text: "A correct action" },
+        { key: "D", text: "To do something in a wrong way" },
+      ],
+      correctOption: "D",
+      explanation: "\"Bark up the wrong tree\" means pursuing a mistaken course of action (Option D).",
+    },
+    {
+      id: "oir_dde01_q87",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 87,
+      type: "verbal",
+      subType: "idioms",
+      difficulty: "easy",
+      tags: ["english", "idioms"],
+      promptText: "Select the correct meaning of the given phrase: \"At one's wit's end\"",
+      options: [
+        { key: "A", text: "Completely confused" },
+        { key: "B", text: "To be very witty" },
+        { key: "C", text: "To have no sense of humour" },
+        { key: "D", text: "To confuse others" },
+      ],
+      correctOption: "A",
+      explanation: "\"At one's wit's end\" means thoroughly perplexed or completely confused (Option A).",
+    },
+    {
+      id: "oir_dde01_q88",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 88,
+      type: "verbal",
+      subType: "idioms",
+      difficulty: "easy",
+      tags: ["english", "idioms"],
+      promptText: "Select the correct meaning of the given phrase: \"To allow the grass to grow under one's feet\"",
+      options: [
+        { key: "A", text: "To be kind to plants" },
+        { key: "B", text: "To be lazy" },
+        { key: "C", text: "To stand steadily" },
+        { key: "D", text: "To water the plants" },
+      ],
+      correctOption: "B",
+      explanation: "\"To let the grass grow under one's feet\" means to remain inactive or be lazy / procrastinate (Option B).",
+    },
+    {
+      id: "oir_dde01_q89",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 89,
+      type: "verbal",
+      subType: "idioms",
+      difficulty: "easy",
+      tags: ["english", "idioms"],
+      promptText: "Select the correct meaning of the given phrase: \"To feather one's own nest\"",
+      options: [
+        { key: "A", text: "To console" },
+        { key: "B", text: "To make a nest comfortable" },
+        { key: "C", text: "To make a nest with feathers" },
+        { key: "D", text: "To serve one's selfish interests" },
+      ],
+      correctOption: "D",
+      explanation: "\"To feather one's own nest\" means to enrich oneself or serve one's own selfish interests (Option D).",
+    },
+    {
+      id: "oir_dde01_q90",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 90,
+      type: "verbal",
+      subType: "idioms",
+      difficulty: "easy",
+      tags: ["english", "idioms"],
+      promptText: "Select the correct meaning of the given phrase: \"An olive branch\"",
+      options: [
+        { key: "A", text: "An idea" },
+        { key: "B", text: "A lady" },
+        { key: "C", text: "An offer of peace" },
+        { key: "D", text: "The best branch" },
+      ],
+      correctOption: "C",
+      explanation: "\"An olive branch\" symbolizes an offer of peace or reconciliation (Option C; printed PDF had typo 'officer of peace').",
+    },
+
+    // ======================== Q91 – Q95: STATEMENT JUSTIFICATION ========================
+    {
+      id: "oir_dde01_q91",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 91,
+      type: "verbal",
+      subType: "statement_justification",
+      difficulty: "easy",
+      tags: ["reasoning"],
+      promptText: "Select the option which justifies the given statement: \"India is a democratic country because\"",
+      options: [
+        { key: "A", text: "It is stated in preamble" },
+        { key: "B", text: "People help each other" },
+        { key: "C", text: "Government is elected by people and it works for them" },
+        { key: "D", text: "It was decided during independence" },
+      ],
+      correctOption: "C",
+      explanation: "Democracy means government of the people, by the people, for the people (Option C).",
+    },
+    {
+      id: "oir_dde01_q92",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 92,
+      type: "verbal",
+      subType: "statement_justification",
+      difficulty: "easy",
+      tags: ["reasoning", "science"],
+      promptText: "Select the option which justifies the given statement: \"Whale is a mammal because\"",
+      options: [
+        { key: "A", text: "It has a pair of lungs" },
+        { key: "B", text: "A four chambered heart" },
+        { key: "C", text: "They give birth to live young" },
+        { key: "D", text: "They are huge in size" },
+      ],
+      correctOption: "C",
+      explanation: "Whales are viviparous (give birth to live young and nurse them), a defining mammalian trait (Option C).",
+    },
+    {
+      id: "oir_dde01_q93",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 93,
+      type: "verbal",
+      subType: "statement_justification",
+      difficulty: "easy",
+      tags: ["reasoning"],
+      promptText: "Select the option which justifies the given statement: \"Exercise is good for health because\"",
+      options: [
+        { key: "A", text: "It makes you a super human" },
+        { key: "B", text: "It maintains blood flow in the body" },
+        { key: "C", text: "It impress people" },
+        { key: "D", text: "It is a belief" },
+      ],
+      correctOption: "B",
+      explanation: "Exercise improves circulation and cardiovascular blood flow (Option B).",
+    },
+    {
+      id: "oir_dde01_q94",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 94,
+      type: "verbal",
+      subType: "statement_justification",
+      difficulty: "easy",
+      tags: ["reasoning", "science"],
+      promptText: "Select the option which justifies the given statement: \"CNG is known as green fuel because\"",
+      options: [
+        { key: "A", text: "It is green in colour." },
+        { key: "B", text: "It is made from trees." },
+        { key: "C", text: "It is naturally available" },
+        { key: "D", text: "It causes less pollution." },
+      ],
+      correctOption: "D",
+      explanation: "CNG burns more cleanly than petrol or diesel, producing significantly less pollution (Option D).",
+    },
+    {
+      id: "oir_dde01_q95",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 95,
+      type: "verbal",
+      subType: "statement_justification",
+      difficulty: "easy",
+      tags: ["reasoning", "geography"],
+      promptText: "Select the option which justifies the given statement: \"Russia is the largest country because\"",
+      options: [
+        { key: "A", text: "It has the largest landmass" },
+        { key: "B", text: "It has large population" },
+        { key: "C", text: "It has large fertile lands" },
+        { key: "D", text: "It has the largest army" },
+      ],
+      correctOption: "A",
+      explanation: "Russia spans the largest total land area (~17.1 million sq km) of any country (Option A).",
+    },
+
+    // ======================== Q96 – Q100: APTITUDE, CLOCKS, FIGURES & PATTERN ========================
+    {
+      id: "oir_dde01_q96",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 96,
+      type: "verbal",
+      subType: "arithmetic",
+      difficulty: "easy",
+      tags: ["arithmetic"],
+      promptText: "A container contains 8 boxes and these 8 boxes contain 5 smaller boxes in each. What is the total number of boxes?",
+      options: [{ key: "A", text: "64" }, { key: "B", text: "40" }, { key: "C", text: "33" }, { key: "D", text: "69" }],
+      correctOption: "B",
+      explanation: "Official DDE Key: 40 (8 × 5 = 40 inner smaller boxes).",
+    },
+    {
+      id: "oir_dde01_q97",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 97,
+      type: "verbal",
+      subType: "clocks",
+      difficulty: "easy",
+      tags: ["clocks", "mirror-time"],
+      promptText: "If real time is 12:10 then what will be the mirror image of that clock.",
+      options: [{ key: "A", text: "10:50" }, { key: "B", text: "11:50" }, { key: "C", text: "12:50" }, { key: "D", text: "01:50" }],
+      correctOption: "B",
+      explanation: "Mirror image time = 23:60 − 12:10 = 11:50 (Option B).",
+    },
+    {
+      id: "oir_dde01_q98",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 98,
+      type: "verbal",
+      subType: "clocks",
+      difficulty: "easy",
+      tags: ["clocks", "angle"],
+      promptText: "What is the angle between the hands of the clock at 03:40 ?",
+      options: [{ key: "A", text: "240" }, { key: "B", text: "110" }, { key: "C", text: "130" }, { key: "D", text: "180" }],
+      correctOption: "C",
+      explanation: "Angle = |30H − 5.5M| = |30(3) − 5.5(40)| = |90 − 220| = 130° (Option C).",
+    },
+    {
+      id: "oir_dde01_q99",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 99,
+      type: "non_verbal",
+      subType: "figure_counting",
+      difficulty: "medium",
+      tags: ["counting", "rectangles"],
+      promptText: "Find the number of rectangles in the given figure.",
+      figures: {
+        type: "svg",
+        svgMarkup: svgQ99Rectangles,
+      },
+      options: [{ key: "A", text: "9" }, { key: "B", text: "10" }, { key: "C", text: "11" }, { key: "D", text: "12" }],
+      correctOption: "C",
+      explanation: "Official DDE Key: 11 rectangles.",
+    },
+    {
+      id: "oir_dde01_q100",
+      source: "DDE",
+      sourceBookletId: "oir-dde-01",
+      sourceBookletName: "DDE Official OIR Practice Test 01",
+      questionNumber: 100,
+      type: "verbal",
+      subType: "letter_pattern",
+      difficulty: "easy",
+      tags: ["series", "pattern"],
+      promptText: "Fill in the blanks: BA_BA_B_CBA_B_C",
+      options: [{ key: "A", text: "CABBC" }, { key: "B", text: "BCABC" }, { key: "C", text: "CCACA" }, { key: "D", text: "BCABB" }],
+      correctOption: "C",
+      explanation: "Repeating 3-letter block BAC repeated 5 times: BA[C] / BA[C] / B[A]C / BA[C] / B[A]C -> missing letters CCACA (Option C).",
+    },
+  ],
 };
