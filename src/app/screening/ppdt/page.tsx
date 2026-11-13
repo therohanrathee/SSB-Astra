@@ -8,9 +8,7 @@ import {
   ArrowLeft,
   Clock,
   Printer,
-  Download,
   UploadCloud,
-  Camera,
   QrCode,
   CheckCircle2,
   AlertTriangle,
@@ -27,91 +25,82 @@ import {
   Info,
   Maximize2,
   HelpCircle,
-  X
+  X,
+  Shuffle,
+  Check,
+  Edit3,
+  BookOpen,
+  Lock
 } from "lucide-react";
 import CrossedSwords from "@/components/CrossedSwords";
 import ThemeToggle from "@/components/ThemeToggle";
 import { examAudio } from "@/lib/audioBuzzer";
+import { PPDTScenario, PPDTEvaluationResult, PPDTCycleState } from "@/data/ppdt/types";
+import { PPDT_SCENARIOS, getScenarioById } from "@/data/ppdt/scenarios";
+import {
+  loadCycleState,
+  saveCycleState,
+  getActiveCycleScenario,
+  getCycleMetrics,
+  createFreshCycle,
+  createDeterministicInitialCycle,
+  consumeScenarioOnTestStart,
+  recordEvaluationScore
+} from "@/data/ppdt/cycleManager";
 
 type PPDTPhase = "briefing" | "projection" | "writing" | "upload" | "evaluation";
-
-interface PPDTScenario {
-  id: string;
-  title: string;
-  category: string;
-  description: string;
-  mockPromptTheme: string;
-  imageHint: string;
-}
-
-const PRESET_SCENARIOS: PPDTScenario[] = [
-  {
-    id: "scen-1",
-    title: "Scenario 01: Village Panchayat Gathering",
-    category: "Community & Rural Development",
-    description: "Two young men in discussion near a village assembly with elderly figures in background. Subtle blueprints/documents on the table.",
-    mockPromptTheme: "Constructive village infrastructure initiative, resolving water drainage or agricultural cooperative.",
-    imageHint: "Ambiguous gathering of 3-4 figures, mixed ages, rustic outdoor setting."
-  },
-  {
-    id: "scen-2",
-    title: "Scenario 02: Flash Flood Rescue & Logistics",
-    category: "Disaster Relief & Civic Action",
-    description: "Young adult gesturing towards a damaged culvert/embankment while assisting an elderly person with gear nearby.",
-    mockPromptTheme: "Organizing quick evacuation, barricading vulnerable bridge, medical transit to safe camp.",
-    imageHint: "Hazy riverside/waterlogged setting with dynamic physical movement."
-  },
-  {
-    id: "scen-3",
-    title: "Scenario 03: Late-Night Workshop / Laboratory",
-    category: "Technical Innovation & Teamwork",
-    description: "Two technicians/students inspecting equipment with circuit boards, one taking notes and the other calibrating tools.",
-    mockPromptTheme: "Fabricating renewable energy prototype, diagnosing equipment malfunction before testing deadline.",
-    imageHint: "Indoor industrial/lab scene with subtle mechanical instruments."
-  }
-];
 
 export default function PPDTSimulatorPage() {
   const router = useRouter();
 
+  // Cycle & Scenario State
+  const [cycleState, setCycleState] = useState<PPDTCycleState>(() => createDeterministicInitialCycle(1));
+  const [selectedScenario, setSelectedScenario] = useState<PPDTScenario>(PPDT_SCENARIOS[0]);
+  const [isClientLoaded, setIsClientLoaded] = useState<boolean>(false);
+  const [cycleNotice, setCycleNotice] = useState<string | null>(null);
+
   // Phase State
   const [phase, setPhase] = useState<PPDTPhase>("briefing");
-  const [selectedScenario, setSelectedScenario] = useState<PPDTScenario>(PRESET_SCENARIOS[0]);
 
   // Timers
   const [projectionSeconds, setProjectionSeconds] = useState<number>(30);
   const [writingSeconds, setWritingSeconds] = useState<number>(240); // 4 minutes = 240 seconds
   const [uploadLatencySeconds, setUploadLatencySeconds] = useState<number>(0);
 
-  // Upload & QR Sync
+  // Upload, Typing & QR Sync
   const [sessionId, setSessionId] = useState<string>("");
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
   const [showDemoSheetModal, setShowDemoSheetModal] = useState<boolean>(false);
   const [uploadedStoryImage, setUploadedStoryImage] = useState<string | null>(null);
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
+  const [evalError, setEvalError] = useState<string | null>(null);
+
+  // Online Story Typing Option
+  const [activeUploadTab, setActiveUploadTab] = useState<"upload" | "type">("upload");
+  const [typedHeroAge, setTypedHeroAge] = useState<string>("23");
+  const [typedHeroSex, setTypedHeroSex] = useState<string>("Male");
+  const [typedHeroMood, setTypedHeroMood] = useState<string>("Positive (+)");
+  const [typedAction, setTypedAction] = useState<string>("");
+  const [typedStoryText, setTypedStoryText] = useState<string>("");
 
   // Audio testing state
   const [audioPlayed, setAudioPlayed] = useState<boolean>(false);
 
   // Evaluation Report State
-  const [evaluationReport, setEvaluationReport] = useState<{
-    perceptionScore: number;
-    themeScore: number;
-    latencyPenalty: boolean;
-    latencyMessage: string;
-    olqBreakdown: { name: string; rating: string; comment: string }[];
-    narrationGuidance: string[];
-    suggestedStory: string;
-  } | null>(null);
+  const [evaluationReport, setEvaluationReport] = useState<PPDTEvaluationResult | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const syncPollRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize Session ID and QR Code
+  // Initialize Cycle State & Session ID on Client Mount
   useEffect(() => {
+    setIsClientLoaded(true);
+    const loaded = loadCycleState();
+    setCycleState(loaded);
+    const activeScen = getActiveCycleScenario(loaded);
+    setSelectedScenario(activeScen);
+
     const sid = `ppdt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     setSessionId(sid);
 
@@ -170,7 +159,7 @@ export default function PPDTSimulatorPage() {
   // 3. Post-Buzzer Upload Latency Tracker
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    if (phase === "upload" && !uploadedStoryImage) {
+    if (phase === "upload" && !uploadedStoryImage && !typedStoryText.trim()) {
       interval = setInterval(() => {
         setUploadLatencySeconds((prev) => prev + 1);
       }, 1000);
@@ -179,7 +168,7 @@ export default function PPDTSimulatorPage() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [phase, uploadedStoryImage]);
+  }, [phase, uploadedStoryImage, typedStoryText]);
 
   // 4. Poll Mobile Sync endpoint if waiting on Desktop
   useEffect(() => {
@@ -218,56 +207,116 @@ export default function PPDTSimulatorPage() {
     reader.readAsDataURL(file);
   };
 
+  /**
+   * LAUNCH TEST ENGINE:
+   * Consumes the scenario immediately upon launching projection.
+   * Persists to localStorage the exact millisecond projection starts so that
+   * even if the candidate closes the browser, reloads, or turns off the machine,
+   * the next time they open the site they will NEVER see this picture again!
+   */
+  const launchProjectionTest = (scenarioToTest?: PPDTScenario) => {
+    const target = scenarioToTest || selectedScenario || getActiveCycleScenario(cycleState);
+    setSelectedScenario(target);
+
+    // CRITICAL: Consume the picture the EXACT MOMENT projection starts!
+    const { nextState, cycleCompleted } = consumeScenarioOnTestStart(cycleState, target.id);
+    setCycleState(nextState);
+
+    if (cycleCompleted) {
+      setCycleNotice(
+        `Cycle #${cycleState.cycleNumber} Complete! You have perceived all ${PPDT_SCENARIOS.length} unique pictures. Starting Cycle #${nextState.cycleNumber} with a freshly randomized shuffle.`
+      );
+    }
+
+    setProjectionSeconds(30);
+    setWritingSeconds(240);
+    setUploadLatencySeconds(0);
+    setUploadedStoryImage(null);
+    setTypedStoryText("");
+    setTypedAction("");
+    setEvaluationReport(null);
+    setPhase("projection");
+  };
+
+  const startNextRotationTest = () => {
+    const nextUnseen = getActiveCycleScenario(cycleState);
+    launchProjectionTest(nextUnseen);
+  };
+
   // Run AI Psychological Evaluation
-  const handleEvaluateStory = () => {
+  const handleEvaluateStory = async () => {
     setIsEvaluating(true);
+    setEvalError(null);
 
-    setTimeout(() => {
-      const isLate = uploadLatencySeconds > 30;
+    try {
+      const payload: {
+        scenarioId: string;
+        latencySeconds: number;
+        imageBase64?: string;
+        typedStory?: string;
+      } = {
+        scenarioId: selectedScenario.id,
+        latencySeconds: uploadLatencySeconds
+      };
 
-      setEvaluationReport({
-        perceptionScore: 8.5,
-        themeScore: 9.0,
-        latencyPenalty: isLate,
-        latencyMessage: isLate
-          ? `Delayed Submission (${uploadLatencySeconds}s elapsed after buzzer). In physical SSB screening, writing after "Time Up - Stop Writing" buzzer constitutes a negative Officer Like Quality indicator (Discipline & Honesty).`
-          : `Punctual Submission (${uploadLatencySeconds}s). Stopped writing immediately upon buzzer sound.`,
-        olqBreakdown: [
-          {
-            name: "Effective Intelligence (Factor I)",
-            rating: "High",
-            comment: "Logical identification of problems, realistic utilization of local resources without resorting to unrealistic heroics."
-          },
-          {
-            name: "Initiative & Planning (Factor II)",
-            rating: "Above Average",
-            comment: "Central character takes proactive steps rather than waiting for external orders or assistance."
-          },
-          {
-            name: "Social Adaptability (Factor II)",
-            rating: "Outstanding",
-            comment: "Constructive teamwork portrayed with community members and subordinates."
-          },
-          {
-            name: "Courage & Determination (Factor IV)",
-            rating: "High",
-            comment: "Clear, determined execution leading to measurable social or civic progress."
-          }
-        ],
-        narrationGuidance: [
-          "State central character's Age, Sex, and Mood clearly in first 5 seconds.",
-          "Keep background exposition under 15 seconds: 'What led to the scene.'",
-          "Spend 30 seconds on active implementation steps taken by your hero.",
-          "Conclude in 10 seconds with positive, logical outcome without over-dramatization.",
-          "Maintain steady eye contact across the semi-circle of candidates during group discussion."
-        ],
-        suggestedStory:
-          "Rohan, a 23-year-old civil engineering graduate visiting his ancestral village, noticed severe water stagnation caused by a blocked culvert before the monsoon. Taking initiative, he mobilized the village youth council, drafted a simple clearance plan, and liaised with the local panchayat for basic tools. Working methodically, the team cleared the obstruction and installed a reinforced mesh, safeguarding 40 acres of crops and improving village hygiene."
+      if (uploadedStoryImage) {
+        payload.imageBase64 = uploadedStoryImage;
+      }
+
+      if (typedStoryText.trim()) {
+        const fullTyped = `[BOX PERCEPTION: Hero Age: ${typedHeroAge}, Sex: ${typedHeroSex}, Mood: ${typedHeroMood}]\n[ACTION: ${typedAction}]\n\n${typedStoryText}`;
+        payload.typedStory = fullTyped;
+      }
+
+      const res = await fetch("/api/screening/ppdt-evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
       });
 
-      setIsEvaluating(false);
+      if (!res.ok) {
+        throw new Error(`Evaluation failed with status ${res.status}`);
+      }
+
+      const data: PPDTEvaluationResult = await res.json();
+      setEvaluationReport(data);
+
+      // Record evaluation score in history (scenario was already consumed at test launch)
+      const storyToSave = data.transcription?.storyText || typedStoryText;
+      const actionToSave = data.transcription?.actionLine || typedAction;
+      const updatedState = recordEvaluationScore(
+        cycleState,
+        selectedScenario.id,
+        data.overallScore,
+        {
+          verdict: data.recommendationVerdict,
+          actionLine: actionToSave,
+          storyText: storyToSave,
+          detectedPOV: data.detectedPerspective?.matchedPerspectiveName,
+          evaluation: data,
+          scenarioNumber: selectedScenario.number
+        }
+      );
+      setCycleState(updatedState);
+
       setPhase("evaluation");
-    }, 1800);
+    } catch (err: unknown) {
+      console.error("Evaluation error:", err);
+      const msg = err instanceof Error ? err.message : "Failed to complete psychological evaluation";
+      setEvalError(msg);
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
+
+  const resetAllCycles = () => {
+    if (confirm("Reset picture rotation queue? This will re-shuffle all 10 pictures into Cycle #1.")) {
+      const fresh = createFreshCycle(1, []);
+      saveCycleState(fresh);
+      setCycleState(fresh);
+      setSelectedScenario(getActiveCycleScenario(fresh));
+      setCycleNotice("Picture rotation queue has been reset to Cycle #1.");
+    }
   };
 
   const formatTimer = (secs: number) => {
@@ -275,6 +324,18 @@ export default function PPDTSimulatorPage() {
     const s = secs % 60;
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
+
+  const metrics = isClientLoaded
+    ? getCycleMetrics(cycleState)
+    : {
+        cycleNumber: 1,
+        currentNumber: 1,
+        total: PPDT_SCENARIOS.length,
+        remaining: PPDT_SCENARIOS.length,
+        completedInCycle: 0,
+        percentComplete: 0,
+        isScenarioSeen: () => false
+      };
 
   return (
     <div className="min-h-screen bg-[var(--canvas-bg)] text-[var(--fg-primary)] flex flex-col font-mono selection:bg-[var(--primary-accent)] selection:text-white">
@@ -302,7 +363,7 @@ export default function PPDTSimulatorPage() {
                   </span>
                 </div>
                 <p className="text-[9px] text-[var(--fg-muted)] hidden md:block">
-                  Picture Perception & Discussion Test • Full Stage-1 Protocol
+                  Picture Perception & Discussion Test • Zero-Repeat Guarantee
                 </p>
               </div>
             </div>
@@ -329,113 +390,262 @@ export default function PPDTSimulatorPage() {
         {phase === "briefing" && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {/* Header Banner */}
-            <div className="p-6 rounded-2xl border-2 border-[var(--gold-accent)]/40 bg-gradient-to-r from-[var(--canvas-surface)] via-[var(--canvas-surface-subtle)] to-[var(--canvas-surface)] shadow-md relative overflow-hidden space-y-3">
-              <div className="flex items-center gap-2 text-xs font-bold text-[var(--gold-accent)] uppercase tracking-wider">
-                <Shield className="w-4 h-4" />
-                <span>OFFICIAL DIPR STAGE-1 SCREENING PROTOCOL</span>
+            <div className="p-6 rounded-2xl border-2 border-[var(--gold-accent)]/40 bg-gradient-to-r from-[var(--canvas-surface)] via-[var(--canvas-surface-subtle)] to-[var(--canvas-surface)] shadow-md relative overflow-hidden space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--canvas-border)] pb-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-[var(--gold-accent)] uppercase tracking-wider">
+                  <Shield className="w-4 h-4" />
+                  <span>OFFICIAL DIPR STAGE-1 SCREENING PROTOCOL</span>
+                </div>
+
+                {/* Non-repeating rotation status badge */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] px-2.5 py-1 rounded-full bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] border border-[var(--primary-accent)]/30 font-bold flex items-center gap-1.5">
+                    <Shuffle className="w-3 h-3" />
+                    <span>NON-REPEATING ROTATION • {metrics.completedInCycle} OF {metrics.total} COMPLETED</span>
+                  </span>
+                </div>
               </div>
 
-              <h1 className="text-xl sm:text-2xl font-black text-[var(--fg-primary)]">
-                Picture Perception & Description Test (PPDT) Simulator
-              </h1>
+              <div className="space-y-2">
+                <h1 className="text-xl sm:text-2xl font-black text-[var(--fg-primary)]">
+                  Picture Perception & Description Test (PPDT) Simulator
+                </h1>
 
-              <p className="text-xs text-[var(--fg-secondary)] font-sans max-w-3xl leading-relaxed">
-                Experience authentic SSB Stage-1 conditions: <strong>30-second projection</strong> of a hazy ambiguous picture $\rightarrow$ <strong>4-minute strict physical writing</strong> with pen-down buzzer $\rightarrow$ instant mobile photo sync & AI multimodal psychological evaluation.
-              </p>
+                <p className="text-xs text-[var(--fg-secondary)] font-sans max-w-3xl leading-relaxed">
+                  Authentic SSB Stage-1 conditions: <strong>30-second projection</strong> of an ambiguous picture $\rightarrow$ <strong>4-minute strict physical writing</strong> with pen-down buzzer $\rightarrow$ instant mobile photo sync or digital submission $\rightarrow$ AI psychological evaluation across the 15 OLQs.
+                </p>
+              </div>
+
+              {/* Cycle Notice Alert if applicable */}
+              {cycleNotice && (
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center justify-between">
+                  <span>{cycleNotice}</span>
+                  <button
+                    type="button"
+                    onClick={() => setCycleNotice(null)}
+                    className="text-emerald-300 hover:text-white"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* NON-REPEATING ROTATION ENGINE HUD CARD */}
+              <div className="p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)] space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-xs font-bold text-[var(--fg-primary)]">
+                      Non-Repeating Picture Rotation Active (Zero-Repeat Guarantee)
+                    </span>
+                  </div>
+
+                  <span className="text-[11px] text-[var(--gold-accent)] font-bold">
+                    Shown pictures are never repeated until all {metrics.total} have been perceived
+                  </span>
+                </div>
+
+                <div className="w-full bg-[var(--canvas-surface-subtle)] rounded-full h-2 overflow-hidden border border-[var(--canvas-border)]">
+                  <div
+                    className="bg-[var(--gold-accent)] h-full transition-all duration-500 rounded-full"
+                    style={{ width: `${metrics.percentComplete}%` }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-[10px] text-[var(--fg-muted)]">
+                  <span>
+                    Current Cycle #{metrics.cycleNumber}: {metrics.completedInCycle} seen, {metrics.remaining} remaining before fresh shuffle.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={resetAllCycles}
+                    className="text-[var(--fg-muted)] hover:text-red-400 underline cursor-pointer"
+                  >
+                    Reset Rotation
+                  </button>
+                </div>
+              </div>
 
               {/* Action Buttons Row */}
-              <div className="pt-2 flex items-center gap-3 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => setShowDemoSheetModal(true)}
-                  className="px-4 py-2 rounded-xl border border-[var(--canvas-border)] hover:border-[var(--gold-accent)] bg-[var(--canvas-surface)] text-xs font-bold text-[var(--fg-primary)] flex items-center gap-2 cursor-pointer shadow-sm"
-                >
-                  <FileText className="w-4 h-4 text-[var(--gold-accent)]" />
-                  <span>View Printable Answer Sheet Layout</span>
-                </button>
+              <div className="pt-2 flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setShowDemoSheetModal(true)}
+                    className="px-3.5 py-2 rounded-xl border border-[var(--canvas-border)] hover:border-[var(--gold-accent)] bg-[var(--canvas-surface)] text-xs font-bold text-[var(--fg-primary)] flex items-center gap-2 cursor-pointer shadow-sm"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
+                    <span>View DIPR Sheet Layout</span>
+                  </button>
 
+                  <button
+                    type="button"
+                    onClick={() => {
+                      examAudio.playPenDownBuzzer();
+                      setAudioPlayed(true);
+                    }}
+                    className="px-3.5 py-2 rounded-xl border border-[var(--canvas-border)] hover:border-[var(--primary-accent)] bg-[var(--canvas-surface)] text-xs font-bold text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] flex items-center gap-2 cursor-pointer shadow-sm"
+                  >
+                    <Volume2 className="w-3.5 h-3.5 text-[var(--primary-accent)]" />
+                    <span>{audioPlayed ? "✓ Audio Ready" : "Test Buzzer"}</span>
+                  </button>
+                </div>
+
+                {/* Primary CTA: Launch Next Guaranteed Unseen Picture */}
                 <button
                   type="button"
-                  onClick={() => {
-                    examAudio.playPenDownBuzzer();
-                    setAudioPlayed(true);
-                  }}
-                  className="px-4 py-2 rounded-xl border border-[var(--canvas-border)] hover:border-[var(--primary-accent)] bg-[var(--canvas-surface)] text-xs font-bold text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] flex items-center gap-2 cursor-pointer shadow-sm"
+                  onClick={startNextRotationTest}
+                  className="px-6 py-2.5 rounded-xl bg-[var(--gold-accent)] hover:brightness-110 text-black font-extrabold text-xs tracking-wider transition-all shadow-md active:scale-95 flex items-center gap-2 cursor-pointer shrink-0"
                 >
-                  <Volume2 className="w-4 h-4 text-[var(--primary-accent)]" />
-                  <span>{audioPlayed ? "✓ Audio Tested (Buzzer & Chime Ready)" : "Test Exam Buzzer Sound"}</span>
+                  <PlayCircle className="w-4 h-4 fill-black text-black" />
+                  <span>START NEXT PPDT TEST (PICTURE #{metrics.currentNumber})</span>
+                  <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            {/* Scenario Selection Grid */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[var(--fg-secondary)] uppercase tracking-wider">
-                  Select PPDT Practice Picture Scenario:
-                </span>
-                <span className="text-[10px] text-[var(--fg-muted)]">Ambiguous Social Interaction</span>
+            {/* HISTORY OF TAKEN PPDT TESTS, STORIES & EVALUATIONS */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-[var(--gold-accent)]" />
+                  <span className="text-xs font-bold text-[var(--fg-secondary)] uppercase tracking-wider">
+                    Past PPDT Test History & Evaluated Stories ({cycleState.history.length}):
+                  </span>
+                </div>
+
+                {cycleState.history.length > 0 && (
+                  <span className="text-[10px] text-[var(--gold-accent)] font-bold">
+                    {metrics.completedInCycle} of {metrics.total} Completed in Rotation Cycle #{metrics.cycleNumber}
+                  </span>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {PRESET_SCENARIOS.map((scen) => {
-                  const isSelected = selectedScenario.id === scen.id;
+              {cycleState.history.length === 0 ? (
+                <div className="p-8 rounded-2xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)] text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-[var(--gold-accent)]/10 text-[var(--gold-accent)] flex items-center justify-center mx-auto">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-sm font-bold text-[var(--fg-primary)]">
+                    No PPDT Tests Taken Yet
+                  </h3>
+                  <p className="text-xs text-[var(--fg-muted)] font-sans max-w-md mx-auto leading-relaxed">
+                    Once you start and complete a PPDT test, your transcribed story (OCR from physical sheet or typed text), psychological verdict, and 15-OLQ breakdown will be archived here.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={startNextRotationTest}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--gold-accent)] hover:brightness-110 text-black text-xs font-extrabold cursor-pointer transition-all shadow-md active:scale-95"
+                  >
+                    <PlayCircle className="w-4 h-4 fill-black" />
+                    <span>Start Your First Test (Picture #{metrics.currentNumber})</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {cycleState.history.map((entry, idx) => {
+                    const scen = getScenarioById(entry.scenarioId);
+                    const picNum = entry.scenarioNumber || scen?.number || (cycleState.history.length - idx);
+                    const formattedDate = new Date(entry.completedAt).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    });
 
-                  return (
-                    <div
-                      key={scen.id}
-                      onClick={() => setSelectedScenario(scen)}
-                      className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
-                        isSelected
-                          ? "border-[var(--gold-accent)] bg-[var(--gold-accent)]/10 shadow-md ring-1 ring-[var(--gold-accent)]"
-                          : "border-[var(--canvas-border)] bg-[var(--canvas-surface)] hover:border-[var(--canvas-border)]/80 hover:bg-[var(--canvas-surface-subtle)]"
-                      }`}
-                    >
-                      <div className="space-y-2">
-                        <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)] text-[var(--fg-muted)] block w-fit">
-                          {scen.category}
-                        </span>
-                        <h3 className="text-xs font-bold text-[var(--fg-primary)]">
-                          {scen.title}
-                        </h3>
-                        <p className="text-[11px] text-[var(--fg-muted)] font-sans line-clamp-3 leading-relaxed">
-                          {scen.description}
-                        </p>
+                    return (
+                      <div
+                        key={entry.id || `hist-${idx}`}
+                        className="p-5 rounded-2xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)] hover:border-[var(--gold-accent)]/50 transition-all space-y-3 shadow-sm"
+                      >
+                        {/* Top Meta Bar */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--canvas-border)] pb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono font-black px-2.5 py-0.5 rounded bg-[var(--gold-accent)]/15 text-[var(--gold-accent)] border border-[var(--gold-accent)]/30">
+                              Picture #{picNum.toString().padStart(2, "0")}
+                            </span>
+                            <span className="text-xs font-bold text-[var(--fg-primary)]">
+                              Attempt #{cycleState.history.length - idx}
+                            </span>
+                            <span className="text-[10px] text-[var(--fg-muted)]">
+                              • {formattedDate}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {entry.verdict && (
+                              <span
+                                className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                                  entry.verdict === "SCREEN-IN"
+                                    ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                    : entry.verdict === "BORDERLINE"
+                                    ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                                    : "bg-red-500/15 text-red-400 border-red-500/30"
+                                }`}
+                              >
+                                {entry.verdict}
+                              </span>
+                            )}
+                            {typeof entry.score === "number" && (
+                              <span className="text-xs font-mono font-bold text-[var(--gold-accent)] px-2 py-0.5 rounded bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)]">
+                                {entry.score} / 100
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action / Theme if available */}
+                        {(entry.actionLine || entry.detectedPOV) && (
+                          <div className="flex items-center gap-2 text-xs flex-wrap">
+                            {entry.actionLine && (
+                              <span className="text-[11px] font-bold text-[var(--fg-primary)]">
+                                Action: <span className="font-normal text-[var(--fg-secondary)]">{entry.actionLine}</span>
+                              </span>
+                            )}
+                            {entry.detectedPOV && (
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-[var(--primary-accent)]/10 text-[var(--primary-accent)] border border-[var(--primary-accent)]/20 font-bold">
+                                Angle: {entry.detectedPOV}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Story Content (Text / OCR Transcription) */}
+                        <div className="p-3.5 rounded-xl bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)] space-y-1.5">
+                          <div className="flex items-center justify-between text-[10px] text-[var(--fg-muted)]">
+                            <span className="font-bold uppercase tracking-wider flex items-center gap-1 text-[var(--gold-accent)]">
+                              <FileText className="w-3 h-3" />
+                              <span>Story Text (Transcribed OCR / Typed):</span>
+                            </span>
+                          </div>
+                          <p className="text-xs text-[var(--fg-secondary)] font-sans leading-relaxed whitespace-pre-wrap">
+                            {entry.storyText || "Story text was evaluated directly through image submission."}
+                          </p>
+                        </div>
+
+                        {/* Bottom Actions */}
+                        {entry.evaluation && (
+                          <div className="flex items-center justify-end pt-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (scen) setSelectedScenario(scen);
+                                setEvaluationReport(entry.evaluation!);
+                                setPhase("evaluation");
+                              }}
+                              className="text-xs font-bold text-[var(--gold-accent)] hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <span>View Full Psychological Evaluation Report</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
                       </div>
-
-                      <div className="pt-2 border-t border-[var(--canvas-border)] flex items-center justify-between text-[10px]">
-                        <span className="text-[var(--fg-muted)]">DIPR Ambiguity: High</span>
-                        {isSelected && <span className="text-[var(--gold-accent)] font-bold">Selected ✓</span>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Launch Projection CTA */}
-            <div className="p-5 rounded-2xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)] flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-bold text-[var(--fg-primary)] block">
-                  Keep your blank paper or printed PPDT sheet ready with a blue/black ballpoint pen.
-                </span>
-                <span className="text-[11px] text-[var(--fg-muted)] font-sans">
-                  The picture will appear for exactly 30 seconds, followed immediately by 4 minutes of uninterrupted writing.
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setProjectionSeconds(30);
-                  setPhase("projection");
-                }}
-                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[var(--gold-accent)] hover:brightness-110 text-black font-extrabold text-xs tracking-wider transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer shrink-0"
-              >
-                <PlayCircle className="w-4 h-4 fill-black text-black" />
-                <span>START 30s PROJECTION</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -447,7 +657,7 @@ export default function PPDTSimulatorPage() {
             <div className="flex items-center justify-between px-2">
               <div className="flex items-center gap-2 text-xs font-bold text-[var(--gold-accent)]">
                 <Clock className="w-4 h-4 animate-spin" />
-                <span>PICTURE PROJECTION ACTIVE</span>
+                <span>PICTURE PROJECTION ACTIVE (DIPR AMBIGUOUS STIMULUS)</span>
               </div>
 
               <div className="text-xl font-black font-mono text-[var(--gold-accent)]">
@@ -455,50 +665,15 @@ export default function PPDTSimulatorPage() {
               </div>
             </div>
 
-            {/* Picture Display Box with Authentic Hazy Ambient Screen */}
-            <div className="relative rounded-2xl border-4 border-[var(--canvas-border)] bg-neutral-900 aspect-[4/3] flex items-center justify-center overflow-hidden shadow-2xl">
-              {/* Authentic DIPR Ambiguous Silhouette & Grayscale Haze */}
-              <div className="absolute inset-0 bg-neutral-900 flex flex-col items-center justify-center p-8 text-center select-none filter blur-[1.5px] contrast-125">
-                {/* Silhouette SVG Scene representing the ambiguous social interaction */}
-                <svg viewBox="0 0 400 300" className="w-full h-full max-h-72 opacity-80">
-                  <defs>
-                    <radialGradient id="hazeGlow" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stopColor="#d4d4d4" stopOpacity="0.8" />
-                      <stop offset="100%" stopColor="#525252" stopOpacity="0.2" />
-                    </radialGradient>
-                  </defs>
-
-                  {/* Horizon / Room outline */}
-                  <line x1="20" y1="230" x2="380" y2="230" stroke="#737373" strokeWidth="2" />
-                  <rect x="60" y="70" width="100" height="160" fill="#404040" opacity="0.4" />
-
-                  {/* Figure 1 (Left - standing gesture) */}
-                  <circle cx="140" cy="110" r="16" fill="#a3a3a3" />
-                  <path d="M 125 130 L 155 130 L 150 200 L 130 200 Z" fill="#888888" />
-                  <line x1="150" y1="140" x2="190" y2="155" stroke="#a3a3a3" strokeWidth="6" strokeLinecap="round" />
-
-                  {/* Central Table with document */}
-                  <rect x="170" y="160" width="70" height="40" fill="#525252" />
-                  <polygon points="185,160 215,160 210,155 180,155" fill="#e5e5e5" opacity="0.6" />
-
-                  {/* Figure 2 (Right - sitting/leaning) */}
-                  <circle cx="260" cy="130" r="15" fill="#999999" />
-                  <path d="M 245 150 L 275 150 L 270 210 L 250 210 Z" fill="#777777" />
-
-                  {/* Ambient Hazy Overlay */}
-                  <rect x="0" y="0" width="400" height="300" fill="url(#hazeGlow)" opacity="0.25" />
-                </svg>
-              </div>
-
-              {/* Progress Overlay at the bottom */}
-              <div className="absolute bottom-0 inset-x-0 bg-black/60 backdrop-blur-sm p-3 flex items-center justify-between text-xs text-neutral-300">
-                <span className="font-sans">
-                  Perceive: Number of characters, their approximate age, sex, mood, and past/present situation.
-                </span>
-                <span className="font-mono font-bold text-[var(--gold-accent)] shrink-0 ml-2">
-                  {projectionSeconds}s left
-                </span>
-              </div>
+            {/* Authentic Picture Projection Screen (100% Unobstructed Raw Stimulus) */}
+            <div className="relative rounded-2xl border-4 border-[var(--canvas-border)] bg-black aspect-[4/3] flex items-center justify-center overflow-hidden shadow-2xl">
+              {/* Actual PPDT Picture - Clean & Unobscured */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={selectedScenario.imagePath}
+                alt={`PPDT Stimulus Picture #${selectedScenario.number}`}
+                className="w-full h-full object-contain filter contrast-110 brightness-95 select-none"
+              />
             </div>
           </div>
         )}
@@ -518,15 +693,19 @@ export default function PPDTSimulatorPage() {
                   {formatTimer(writingSeconds)}
                 </span>
                 <p className="text-xs text-[var(--fg-muted)]">
-                  Total Writing Time: 4 Minutes (Strict SSB Regulation)
+                  Total Writing Time: 4 Minutes (Strict DIPR Regulation)
                 </p>
               </div>
 
               {/* Timeline Milestones */}
               <div className="grid grid-cols-2 gap-3 text-left">
-                <div className={`p-3.5 rounded-xl border transition-all ${
-                  writingSeconds > 180 ? "border-[var(--gold-accent)] bg-[var(--gold-accent)]/10" : "border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)]"
-                }`}>
+                <div
+                  className={`p-3.5 rounded-xl border transition-all ${
+                    writingSeconds > 180
+                      ? "border-[var(--gold-accent)] bg-[var(--gold-accent)]/10"
+                      : "border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)]"
+                  }`}
+                >
                   <span className="text-[10px] font-bold text-[var(--gold-accent)] block mb-1">
                     MINUTE 1 (0:00 - 1:00)
                   </span>
@@ -535,9 +714,13 @@ export default function PPDTSimulatorPage() {
                   </p>
                 </div>
 
-                <div className={`p-3.5 rounded-xl border transition-all ${
-                  writingSeconds <= 180 ? "border-[var(--primary-accent)] bg-[var(--primary-accent)]/10" : "border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)]"
-                }`}>
+                <div
+                  className={`p-3.5 rounded-xl border transition-all ${
+                    writingSeconds <= 180
+                      ? "border-[var(--primary-accent)] bg-[var(--primary-accent)]/10"
+                      : "border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)]"
+                  }`}
+                >
                   <span className="text-[10px] font-bold text-[var(--primary-accent)] block mb-1">
                     MINUTES 2 - 4 (1:00 - 4:00)
                   </span>
@@ -555,125 +738,277 @@ export default function PPDTSimulatorPage() {
                     examAudio.playPenDownBuzzer();
                     setPhase("upload");
                   }}
-                  className="px-4 py-2 rounded-xl border border-[var(--canvas-border)] hover:border-red-500 hover:text-red-400 text-xs text-[var(--fg-muted)] transition-all cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl border border-[var(--canvas-border)] hover:border-[var(--gold-accent)] text-xs text-[var(--fg-muted)] hover:text-[var(--fg-primary)] transition-all cursor-pointer"
                 >
-                  Finished Early? Stop Timer & Upload Sheet Now
+                  Finished Writing Early? (Click to Stop Timer)
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* PHASE 4: POST-BUZZER UPLOAD INTERFACE WITH LATENCY TRACKING */}
+        {/* PHASE 4: SUBMISSION INTAKE (MOBILE SYNC, FILE UPLOAD, OR DIRECT TYPING) */}
         {phase === "upload" && (
-          <div className="max-w-2xl mx-auto w-full space-y-6 animate-in fade-in duration-200">
-            {/* Buzzer Announcement Banner */}
-            <div className="p-5 rounded-2xl border-2 border-red-500/60 bg-red-500/10 text-center space-y-2">
-              <span className="text-xs font-black text-red-500 uppercase tracking-widest block">
-                🚨 TIME UP — PEN DOWN!
-              </span>
-              <h2 className="text-base sm:text-lg font-bold text-[var(--fg-primary)]">
-                Upload Your Handwritten PPDT Sheet for AI Evaluation
-              </h2>
-
-              {/* Latency Meter */}
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--canvas-surface)] border border-[var(--canvas-border)] text-xs font-mono">
-                <Clock className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
-                <span>Submission Latency:</span>
-                <span className={`font-black ${uploadLatencySeconds > 30 ? "text-red-400" : "text-emerald-400"}`}>
-                  +{uploadLatencySeconds}s
-                </span>
-                {uploadLatencySeconds > 30 && (
-                  <span className="text-[10px] text-red-400 font-bold">(Over 30s limit)</span>
-                )}
-              </div>
-            </div>
-
-            {/* Upload Choice Cards: Desktop / Mobile QR */}
-            {uploadedStoryImage ? (
-              <div className="p-6 rounded-2xl border-2 border-emerald-500 bg-[var(--canvas-surface)] space-y-4 shadow-xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-500">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Story Sheet Image Received ({uploadLatencySeconds}s latency)</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setUploadedStoryImage(null)}
-                    className="text-xs text-[var(--fg-muted)] hover:text-red-400 underline cursor-pointer"
-                  >
-                    Retake / Change
-                  </button>
+          <div className="max-w-2xl mx-auto w-full space-y-6 animate-in fade-in duration-300">
+            {/* Header Alert */}
+            <div className="p-5 rounded-2xl border-2 border-[var(--primary-accent)] bg-[var(--canvas-surface)] shadow-md space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-[var(--gold-accent)] uppercase tracking-wider">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>TIME UP — PEN DOWN!</span>
                 </div>
 
-                <div className="relative rounded-xl overflow-hidden border border-[var(--canvas-border)] max-h-80 flex items-center justify-center bg-black/40">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={uploadedStoryImage} alt="Uploaded PPDT Story" className="w-full h-auto object-contain" />
+                <div className="text-xs font-mono font-bold text-[var(--fg-muted)]">
+                  Submission Latency: <span className={uploadLatencySeconds > 30 ? "text-red-400 font-black" : "text-emerald-400"}>{uploadLatencySeconds}s</span>
+                </div>
+              </div>
+
+              <p className="text-xs text-[var(--fg-secondary)] font-sans leading-relaxed">
+                Choose how you want to submit your story for psychological evaluation: snap a photo of your handwritten sheet (via phone QR sync or file upload) or type it directly below.
+              </p>
+            </div>
+
+            {/* Segmented Submission Mode Switcher */}
+            <div className="grid grid-cols-2 gap-2 p-1 bg-[var(--canvas-surface-subtle)] rounded-xl border border-[var(--canvas-border)] text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setActiveUploadTab("upload")}
+                className={`py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  activeUploadTab === "upload"
+                    ? "bg-[var(--canvas-surface)] text-[var(--gold-accent)] shadow border border-[var(--canvas-border)]"
+                    : "text-[var(--fg-muted)] hover:text-[var(--fg-primary)]"
+                }`}
+              >
+                <UploadCloud className="w-4 h-4" />
+                <span>Upload Sheet Photo</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveUploadTab("type")}
+                className={`py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  activeUploadTab === "type"
+                    ? "bg-[var(--canvas-surface)] text-[var(--gold-accent)] shadow border border-[var(--canvas-border)]"
+                    : "text-[var(--fg-muted)] hover:text-[var(--fg-primary)]"
+                }`}
+              >
+                <Edit3 className="w-4 h-4" />
+                <span>Type Story Online</span>
+              </button>
+            </div>
+
+            {/* Error Banner if any */}
+            {evalError && (
+              <div className="p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-xs text-red-400 flex items-center justify-between">
+                <span>{evalError}</span>
+                <button type="button" onClick={() => setEvalError(null)}>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Tab A: Upload Sheet (Image Preview or Upload Triggers) */}
+            {activeUploadTab === "upload" && (
+              <div>
+                {uploadedStoryImage ? (
+                  <div className="p-6 rounded-2xl border-2 border-emerald-500/50 bg-[var(--canvas-surface)] space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Story Sheet Captured & Ready</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setUploadedStoryImage(null)}
+                        className="text-xs text-[var(--fg-muted)] hover:text-red-400 underline cursor-pointer"
+                      >
+                        Retake / Change
+                      </button>
+                    </div>
+
+                    <div className="relative rounded-xl overflow-hidden border border-[var(--canvas-border)] max-h-80 flex items-center justify-center bg-black/40">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={uploadedStoryImage}
+                        alt="Uploaded PPDT Story"
+                        className="w-full h-auto object-contain max-h-72"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isEvaluating}
+                      onClick={handleEvaluateStory}
+                      className="w-full py-3.5 rounded-xl bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {isEvaluating ? (
+                        <span>Evaluating Psychological Attributes...</span>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 text-[var(--gold-accent)]" />
+                          <span>ANALYZE STORY WITH SENIOR DIPR PSYCHOLOGIST AI</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Option 1: Desktop File Upload */}
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-6 rounded-2xl border-2 border-dashed border-[var(--canvas-border)] hover:border-[var(--primary-accent)] bg-[var(--canvas-surface)] flex flex-col items-center justify-center text-center space-y-3 cursor-pointer transition-all group min-h-[220px]"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-[var(--primary-accent)]/10 border border-[var(--primary-accent)]/30 flex items-center justify-center text-[var(--primary-accent)] group-hover:scale-105 transition-transform">
+                        <UploadCloud className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-[var(--fg-primary)] block">
+                          Upload from Device
+                        </span>
+                        <span className="text-[10px] text-[var(--fg-muted)]">
+                          JPG, PNG, or photo taken with phone
+                        </span>
+                      </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleLocalImageSelect}
+                      />
+                    </div>
+
+                    {/* Option 2: Scan QR Code from Phone */}
+                    <div
+                      onClick={() => setShowQrModal(true)}
+                      className="p-6 rounded-2xl border-2 border-[var(--gold-accent)]/50 hover:border-[var(--gold-accent)] bg-[var(--canvas-surface)] flex flex-col items-center justify-center text-center space-y-3 cursor-pointer transition-all group min-h-[220px]"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-[var(--gold-accent)]/10 border border-[var(--gold-accent)]/30 flex items-center justify-center text-[var(--gold-accent)] group-hover:scale-105 transition-transform">
+                        <QrCode className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-[var(--fg-primary)] block">
+                          Snap on Phone via QR Code
+                        </span>
+                        <span className="text-[10px] text-[var(--fg-muted)]">
+                          Instant live camera sync to desktop
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-bold text-[var(--gold-accent)] px-2 py-0.5 rounded bg-[var(--gold-accent)]/15 border border-[var(--gold-accent)]/30">
+                        Recommended for Hand-Written Sheet
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab B: Direct Online Story Typing */}
+            {activeUploadTab === "type" && (
+              <div className="p-6 rounded-2xl border-2 border-[var(--gold-accent)]/40 bg-[var(--canvas-surface)] space-y-4">
+                <div className="space-y-1">
+                  <span className="text-xs font-bold text-[var(--gold-accent)] uppercase tracking-wider block">
+                    Online DIPR Answer Sheet Entry
+                  </span>
+                  <p className="text-[11px] text-[var(--fg-muted)] font-sans">
+                    Fill the character box details and write your complete story as perceived during the 30-second projection.
+                  </p>
+                </div>
+
+                {/* Character Box Inputs */}
+                <div className="p-4 rounded-xl bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)] space-y-3">
+                  <span className="text-[10px] font-bold text-[var(--fg-secondary)] uppercase tracking-wider block">
+                    1. Character Box (Main Hero Demographic)
+                  </span>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-[10px] text-[var(--fg-muted)] block mb-1">Age</label>
+                      <input
+                        type="text"
+                        value={typedHeroAge}
+                        onChange={(e) => setTypedHeroAge(e.target.value)}
+                        placeholder="e.g. 23"
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface)] text-xs font-bold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-[var(--fg-muted)] block mb-1">Sex</label>
+                      <select
+                        value={typedHeroSex}
+                        onChange={(e) => setTypedHeroSex(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface)] text-xs font-bold"
+                      >
+                        <option value="Male">Male (M)</option>
+                        <option value="Female">Female (F)</option>
+                        <option value="Person">Person (P)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-[var(--fg-muted)] block mb-1">Mood</label>
+                      <select
+                        value={typedHeroMood}
+                        onChange={(e) => setTypedHeroMood(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface)] text-xs font-bold"
+                      >
+                        <option value="Positive (+)">Positive (+)</option>
+                        <option value="Neutral (0)">Neutral (0)</option>
+                        <option value="Negative (-)">Negative (-)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-[var(--fg-muted)] block mb-1">
+                      Action / Heading (e.g. &ldquo;Organizing flood relief camp&rdquo;)
+                    </label>
+                    <input
+                      type="text"
+                      value={typedAction}
+                      onChange={(e) => setTypedAction(e.target.value)}
+                      placeholder="Write concise title line..."
+                      className="w-full px-3 py-1.5 rounded-lg border border-[var(--canvas-border)] bg-[var(--canvas-surface)] text-xs font-bold"
+                    />
+                  </div>
+                </div>
+
+                {/* Story Body */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold text-[var(--fg-secondary)] uppercase tracking-wider">
+                      2. Complete Story (Past, Present Action, Future Outcome)
+                    </label>
+                    <span className="text-[10px] font-mono text-[var(--fg-muted)]">
+                      {typedStoryText.trim() ? typedStoryText.trim().split(/\s+/).length : 0} words
+                    </span>
+                  </div>
+
+                  <textarea
+                    rows={6}
+                    value={typedStoryText}
+                    onChange={(e) => setTypedStoryText(e.target.value)}
+                    placeholder="What led to the scene, what is currently happening, and what is the final outcome..."
+                    className="w-full p-3.5 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] text-xs font-sans leading-relaxed focus:border-[var(--gold-accent)] focus:outline-none"
+                  />
                 </div>
 
                 <button
                   type="button"
-                  disabled={isEvaluating}
+                  disabled={isEvaluating || !typedStoryText.trim()}
                   onClick={handleEvaluateStory}
-                  className="w-full py-3.5 rounded-xl bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="w-full py-3.5 rounded-xl bg-[var(--gold-accent)] hover:brightness-110 text-black text-xs font-extrabold transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {isEvaluating ? (
                     <span>Evaluating Psychological Attributes...</span>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4 text-[var(--gold-accent)]" />
-                      <span>ANALYZE STORY WITH SENIOR DIPR PSYCHOLOGIST AI</span>
+                      <Sparkles className="w-4 h-4 text-black" />
+                      <span>EVALUATE TYPED STORY WITH DIPR PSYCHOLOGIST AI</span>
                     </>
                   )}
                 </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Option A: Desktop File Upload */}
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-6 rounded-2xl border-2 border-dashed border-[var(--canvas-border)] hover:border-[var(--primary-accent)] bg-[var(--canvas-surface)] flex flex-col items-center justify-center text-center space-y-3 cursor-pointer transition-all group min-h-[220px]"
-                >
-                  <div className="w-12 h-12 rounded-full bg-[var(--primary-accent)]/10 border border-[var(--primary-accent)]/30 flex items-center justify-center text-[var(--primary-accent)] group-hover:scale-105 transition-transform">
-                    <UploadCloud className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-[var(--fg-primary)] block">
-                      Upload from Device / Gallery
-                    </span>
-                    <span className="text-[10px] text-[var(--fg-muted)]">
-                      JPG, PNG, or photo taken with phone
-                    </span>
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleLocalImageSelect}
-                  />
-                </div>
-
-                {/* Option B: Scan QR Code from Phone */}
-                <div
-                  onClick={() => setShowQrModal(true)}
-                  className="p-6 rounded-2xl border-2 border-[var(--gold-accent)]/50 hover:border-[var(--gold-accent)] bg-[var(--canvas-surface)] flex flex-col items-center justify-center text-center space-y-3 cursor-pointer transition-all group min-h-[220px]"
-                >
-                  <div className="w-12 h-12 rounded-full bg-[var(--gold-accent)]/10 border border-[var(--gold-accent)]/30 flex items-center justify-center text-[var(--gold-accent)] group-hover:scale-105 transition-transform">
-                    <QrCode className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-[var(--fg-primary)] block">
-                      Snap on Phone via QR Code
-                    </span>
-                    <span className="text-[10px] text-[var(--fg-muted)]">
-                      Instant live camera sync to desktop
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-bold text-[var(--gold-accent)] px-2 py-0.5 rounded bg-[var(--gold-accent)]/15 border border-[var(--gold-accent)]/30">
-                    Recommended on Desktop
-                  </span>
-                </div>
               </div>
             )}
           </div>
@@ -695,6 +1030,9 @@ export default function PPDTSimulatorPage() {
                   <h2 className="text-xl sm:text-2xl font-black text-[var(--fg-primary)] mt-1">
                     Officer Story Assessment & Group Discussion Prep
                   </h2>
+                  <p className="text-xs text-[var(--fg-muted)] font-sans mt-0.5">
+                    Picture #{selectedScenario.number.toString().padStart(2, "0")} • Psychological Projection Assessment
+                  </p>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -706,21 +1044,291 @@ export default function PPDTSimulatorPage() {
                     <span className="text-[10px] font-bold text-[var(--gold-accent)] block uppercase">THEME RATING</span>
                     <span className="text-xl font-black text-[var(--gold-accent)]">{evaluationReport.themeScore} / 10</span>
                   </div>
+                  <div className="px-4 py-2 rounded-xl border border-[var(--primary-accent)]/40 bg-[var(--primary-accent)]/10 text-center">
+                    <span className="text-[10px] font-bold text-[var(--primary-accent)] block uppercase">OVERALL SCORE</span>
+                    <span className="text-xl font-black text-[var(--primary-accent)]">{evaluationReport.overallScore} / 100</span>
+                  </div>
                 </div>
               </div>
 
+              {/* 1. OFFICIAL BOARD SCREEN-IN RECOMMENDATION BANNER */}
+              <div
+                className={`p-5 rounded-2xl border-2 space-y-2 ${
+                  evaluationReport.recommendationVerdict === "SCREEN-IN"
+                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-400"
+                    : evaluationReport.recommendationVerdict === "BORDERLINE"
+                    ? "border-amber-500 bg-amber-500/10 text-amber-300"
+                    : "border-red-500 bg-red-500/10 text-red-400"
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-5 h-5 shrink-0" />
+                    <span className="text-sm font-black uppercase tracking-wider font-mono">
+                      OFFICIAL STAGE-1 SCREENING VERDICT: {evaluationReport.recommendationVerdict}
+                    </span>
+                  </div>
+
+                  <span className="text-[11px] font-bold px-3 py-1 rounded-full border bg-[var(--canvas-surface)] border-current">
+                    STAGE-1 SCREEN-IN PROBABILITY: {evaluationReport.overallScore}%
+                  </span>
+                </div>
+
+                <p className="text-xs font-sans leading-relaxed text-[var(--fg-secondary)]">
+                  {evaluationReport.verdictReasoning}
+                </p>
+              </div>
+
+              {/* 2. TRIPARTITE NARRATIVE ARCHITECTURE SCORECARDS */}
+              {evaluationReport.narrativePhases && (
+                <div className="space-y-3">
+                  <span className="text-xs font-bold text-[var(--fg-secondary)] uppercase tracking-wider block">
+                    Tripartite Narrative Architecture (Past • Present • Future):
+                  </span>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* Phase 1: Past / Genesis */}
+                    <div className="p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-2 flex flex-col justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-[var(--gold-accent)] uppercase">
+                            1. PAST / GENESIS (~20%)
+                          </span>
+                          <span className="text-xs font-mono font-bold text-[var(--gold-accent)]">
+                            {evaluationReport.narrativePhases.pastGenesis.score}/10
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[var(--fg-muted)] font-sans italic line-clamp-2">
+                          &ldquo;{evaluationReport.narrativePhases.pastGenesis.textExtracted || "Antecedent scenario"}&rdquo;
+                        </p>
+                      </div>
+                      <p className="text-[10px] text-[var(--fg-secondary)] font-sans leading-snug border-t border-[var(--canvas-border)] pt-2">
+                        {evaluationReport.narrativePhases.pastGenesis.critique}
+                      </p>
+                    </div>
+
+                    {/* Phase 2: Present / Action */}
+                    <div className="p-4 rounded-xl border border-[var(--primary-accent)]/50 bg-[var(--primary-accent)]/5 space-y-2 flex flex-col justify-between ring-1 ring-[var(--primary-accent)]/30">
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-[var(--primary-accent)] uppercase">
+                            2. PRESENT ACTION (~60% OLQs)
+                          </span>
+                          <span className="text-xs font-mono font-bold text-[var(--primary-accent)]">
+                            {evaluationReport.narrativePhases.presentAction.score}/10
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[var(--fg-muted)] font-sans italic line-clamp-2">
+                          &ldquo;{evaluationReport.narrativePhases.presentAction.textExtracted || "Hero action steps"}&rdquo;
+                        </p>
+                      </div>
+                      <p className="text-[10px] text-[var(--fg-secondary)] font-sans leading-snug border-t border-[var(--canvas-border)] pt-2">
+                        {evaluationReport.narrativePhases.presentAction.critique}
+                      </p>
+                    </div>
+
+                    {/* Phase 3: Future / Outcome */}
+                    <div className="p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-2 flex flex-col justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-emerald-400 uppercase">
+                            3. FUTURE OUTCOME (~20%)
+                          </span>
+                          <span className="text-xs font-mono font-bold text-emerald-400">
+                            {evaluationReport.narrativePhases.futureOutcome.score}/10
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[var(--fg-muted)] font-sans italic line-clamp-2">
+                          &ldquo;{evaluationReport.narrativePhases.futureOutcome.textExtracted || "Resolution outcome"}&rdquo;
+                        </p>
+                      </div>
+                      <p className="text-[10px] text-[var(--fg-secondary)] font-sans leading-snug border-t border-[var(--canvas-border)] pt-2">
+                        {evaluationReport.narrativePhases.futureOutcome.critique}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 3. HERO PSYCHOLOGICAL PROFILE & RED FLAG AUDIT */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Hero Demographics & Projection */}
+                {evaluationReport.heroProfile && (
+                  <div className="p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[var(--fg-secondary)] uppercase tracking-wider">
+                        Hero Psychological Projection Profile:
+                      </span>
+                      <span
+                        className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                          evaluationReport.heroProfile.isAgeAppropriate && evaluationReport.heroProfile.isMoodConstructive
+                            ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                            : "bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                        }`}
+                      >
+                        {evaluationReport.heroProfile.isAgeAppropriate && evaluationReport.heroProfile.isMoodConstructive
+                          ? "Appropriate Projection ✓"
+                          : "Projection Anomaly"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="p-2 rounded-lg bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
+                        <span className="text-[9px] text-[var(--fg-muted)] block">Hero Age:</span>
+                        <span className="font-bold">{evaluationReport.heroProfile.age} yrs</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
+                        <span className="text-[9px] text-[var(--fg-muted)] block">Gender:</span>
+                        <span className="font-bold">{evaluationReport.heroProfile.sex}</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
+                        <span className="text-[9px] text-[var(--fg-muted)] block">Perceived Mood:</span>
+                        <span className="font-bold">{evaluationReport.heroProfile.mood}</span>
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-[var(--fg-secondary)] font-sans leading-relaxed">
+                      {evaluationReport.heroProfile.assessorNotes}
+                    </p>
+                  </div>
+                )}
+
+                {/* Red Flags & Antipatterns */}
+                {evaluationReport.redFlagsDetected && (
+                  <div className="p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-2.5">
+                    <span className="text-xs font-bold text-[var(--fg-secondary)] uppercase tracking-wider block">
+                      Psychological Antipattern & Trap Audit:
+                    </span>
+
+                    <div className="space-y-2">
+                      {evaluationReport.redFlagsDetected.map((rf, idx) => (
+                        <div
+                          key={idx}
+                          className={`p-2.5 rounded-lg border text-xs font-sans space-y-0.5 ${
+                            rf.severity === "Critical"
+                              ? "border-red-500/40 bg-red-500/10 text-red-300"
+                              : rf.severity === "Warning"
+                              ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+                              : "border-emerald-500/30 bg-emerald-500/5 text-emerald-400"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between font-mono text-[10px] font-bold">
+                            <span>{rf.type}</span>
+                            <span className="uppercase">{rf.severity}</span>
+                          </div>
+                          <p className="text-[11px] leading-snug">{rf.observation}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Latency Assessment Alert */}
-              <div className={`p-4 rounded-xl border text-xs font-sans leading-relaxed ${
-                evaluationReport.latencyPenalty
-                  ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
-                  : "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-              }`}>
+              <div
+                className={`p-4 rounded-xl border text-xs font-sans leading-relaxed ${
+                  evaluationReport.latencyPenalty
+                    ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+                    : "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                }`}
+              >
                 <div className="font-bold font-mono text-[11px] uppercase mb-1 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
                   <span>Submission Latency Assessment:</span>
                 </div>
                 {evaluationReport.latencyMessage}
               </div>
+
+              {/* MULTIPLE POV PERSPECTIVE ANALYSIS CARD */}
+              {evaluationReport.detectedPerspective && (
+                <div className="p-4 rounded-xl border border-[var(--gold-accent)]/40 bg-[var(--gold-accent)]/5 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--canvas-border)] pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[var(--gold-accent)]" />
+                      <span className="text-xs font-bold text-[var(--fg-primary)] uppercase tracking-wider">
+                        Perceived Perspective Analysis (Multi-POV Evaluation)
+                      </span>
+                    </div>
+
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        evaluationReport.detectedPerspective.isPlausiblePOV
+                          ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                          : "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                      }`}
+                    >
+                      {evaluationReport.detectedPerspective.isPlausiblePOV
+                        ? "Plausible DIPR Perspective ✓"
+                        : "Perceptual Distortion"}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-bold text-[var(--gold-accent)]">
+                      Candidate&apos;s Identified Angle: {evaluationReport.detectedPerspective.matchedPerspectiveName}
+                    </div>
+                    <p className="text-[11px] text-[var(--fg-secondary)] font-sans leading-relaxed">
+                      {evaluationReport.detectedPerspective.justification}
+                    </p>
+                  </div>
+
+                  {/* Alternative POVs for Group Discussion Prep */}
+                  {evaluationReport.detectedPerspective.alternativePOVsCandidateCouldHaveChosen?.length > 0 && (
+                    <div className="pt-2 border-t border-[var(--canvas-border)] space-y-1.5">
+                      <span className="text-[10px] font-bold text-[var(--fg-muted)] uppercase tracking-wider block">
+                        Other Valid Perspectives from this Ambiguous Slide (Valuable for GD Discussion):
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {evaluationReport.detectedPerspective.alternativePOVsCandidateCouldHaveChosen.map(
+                          (alt, idx) => (
+                            <span
+                              key={idx}
+                              className="text-[10px] px-2 py-0.5 rounded-lg bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)] text-[var(--fg-muted)]"
+                            >
+                              • {alt}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Transcribed Character Box Summary */}
+              {evaluationReport.transcription && (
+                <div className="p-4 rounded-xl bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)] space-y-2">
+                  <span className="text-xs font-bold text-[var(--fg-secondary)] uppercase tracking-wider block">
+                    Perceptual Box & Action Verification:
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-sans">
+                    <div>
+                      <span className="text-[10px] text-[var(--fg-muted)] block">Characters Perceived:</span>
+                      <span className="font-bold text-[var(--fg-primary)]">
+                        {evaluationReport.transcription.charactersFound} Characters
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-[var(--fg-muted)] block">Main Hero Encircled:</span>
+                      <span className="font-bold text-emerald-400">
+                        {evaluationReport.transcription.mainCharacterEncircled ? "Yes (Verified ✓)" : "Missing Box Circle"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-[var(--fg-muted)] block">Hero Demographics:</span>
+                      <span className="font-bold text-[var(--fg-primary)]">
+                        {evaluationReport.transcription.mainCharacterDetails.age} yrs, {evaluationReport.transcription.mainCharacterDetails.sex}, {evaluationReport.transcription.mainCharacterDetails.mood}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-[var(--fg-muted)] block">Action Line:</span>
+                      <span className="font-bold text-[var(--gold-accent)] truncate block">
+                        {evaluationReport.transcription.actionLine || "Constructive action"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* OLQ Breakdown Grid */}
               <div className="space-y-3">
@@ -729,14 +1337,47 @@ export default function PPDTSimulatorPage() {
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {evaluationReport.olqBreakdown.map((item, idx) => (
-                    <div key={idx} className="p-3.5 rounded-xl bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)] space-y-1">
+                    <div
+                      key={idx}
+                      className="p-3.5 rounded-xl bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)] space-y-1"
+                    >
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-[var(--fg-primary)]">{item.name}</span>
-                        <span className="text-[10px] font-mono font-bold text-[var(--gold-accent)]">{item.rating}</span>
+                        <span className="text-xs font-bold text-[var(--fg-primary)]">{item.olqName}</span>
+                        <span className="text-[10px] font-mono font-bold text-[var(--gold-accent)]">
+                          {item.rating}
+                        </span>
                       </div>
-                      <p className="text-[11px] text-[var(--fg-muted)] font-sans leading-relaxed">{item.comment}</p>
+                      <span className="text-[9px] text-[var(--fg-muted)] font-mono block">{item.factor}</span>
+                      <p className="text-[11px] text-[var(--fg-secondary)] font-sans leading-relaxed">
+                        {item.observation}
+                      </p>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Strengths & Vulnerabilities */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans">
+                <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 space-y-2">
+                  <span className="font-bold font-mono text-[11px] text-emerald-400 uppercase block">
+                    Observed Officer Strengths:
+                  </span>
+                  <ul className="space-y-1 text-[var(--fg-secondary)] list-disc list-inside">
+                    {evaluationReport.strengths.map((str, idx) => (
+                      <li key={idx} className="leading-relaxed">{str}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-2">
+                  <span className="font-bold font-mono text-[11px] text-amber-300 uppercase block">
+                    Vulnerabilities & Assessor Red Flags:
+                  </span>
+                  <ul className="space-y-1 text-[var(--fg-secondary)] list-disc list-inside">
+                    {evaluationReport.vulnerabilities.map((vuln, idx) => (
+                      <li key={idx} className="leading-relaxed">{vuln}</li>
+                    ))}
+                  </ul>
                 </div>
               </div>
 
@@ -755,6 +1396,19 @@ export default function PPDTSimulatorPage() {
                 </ul>
               </div>
 
+              {/* Reference Benchmark Model Story */}
+              <div className="p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-2">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-[var(--gold-accent)]" />
+                  <span className="text-xs font-bold text-[var(--fg-primary)] uppercase tracking-wider">
+                    DIPR Benchmark Reference Model Story
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--fg-secondary)] font-sans leading-relaxed italic">
+                  &ldquo;{selectedScenario.modelStory.fullStory}&rdquo;
+                </p>
+              </div>
+
               {/* Action Buttons */}
               <div className="flex items-center justify-between pt-2 border-t border-[var(--canvas-border)] flex-wrap gap-2">
                 <button
@@ -763,20 +1417,24 @@ export default function PPDTSimulatorPage() {
                     setPhase("briefing");
                     setUploadedStoryImage(null);
                     setUploadLatencySeconds(0);
+                    setTypedStoryText("");
+                    setTypedAction("");
                   }}
                   className="px-4 py-2 rounded-xl border border-[var(--canvas-border)] hover:bg-[var(--canvas-surface-subtle)] text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Practice Another Picture</span>
+                  <span>Return to Catalog</span>
                 </button>
 
-                <Link
-                  href="/dashboard"
-                  className="px-5 py-2 rounded-xl bg-[var(--gold-accent)] hover:brightness-110 text-black font-extrabold text-xs tracking-wider transition-all shadow-md flex items-center gap-1.5"
+                {/* Next Rotation Picture Trigger */}
+                <button
+                  type="button"
+                  onClick={startNextRotationTest}
+                  className="px-6 py-2.5 rounded-xl bg-[var(--gold-accent)] hover:brightness-110 text-black font-extrabold text-xs tracking-wider transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer"
                 >
-                  <span>RETURN TO DASHBOARD</span>
+                  <span>START NEXT PICTURE IN ROTATION</span>
                   <ChevronRight className="w-4 h-4" />
-                </Link>
+                </button>
               </div>
             </div>
           </div>

@@ -240,16 +240,80 @@ flowchart TD
     - **Test Controls:** Section countdown timer with auto-submit on `00:00`, `Mark for Review & Next`, `Clear Response`, `Previous`, `Save & Next`, and `Submit Test` confirmation modal with unanswered item warnings.
     - **Official DIPR OIR Rating Engine (`calculateOirRating`):** Translates raw test scores into official DIPR grades (OIR 1 to 5) with calibrated Stage-1 screen-in probability meters and senior assessor psychological feedback.
   - **PPDT Simulator (`/screening/ppdt`):**
-    - Printable official DIPR answer sheet format and on-screen demo guide for drawing the sheet on blank A4 paper.
-    - 30-second authentic projection phase with hazy/blurred ambiguous social silhouette scenes and progress timer.
-    - 4-minute strict writing phase with live minute breakdown and Web Audio API synthesizer for the official end-of-test buzzer.
+    - **10-Slide Authentic DIPR Picture Corpus (`public/images/ppdt/` & `src/data/ppdt/scenarios.ts`):** High-fidelity ambiguous social situations covering academic notice boards, nocturnal research, village healthcare, peer counselling, Himalayan trek logistics, rural cottage industry, stuck tractor clearance, rainwater harvesting, improvised river bridging, and storm field patrol.
+    - **PPDT Test History & Evaluated Story Archive:** Replaced static rotation grid with an interactive chronological attempt feed. For each past attempt, the candidate can review:
+      - Picture # and attempt timestamp.
+      - Official Stage-1 screening verdict (`SCREEN-IN`, `BORDERLINE`, `SCREEN-OUT`) and percentage score.
+      - Action line and perceived angle.
+      - Complete **transcribed story text (OCR extracted from physical sheet image or typed text)** stored directly in history state.
+      - One-click access to reload and review the comprehensive psychological evaluation report, OLQ breakdown, and assessor narration coaching.
+    - **Blind Unlabelled Stimuli Protocol (Raw Psychological Projection):** To preserve authentic Thematic Apperception and prevent cognitive bias or rote coaching cues, candidates are never shown picture titles, category tags, expected character counts, or theme descriptions before or during the test. Redundant bottom preview inspection tabs and demographic spoiler cards have been completely removed.
+    - **100% Unobstructed Projection Canvas:** During the 30-second projection phase, the ambiguous picture is rendered completely unobscured on a pure dark canvas with no bottom overlay banners, ensuring full visual clarity of subtle cues, character expressions, ground conditions, and background details.
+    - **Non-Repeating Picture Rotation Engine (`src/data/ppdt/cycleManager.ts`):** Guarantees zero picture repetition across testing sessions. Uses a randomized Fisher-Yates permutation cycle queue where candidates are guaranteed to see every single picture in the pool exactly once before any picture can be repeated. Crucially, picture consumption is registered the exact millisecond the 30-second projection starts (`consumeScenarioOnTestStart`): if a candidate launches a test and immediately closes the tab, shuts their laptop, or navigates away, that picture is permanently recorded as seen for the cycle. Next time they open the website, the engine automatically advances to the next unseen picture in the cycle. Automatically increments to Cycle $N+1$ upon completion with a fresh random shuffle and HUD progress tracking (`completedInCycle / total`).
+    - **Authentic Stage-1 Simulation Timers:** 30-second authentic projection phase displaying the actual ambiguous picture with optical vignette and progress countdown $\rightarrow$ 4-minute strict physical writing phase with minute-by-minute milestones and native Web Audio API pen-down buzzer.
     - **Post-Buzzer Submission Latency Tracker:** Live stopwatch tracking seconds taken to submit after the buzzer ($>30$ seconds latency flags potential continued writing in psychological assessment).
-    - **Cross-Device QR Live Sync:** Desktop renders dynamic QR code (`/screening/ppdt/mobile-upload?session=...`), allowing candidates to snap their physical story sheet on their phone with automatic, real-time reflection on desktop.
-    - **AI Multimodal Evaluation:** Analyzes character perception consistency, action theme constructiveness, 15 OLQ mapping, and delivers 1-minute individual narration strategy.
-- [ ] **Phase 5: Stage-1 Trial Battery (CSSS + OPAM Micro-Timer Runner)**
-  - Micro-timer runner (16-30s auto-advancing, no back button).
-  - Web Audio API integration for tone and phonetic callouts.
-  - OPAM Likert & Situational question runner with cross-validation pair tracking.
+    - **Dual Submission Intake:**
+      1. *Physical Sheet Photo Intake*: Drag-and-drop / file selector or Cross-Device QR Live Sync (`/screening/ppdt/mobile-upload?session=...`), allowing candidates to snap their physical story sheet on their phone with automatic, real-time reflection on desktop.
+      2. *Online DIPR Sheet Entry*: Digital Character Box (Age, Sex, Mood, Action line) and live word-counter story editor.
+    - **AI Multimodal Psychological Evaluation Engine (`/api/screening/ppdt-evaluate`):**
+      - *Model Engine*: Powered by Google `gemini-3.5-flash-lite` (with cascading fallback to `gemini-3.8-flash` and `gemini-flash-latest`), with strict API key sanitization stripping leading/trailing shell quotation marks.
+      - *Multi-POV Perspective Spectrum (Zero Rigid Theming)*: In authentic DIPR psychology, hazy ambiguous pictures allow candidates to project diverse subconscious values. The engine is fed 3 to 5 distinct valid perspectives per slide (e.g. Agricultural Cooperative vs Flood Relief vs Cottage Industry vs Waste Management vs Child Labour Eradication) with visual cue justifications and perceptual boundaries (plausible vs implausible distortions). The evaluator first identifies the candidate's chosen POV, validates its visual plausibility, and evaluates the 15 OLQs based on the quality of planning and execution *within their chosen perspective*, rather than penalizing divergence from a single template.
+      - *Tripartite Narrative Architecture Scoring*: Explicit DIPR 3-phase structural audit:
+        1. *Past Genesis (~15-20% weight)*: Evaluates backdrop authenticity and plausible trigger circumstances without cinematic melodrama.
+        2. *Present Action (~60-70% weight)*: Assesses concrete, step-by-step organizational mobilization, leadership delegation, and practical resource utilization.
+        3. *Future Outcome (~15-20% weight)*: Validates lasting constructive closure, community/societal benefit, and handover of sustainable systems.
+      - *Hero Demographic Projection Audit*: Compares candidate age/gender to the projected hero, verifying main character encirclement in the box, centrality in the narrative, and psychological ownership.
+      - *5 Assessor Red Flag Pitfalls*: Scrutinizes for classic psychological screening traps:
+        1. *Superman Syndrome*: Hero single-handedly executing tasks without mobilizing or delegating to the group.
+        2. *Passive Bystander*: Hero merely watching, contemplating, or calling outside authorities rather than initiating action.
+        3. *Morbid/Crime Obsession*: Forcing accidents, sudden deaths, murders, or suicides onto ambiguous neutral scenes.
+        4. *Wishful Thinking*: Unearned happy endings where problems magically resolve without tangible work.
+        5. *Pre-cooked/Rote Story*: Pre-memorized coaching stories that violate physical cues in the picture.
+      - *Official Stage-1 Recommendation Verdict*: Calibrated assessor outcome (`SCREEN-IN`, `BORDERLINE`, or `SCREEN-OUT`) with detailed psychological verdict reasoning and Stage-1 screen-in probability meter (0-100%).
+      - *15 Officer Like Qualities (OLQ) Matrix*: Detailed ratings (Outstanding / High / Above Average / Average / Vulnerable) with assessor observations mapped across Factor I (Planning & Organizing), Factor II (Social Adjustment), Factor III (Social Effectiveness), and Factor IV (Dynamic).
+      - *Senior Assessor 1-Minute Individual Narration Strategy*: Exact 60-second delivery breakdown for the subsequent Group Discussion phase.
+      - *Alternative POVs for GD Synergy*: Displays other valid themes candidates could encounter from peers in the 15-person chest group discussion.
+      - *DIPR Benchmark Reference Model Story*: High-scoring reference narrative provided for candidate comparison.
+- [x] **Phase 5: Stage-1 Trial Battery (CSSS + OPAM Micro-Timer Runner) (COMPLETED & VERIFIED)**
+  - **DIPR De Novo Computerised Screening Architecture:** Built full-fidelity digital simulation of the computerized Stage-1 screening battery developed by DIPR (DRDO) for SSB trial batches.
+  - **Modular Architecture & 3 Distinct Sets per Test Battery:**
+    - **CSSS Cognitive Trial Battery (`/screening/csss`):**
+      - 3 distinct, fully-modular test sets:
+        1. *Set 1 (Alpha Operational Trial)*: `CSSS-ALPHA` — 25 modular items across all 5 subtests.
+        2. *Set 2 (Bravo Advanced Spatial & Audio Battery)*: `CSSS-BRAVO` — 25 modular items with micro-pitch intervals and 4x4x4 cube geometry.
+        3. *Set 3 (Charlie Neuro-Cognitive Stress Trial)*: `CSSS-CHARLIE` — 25 modular items with high-tempo stress trials and 180° matrix rotations.
+      - 5 Core Cognitive Subtests implemented:
+        1. *Auditory Discrimination (Headphone Battery)*: Pure synthesizer acoustic signals using native Web Audio API (`csssAudioEngine.ts`) generating pitch pairs (Tone A vs B), rapid pip bursts (count high/low pips), and military NATO callsigns through simulated electronic warfare static crackle.
+        2. *Space & Form Perception*: 2D net cube folding to 3D isometric dice with theme-adaptive SVG vectors (`csssSvgHelpers.ts`), painted multi-cut solid cube mathematics, and optical mirror/water images.
+        3. *Working Memory & Attention*: Dual-phase presentation engine: 4-second stimulus matrix flash $\rightarrow$ automated vanish/mask $\rightarrow$ masked prompt recall with mental rotation and arithmetic verification.
+        4. *Perceptual Speed & Visual Closure*: Fast target coordinate scanning, alphanumeric cancellation, odd-one-out mathematical anomalies, and spatial pathfinding.
+        5. *Linguistic Reasoning & Verbal Speed*: High-speed military verbal analogies, tactical ciphers, and rapid deductive syllogisms.
+      - **Terminal CBT Test Engine (`/screening/csss/test`):**
+        - Strict per-question countdown micro-timers (16 to 30 seconds) with visual urgency indicator (green $\rightarrow$ amber $\rightarrow$ pulsing red) and auto-advance on `00:00`.
+        - Authentic one-way flow with **zero backtracking** (no back button), strictly mirroring DIPR terminal rules.
+        - Automated calculation of DIPR OIR Grade (Grade 1 to 5) and Screen-In Probability Meter.
+      - **Cognitive Diagnostics & Question Audit (`/screening/csss/result`):**
+        - Comprehensive review screen displaying OIR grade, accuracy %, average response latency, subtest performance breakdown, and a modular question-by-question review list with status filters (All, Correct, Incorrect, Timed Out).
+        - Includes audio replay buttons, revealed memory matrix displays, option comparison, and detailed assessor cognitive explanations.
+    - **OPAM Psychometric Assessment Suite (`/screening/opam`):**
+      - 3 distinct, calibrated psychometric sets:
+        1. *Set 1 (Alpha Comprehensive Profile)*: `OPAM-ALPHA` — 30 modular items evaluating all 15 OLQs, Lie Scale traps, and cross-validation twins.
+        2. *Set 2 (Bravo Tactical Leadership Battery)*: `OPAM-BRAVO` — 30 modular items focusing on Factor III (Social Effectiveness) and Factor IV (Dynamic).
+        3. *Set 3 (Charlie Behavioral Synergy Battery)*: `OPAM-CHARLIE` — 30 modular items evaluating Factor II (Social Adjustment) and Chetwode responsibility markers.
+      - Three authentic DIPR question formats:
+        1. *5-Point Likert Behavioral Ratings*: Strongly Disagree to Strongly Agree with 1-click & keyboard (`1` to `5`) response.
+        2. *Forced-Choice Ipsative Dilemmas*: Pits two positive traits against each other to prevent uniform self-idealization and reveal true behavioral bias.
+        3. *Tactical & Social Scenarios*: Micro-dilemmas evaluating crisis management, team load redistribution, and Chetwode ethics.
+      - **DIPR Validity & Trap Mechanisms:**
+        - *Social Desirability ("Lie Scale / Saint Trap")*: Absolute perfection statements (e.g., *"I have never told a lie"*, *"I never get angry"*). Selecting "Strongly Agree" triggers high coaching/faking warnings.
+        - *Cross-Validation Paired Twins*: Evaluates identical psychological traits phrased oppositely across separated items (e.g. Q09 & Q20) to compute consistency index.
+        - *Instinctive Pacing*: 20-second per-item tempo engine with auto-advancing submission within 280ms to capture raw instinctive responses.
+      - **Psychometric Diagnostics & 15-OLQ Radar (`/screening/opam/result`):**
+        - Composite recommendation verdict: `SCREEN-IN (STRONG POTENTIAL)`, `BORDERLINE (FURTHER REVIEW)`, or `SCREEN-OUT (LOW COMPATIBILITY)` with assessor overview.
+        - Social Desirability / Lie Scale meter (0-100%) categorized into *Authentic & Natural*, *Minor Idealization*, or *High Coaching Alert*.
+        - Consistency Twin variance score and decision latency index.
+        - 4 Classical Factors breakdown (Factor I to IV) and 15 individual OLQ ratings with detailed assessor psychological commentary on every question.
+  - **Next Agent Handoff:** Phase 5 (CSSS & OPAM Screening Engine) is complete and verified with 0 errors across 6 new routes. Next agent should pick up **Phase 6: Stage-2 Psychology Suite (TAT, WAT, SRT, SD)**.
 - [ ] **Phase 6: Stage-2 Psychology Suite (TAT, WAT, SRT, SD)**
   - Slide projection timers, auto-advancing WAT words, SRT response recorder.
 - [ ] **Phase 7: GTO Tactical Planning (GPE)**

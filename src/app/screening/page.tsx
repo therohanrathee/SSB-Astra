@@ -273,15 +273,14 @@ export default function ScreeningHubPage() {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => alert("Launching CSSS Cognitive Simulator (Phase 4)...")}
+                <Link
+                  href="/screening/csss"
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
                 >
                   <PlayCircle className="w-4 h-4" />
                   <span>Start CSSS Cognitive Trial</span>
                   <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                </Link>
               </div>
 
               {/* Sub-Module 2: OPAM Psychometric Measure */}
@@ -314,15 +313,14 @@ export default function ScreeningHubPage() {
                   </span>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => alert("Launching OPAM Psychometric Profile (Phase 4)...")}
+                <Link
+                  href="/screening/opam"
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-[var(--canvas-border)] hover:border-emerald-500 bg-[var(--canvas-surface)] text-[var(--fg-primary)] text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
                 >
                   <PlayCircle className="w-4 h-4 text-emerald-500" />
                   <span>Start OPAM Assessment</span>
                   <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                </Link>
               </div>
             </div>
 
