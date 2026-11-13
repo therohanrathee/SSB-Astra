@@ -12,11 +12,11 @@ export const csssSet1Questions: CsssQuestion[] = [
     subtestName: "Auditory Discrimination",
     difficulty: "easy",
     timeLimitSec: 18,
-    prompt: "Listen to the two acoustic tones played sequentially. Determine the relationship of Tone B relative to Tone A.",
+    prompt: "Listen to the two acoustic tones played sequentially. Tone A will play first, followed by Tone B. Determine the relationship of Tone B relative to Tone A.",
     audioSpec: {
       type: "tone_pair",
-      tonePair: { freq1: 440, freq2: 523.25, durationSec: 0.45, gapSec: 0.25 },
-      transcriptHint: "Tone A: 440 Hz (A4) ➔ Tone B: 523.25 Hz (C5)",
+      tonePair: { freq1: 380, freq2: 1100, durationSec: 0.5, gapSec: 0.25 },
+      transcriptHint: "Tone A: 380 Hz (Low Bass) ➔ Tone B: 1100 Hz (High Treble)",
     },
     options: [
       "Tone B is Higher in pitch than Tone A",
@@ -25,7 +25,7 @@ export const csssSet1Questions: CsssQuestion[] = [
       "Tone B is Inverted phase / Unrelated",
     ],
     correctIndex: 0,
-    explanation: "Tone A is calibrated at 440 Hz (Concert A) and Tone B transitions upward to 523.25 Hz (High C), making Tone B distinctly higher in pitch.",
+    explanation: "Tone A is a low tone at 380 Hz, and Tone B steps significantly upward to a sharp 1100 Hz high chime. Tone B is distinctly Higher in pitch.",
   },
   {
     id: "CSSS-S1-Q02",
@@ -37,8 +37,8 @@ export const csssSet1Questions: CsssQuestion[] = [
     prompt: "Listen carefully to the tone pair. Is Tone 2 higher, lower, or identical to Tone 1?",
     audioSpec: {
       type: "tone_pair",
-      tonePair: { freq1: 659.25, freq2: 587.33, durationSec: 0.4, gapSec: 0.2 },
-      transcriptHint: "Tone 1: 659.25 Hz (E5) ➔ Tone 2: 587.33 Hz (D5)",
+      tonePair: { freq1: 1100, freq2: 380, durationSec: 0.5, gapSec: 0.25 },
+      transcriptHint: "Tone 1: 1100 Hz (High Treble) ➔ Tone 2: 380 Hz (Low Bass)",
     },
     options: [
       "Tone 2 is Higher",
@@ -47,7 +47,7 @@ export const csssSet1Questions: CsssQuestion[] = [
       "Cannot be determined",
     ],
     correctIndex: 1,
-    explanation: "Tone 1 starts at 659.25 Hz (E5) and Tone 2 drops down to 587.33 Hz (D5), indicating a lower pitch frequency step.",
+    explanation: "Tone 1 begins at a high 1100 Hz chime, and Tone 2 drops down to a deep 380 Hz bass hum. Tone 2 is distinctly Lower.",
   },
   {
     id: "CSSS-S1-Q03",
@@ -56,25 +56,25 @@ export const csssSet1Questions: CsssQuestion[] = [
     subtestName: "Auditory Discrimination",
     difficulty: "medium",
     timeLimitSec: 20,
-    prompt: "A rapid burst of 6 acoustic pips will play. Count how many HIGH-PITCHED (800 Hz) pips occur amongst the low pips.",
+    prompt: "A rapid burst of 6 acoustic pips will play. Count how many HIGH-PITCHED (1100 Hz) beeps occur amongst the low bass buzzes.",
     audioSpec: {
       type: "tone_sequence",
       toneSequence: {
         tones: [
-          { freq: 400, duration: 0.12 },
-          { freq: 800, duration: 0.12 },
-          { freq: 400, duration: 0.12 },
-          { freq: 800, duration: 0.12 },
-          { freq: 800, duration: 0.12 },
-          { freq: 400, duration: 0.12 },
+          { freq: 350, duration: 0.14 },
+          { freq: 1100, duration: 0.14 },
+          { freq: 350, duration: 0.14 },
+          { freq: 1100, duration: 0.14 },
+          { freq: 1100, duration: 0.14 },
+          { freq: 350, duration: 0.14 },
         ],
         gapSec: 0.1,
       },
-      transcriptHint: "Sequence: [Low, HIGH, Low, HIGH, HIGH, Low] ➔ 3 High Pips",
+      transcriptHint: "Sequence: [Low, HIGH, Low, HIGH, HIGH, Low] ➔ 3 High Beeps",
     },
-    options: ["2 High Pips", "3 High Pips", "4 High Pips", "5 High Pips"],
+    options: ["2 High Beeps", "3 High Beeps", "4 High Beeps", "5 High Beeps"],
     correctIndex: 1,
-    explanation: "The 6-tone burst played Low (400Hz), HIGH (800Hz), Low (400Hz), HIGH (800Hz), HIGH (800Hz), Low (400Hz). Exactly 3 high pips were transmitted.",
+    explanation: "The 6-tone burst played Low (350Hz), HIGH (1100Hz), Low (350Hz), HIGH (1100Hz), HIGH (1100Hz), Low (350Hz). Exactly 3 high-pitched beeps were transmitted.",
   },
   {
     id: "CSSS-S1-Q04",
@@ -112,8 +112,8 @@ export const csssSet1Questions: CsssQuestion[] = [
     prompt: "Listen to the two acoustic tones. Determine if Tone B is higher, lower, or identical to Tone A.",
     audioSpec: {
       type: "tone_pair",
-      tonePair: { freq1: 520, freq2: 520, durationSec: 0.45, gapSec: 0.25 },
-      transcriptHint: "Tone A: 520 Hz ➔ Tone B: 520 Hz (Identical)",
+      tonePair: { freq1: 650, freq2: 650, durationSec: 0.5, gapSec: 0.25 },
+      transcriptHint: "Tone A: 650 Hz ➔ Tone B: 650 Hz (Identical Frequency)",
     },
     options: [
       "Tone B is Higher",
@@ -122,7 +122,7 @@ export const csssSet1Questions: CsssQuestion[] = [
       "Pitch is Inverted",
     ],
     correctIndex: 2,
-    explanation: "Both tones were generated at identical frequency (520 Hz) with zero differential pitch shift.",
+    explanation: "Both tones were generated at identical frequency (650 Hz) with zero differential pitch shift.",
   },
 
   // ----------------------------------------------------
@@ -200,10 +200,10 @@ export const csssSet1Questions: CsssQuestion[] = [
     subtest: "memory",
     subtestName: "Working Memory & Attention",
     difficulty: "easy",
-    timeLimitSec: 20,
-    prompt: "A 3x3 symbol matrix will appear for 4 seconds. Commit it to memory, then answer the query after it disappears.",
+    timeLimitSec: 26,
+    prompt: "A 3x3 symbol matrix will appear for 8 seconds. Commit it to memory, then answer the query after it disappears.",
     memorySpec: {
-      displayDurationSec: 4,
+      displayDurationSec: 8,
       matrix: [
         ["▲", "7", "●"],
         ["■", "X", "4"],
@@ -221,10 +221,10 @@ export const csssSet1Questions: CsssQuestion[] = [
     subtest: "memory",
     subtestName: "Working Memory & Attention",
     difficulty: "medium",
-    timeLimitSec: 20,
-    prompt: "Memorize the 3x3 matrix during the 4-second presentation.",
+    timeLimitSec: 26,
+    prompt: "Memorize the 3x3 matrix during the 8-second presentation.",
     memorySpec: {
-      displayDurationSec: 4,
+      displayDurationSec: 8,
       matrix: [
         ["5", "A", "8"],
         ["K", "3", "M"],
@@ -242,10 +242,10 @@ export const csssSet1Questions: CsssQuestion[] = [
     subtest: "memory",
     subtestName: "Working Memory & Attention",
     difficulty: "hard",
-    timeLimitSec: 22,
-    prompt: "Observe the coordinate grid carefully for 4 seconds.",
+    timeLimitSec: 28,
+    prompt: "Observe the coordinate grid carefully for 8 seconds.",
     memorySpec: {
-      displayDurationSec: 4,
+      displayDurationSec: 8,
       matrix: [
         ["NORTH", "ALPHA", "RED"],
         ["WEST", "TANGO", "BLUE"],
@@ -263,10 +263,10 @@ export const csssSet1Questions: CsssQuestion[] = [
     subtest: "memory",
     subtestName: "Working Memory & Attention",
     difficulty: "medium",
-    timeLimitSec: 20,
-    prompt: "Retain the tactical asset symbols displayed for 4 seconds.",
+    timeLimitSec: 26,
+    prompt: "Retain the tactical asset symbols displayed for 8 seconds.",
     memorySpec: {
-      displayDurationSec: 4,
+      displayDurationSec: 8,
       matrix: [
         ["RADAR", "4", "INF"],
         ["TANK", "9", "HELI"],
@@ -284,10 +284,10 @@ export const csssSet1Questions: CsssQuestion[] = [
     subtest: "memory",
     subtestName: "Working Memory & Attention",
     difficulty: "medium",
-    timeLimitSec: 18,
-    prompt: "Memorize the sequence of numbers shown during the 3.5s flash.",
+    timeLimitSec: 26,
+    prompt: "Memorize the sequence of numbers shown during the 8-second flash.",
     memorySpec: {
-      displayDurationSec: 3.5,
+      displayDurationSec: 8,
       matrix: [
         ["6", "1", "8"],
         ["7", "5", "3"],

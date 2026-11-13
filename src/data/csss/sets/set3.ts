@@ -15,8 +15,8 @@ export const csssSet3Questions: CsssQuestion[] = [
     prompt: "Listen to the sequential pair. Determine the relationship of Tone 2 compared to Tone 1.",
     audioSpec: {
       type: "tone_pair",
-      tonePair: { freq1: 880, freq2: 987.77, durationSec: 0.4, gapSec: 0.2 },
-      transcriptHint: "Tone 1: 880 Hz (A5) ➔ Tone 2: 987.77 Hz (B5)",
+      tonePair: { freq1: 380, freq2: 1100, durationSec: 0.5, gapSec: 0.25 },
+      transcriptHint: "Tone 1: 380 Hz (Low Bass) ➔ Tone 2: 1100 Hz (High Treble)",
     },
     options: [
       "Tone 2 is Higher in pitch",
@@ -25,7 +25,7 @@ export const csssSet3Questions: CsssQuestion[] = [
       "Tone 2 has zero frequency",
     ],
     correctIndex: 0,
-    explanation: "Tone 1 starts at 880 Hz and Tone 2 elevates to 987.77 Hz, which is higher in pitch.",
+    explanation: "Tone 1 starts at a deep 380 Hz bass hum and Tone 2 elevates to a sharp 1100 Hz chime, which is distinctly higher in pitch.",
   },
   {
     id: "CSSS-S3-Q02",
@@ -34,11 +34,11 @@ export const csssSet3Questions: CsssQuestion[] = [
     subtestName: "Auditory Discrimination",
     difficulty: "hard",
     timeLimitSec: 18,
-    prompt: "Subtle Pitch Differential: Does Tone B drop or rise compared to Tone A?",
+    prompt: "Acoustic Pitch Step: Does Tone B drop or rise compared to Tone A?",
     audioSpec: {
       type: "tone_pair",
-      tonePair: { freq1: 500, freq2: 470, durationSec: 0.45, gapSec: 0.2 },
-      transcriptHint: "Tone A: 500 Hz ➔ Tone B: 470 Hz (30 Hz drop)",
+      tonePair: { freq1: 1100, freq2: 380, durationSec: 0.5, gapSec: 0.25 },
+      transcriptHint: "Tone A: 1100 Hz (High Treble) ➔ Tone B: 380 Hz (Low Bass)",
     },
     options: [
       "Tone B Rises (Higher)",
@@ -47,7 +47,7 @@ export const csssSet3Questions: CsssQuestion[] = [
       "Harmonic distortion only",
     ],
     correctIndex: 1,
-    explanation: "Tone A is 500 Hz and Tone B drops by 30 Hz to 470 Hz.",
+    explanation: "Tone A is a high 1100 Hz chime and Tone B drops sharply down to 380 Hz bass. Tone B distinctly drops in pitch.",
   },
   {
     id: "CSSS-S3-Q03",
@@ -56,19 +56,19 @@ export const csssSet3Questions: CsssQuestion[] = [
     subtestName: "Auditory Discrimination",
     difficulty: "hard",
     timeLimitSec: 22,
-    prompt: "Tactical Pip Frequency: A rapid burst of 8 acoustic pips will play. Count the exact number of HIGH-FREQUENCY (900 Hz) pips.",
+    prompt: "Signal Vigilance: A rapid burst of 8 acoustic pips will play. Count the exact number of HIGH-FREQUENCY (1100 Hz) beeps.",
     audioSpec: {
       type: "tone_sequence",
       toneSequence: {
         tones: [
-          { freq: 450, duration: 0.1 },
-          { freq: 900, duration: 0.1 },
-          { freq: 900, duration: 0.1 },
-          { freq: 450, duration: 0.1 },
-          { freq: 900, duration: 0.1 },
-          { freq: 450, duration: 0.1 },
-          { freq: 900, duration: 0.1 },
-          { freq: 900, duration: 0.1 },
+          { freq: 350, duration: 0.12 },
+          { freq: 1100, duration: 0.12 },
+          { freq: 1100, duration: 0.12 },
+          { freq: 350, duration: 0.12 },
+          { freq: 1100, duration: 0.12 },
+          { freq: 350, duration: 0.12 },
+          { freq: 1100, duration: 0.12 },
+          { freq: 1100, duration: 0.12 },
         ],
         gapSec: 0.08,
       },
@@ -111,11 +111,11 @@ export const csssSet3Questions: CsssQuestion[] = [
     subtestName: "Auditory Discrimination",
     difficulty: "easy",
     timeLimitSec: 18,
-    prompt: "Acoustic Verification: Are these two tones identical or different?",
+    prompt: "Acoustic Verification: Are these two tones identical or different in pitch?",
     audioSpec: {
       type: "tone_pair",
-      tonePair: { freq1: 720, freq2: 720, durationSec: 0.4, gapSec: 0.25 },
-      transcriptHint: "Tone 1: 720 Hz ➔ Tone 2: 720 Hz (Identical)",
+      tonePair: { freq1: 700, freq2: 700, durationSec: 0.5, gapSec: 0.25 },
+      transcriptHint: "Tone 1: 700 Hz ➔ Tone 2: 700 Hz (Identical Frequency)",
     },
     options: [
       "Tone 2 is Higher",
@@ -124,7 +124,7 @@ export const csssSet3Questions: CsssQuestion[] = [
       "Cannot be evaluated",
     ],
     correctIndex: 2,
-    explanation: "Both test tones were produced at 720 Hz.",
+    explanation: "Both test tones were produced at an identical 700 Hz frequency with zero pitch deviation.",
   },
 
   // ----------------------------------------------------
@@ -202,10 +202,10 @@ export const csssSet3Questions: CsssQuestion[] = [
     subtest: "memory",
     subtestName: "Working Memory & Attention",
     difficulty: "easy",
-    timeLimitSec: 20,
-    prompt: "4-Second Memory Flash: Memorize the 3x3 strategic asset grid.",
+    timeLimitSec: 26,
+    prompt: "8-Second Memory Flash: Memorize the 3x3 strategic asset grid.",
     memorySpec: {
-      displayDurationSec: 4,
+      displayDurationSec: 8,
       matrix: [
         ["INS", "DRONE", "GPS"],
         ["RADIO", "ENCRYPT", "LASER"],
@@ -223,10 +223,10 @@ export const csssSet3Questions: CsssQuestion[] = [
     subtest: "memory",
     subtestName: "Working Memory & Attention",
     difficulty: "medium",
-    timeLimitSec: 20,
-    prompt: "Observe the number matrix for 4 seconds.",
+    timeLimitSec: 26,
+    prompt: "Observe the number matrix for 8 seconds.",
     memorySpec: {
-      displayDurationSec: 4,
+      displayDurationSec: 8,
       matrix: [
         ["14", "7", "21"],
         ["28", "35", "42"],
@@ -244,10 +244,10 @@ export const csssSet3Questions: CsssQuestion[] = [
     subtest: "memory",
     subtestName: "Working Memory & Attention",
     difficulty: "hard",
-    timeLimitSec: 22,
-    prompt: "Tactical Rotation Memory: Observe the cardinal asset positions for 4 seconds.",
+    timeLimitSec: 28,
+    prompt: "Tactical Rotation Memory: Observe the cardinal asset positions for 8 seconds.",
     memorySpec: {
-      displayDurationSec: 4,
+      displayDurationSec: 8,
       matrix: [
         ["POST-1", "BRIDGE", "POST-2"],
         ["RIVER", "HQ", "DEPOT"],
@@ -265,10 +265,10 @@ export const csssSet3Questions: CsssQuestion[] = [
     subtest: "memory",
     subtestName: "Working Memory & Attention",
     difficulty: "medium",
-    timeLimitSec: 20,
-    prompt: "Memorize the formation positions during the 4-second display.",
+    timeLimitSec: 26,
+    prompt: "Memorize the formation positions during the 8-second display.",
     memorySpec: {
-      displayDurationSec: 4,
+      displayDurationSec: 8,
       matrix: [
         ["ALPHA", "BRAVO", "CHARLIE"],
         ["DELTA", "ECHO", "FOXTROT"],
@@ -286,10 +286,10 @@ export const csssSet3Questions: CsssQuestion[] = [
     subtest: "memory",
     subtestName: "Working Memory & Attention",
     difficulty: "hard",
-    timeLimitSec: 20,
-    prompt: "Retain the tactical digit matrix for 3.5 seconds.",
+    timeLimitSec: 28,
+    prompt: "Retain the tactical digit matrix for 8 seconds.",
     memorySpec: {
-      displayDurationSec: 3.5,
+      displayDurationSec: 8,
       matrix: [
         ["3", "8", "1"],
         ["6", "2", "7"],

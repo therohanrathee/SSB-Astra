@@ -15,8 +15,8 @@ export const csssSet2Questions: CsssQuestion[] = [
     prompt: "Acoustic Pitch Step: Listen to the two test frequencies. Is the second tone (Tone 2) higher, lower, or identical to Tone 1?",
     audioSpec: {
       type: "tone_pair",
-      tonePair: { freq1: 784, freq2: 698.46, durationSec: 0.4, gapSec: 0.2 },
-      transcriptHint: "Tone 1: 784 Hz (G5) ➔ Tone 2: 698.46 Hz (F5)",
+      tonePair: { freq1: 1100, freq2: 380, durationSec: 0.5, gapSec: 0.25 },
+      transcriptHint: "Tone 1: 1100 Hz (High Treble) ➔ Tone 2: 380 Hz (Low Bass)",
     },
     options: [
       "Tone 2 is Higher",
@@ -25,7 +25,7 @@ export const csssSet2Questions: CsssQuestion[] = [
       "Tone 2 is Phase-modulated",
     ],
     correctIndex: 1,
-    explanation: "Tone 1 vibrates at 784 Hz (G5) and Tone 2 drops down to 698.46 Hz (F5), which is lower in musical pitch.",
+    explanation: "Tone 1 vibrates at a high 1100 Hz treble pitch and Tone 2 drops down to a deep 380 Hz bass tone, which is distinctly lower.",
   },
   {
     id: "CSSS-S2-Q02",
@@ -37,8 +37,8 @@ export const csssSet2Questions: CsssQuestion[] = [
     prompt: "Listen to the sequential pair. Determine the pitch displacement of Tone B relative to Tone A.",
     audioSpec: {
       type: "tone_pair",
-      tonePair: { freq1: 330, freq2: 493.88, durationSec: 0.45, gapSec: 0.2 },
-      transcriptHint: "Tone A: 330 Hz (E4) ➔ Tone B: 493.88 Hz (B4)",
+      tonePair: { freq1: 380, freq2: 1100, durationSec: 0.5, gapSec: 0.25 },
+      transcriptHint: "Tone A: 380 Hz (Low Bass) ➔ Tone B: 1100 Hz (High Treble)",
     },
     options: [
       "Tone B is Higher in pitch",
@@ -47,7 +47,7 @@ export const csssSet2Questions: CsssQuestion[] = [
       "Indeterminate",
     ],
     correctIndex: 0,
-    explanation: "Tone A is 330 Hz and Tone B steps upward significantly to 493.88 Hz, indicating a higher pitch step.",
+    explanation: "Tone A is a low tone at 380 Hz and Tone B steps upward significantly to a sharp 1100 Hz chime, indicating a higher pitch step.",
   },
   {
     id: "CSSS-S2-Q03",
@@ -56,26 +56,26 @@ export const csssSet2Questions: CsssQuestion[] = [
     subtestName: "Auditory Discrimination",
     difficulty: "hard",
     timeLimitSec: 22,
-    prompt: "High-Frequency Pip Counting: A rapid train of 7 acoustic pips will play. Count how many LOW-PITCHED (350 Hz) pips occur amongst the high pips.",
+    prompt: "Signal Vigilance: A rapid train of 7 acoustic pips will play. Count how many LOW-PITCHED (350 Hz) buzzes occur amongst the high beeps.",
     audioSpec: {
       type: "tone_sequence",
       toneSequence: {
         tones: [
-          { freq: 850, duration: 0.11 },
-          { freq: 350, duration: 0.11 },
-          { freq: 850, duration: 0.11 },
-          { freq: 350, duration: 0.11 },
-          { freq: 350, duration: 0.11 },
-          { freq: 850, duration: 0.11 },
-          { freq: 350, duration: 0.11 },
+          { freq: 1100, duration: 0.13 },
+          { freq: 350, duration: 0.13 },
+          { freq: 1100, duration: 0.13 },
+          { freq: 350, duration: 0.13 },
+          { freq: 350, duration: 0.13 },
+          { freq: 1100, duration: 0.13 },
+          { freq: 350, duration: 0.13 },
         ],
         gapSec: 0.09,
       },
-      transcriptHint: "Sequence: [High, LOW, High, LOW, LOW, High, LOW] ➔ 4 Low Pips",
+      transcriptHint: "Sequence: [HIGH, LOW, HIGH, LOW, LOW, HIGH, LOW] ➔ 4 Low Pips",
     },
     options: ["3 Low Pips", "4 Low Pips", "5 Low Pips", "2 Low Pips"],
     correctIndex: 1,
-    explanation: "Out of 7 rapid pips, 4 were generated at the lower frequency (350 Hz) and 3 at the higher frequency (850 Hz).",
+    explanation: "Out of 7 rapid pips, 4 were generated at the distinct lower frequency (350 Hz bass) and 3 at the higher frequency (1100 Hz treble).",
   },
   {
     id: "CSSS-S2-Q04",
@@ -201,10 +201,10 @@ export const csssSet2Questions: CsssQuestion[] = [
     subtest: "memory",
     subtestName: "Working Memory & Attention",
     difficulty: "easy",
-    timeLimitSec: 20,
-    prompt: "Commit the 3x3 tactical vehicle grid to memory during the 4-second display.",
+    timeLimitSec: 26,
+    prompt: "Commit the 3x3 tactical vehicle grid to memory during the 8-second display.",
     memorySpec: {
-      displayDurationSec: 4,
+      displayDurationSec: 8,
       matrix: [
         ["BMP-2", "T-90", "PINAKA"],
         ["SU-30", "TEJAS", "RAFALE"],
@@ -222,10 +222,10 @@ export const csssSet2Questions: CsssQuestion[] = [
     subtest: "memory",
     subtestName: "Working Memory & Attention",
     difficulty: "medium",
-    timeLimitSec: 20,
-    prompt: "Memorize the number matrix during the 4-second window.",
+    timeLimitSec: 26,
+    prompt: "Memorize the number matrix during the 8-second window.",
     memorySpec: {
-      displayDurationSec: 4,
+      displayDurationSec: 8,
       matrix: [
         ["4", "9", "2"],
         ["3", "5", "7"],
@@ -243,10 +243,10 @@ export const csssSet2Questions: CsssQuestion[] = [
     subtest: "memory",
     subtestName: "Working Memory & Attention",
     difficulty: "hard",
-    timeLimitSec: 22,
-    prompt: "Observe the symbol array carefully for 4 seconds.",
+    timeLimitSec: 28,
+    prompt: "Observe the symbol array carefully for 8 seconds.",
     memorySpec: {
-      displayDurationSec: 4,
+      displayDurationSec: 8,
       matrix: [
         ["★", "♠", "♦"],
         ["♣", "▲", "●"],
@@ -264,10 +264,10 @@ export const csssSet2Questions: CsssQuestion[] = [
     subtest: "memory",
     subtestName: "Working Memory & Attention",
     difficulty: "medium",
-    timeLimitSec: 20,
-    prompt: "Memorize the sector status matrix for 4 seconds.",
+    timeLimitSec: 26,
+    prompt: "Memorize the sector status matrix for 8 seconds.",
     memorySpec: {
-      displayDurationSec: 4,
+      displayDurationSec: 8,
       matrix: [
         ["RED", "AMBER", "GREEN"],
         ["CLEAR", "HOLD", "ALERT"],
@@ -285,10 +285,10 @@ export const csssSet2Questions: CsssQuestion[] = [
     subtest: "memory",
     subtestName: "Working Memory & Attention",
     difficulty: "hard",
-    timeLimitSec: 22,
-    prompt: "Memorize the tactical coordinates shown for 4 seconds.",
+    timeLimitSec: 28,
+    prompt: "Memorize the tactical coordinates shown for 8 seconds.",
     memorySpec: {
-      displayDurationSec: 4,
+      displayDurationSec: 8,
       matrix: [
         ["X-1", "Y-4", "Z-9"],
         ["A-3", "B-8", "C-2"],

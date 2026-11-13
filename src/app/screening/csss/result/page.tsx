@@ -29,6 +29,7 @@ import {
   CsssTestResult,
   CsssQuestion,
   CsssSubtest,
+  CsssAttemptRecord,
   getCsssSetById,
   csssSet1,
 } from "@/data/csss";
@@ -52,6 +53,12 @@ function CsssResultContent() {
       const raw = localStorage.getItem("ssb_csss_latest_result");
       if (raw) {
         const parsed = JSON.parse(raw) as CsssTestResult;
+        // Ensure unique records per questionId to prevent any duplicate keys
+        if (parsed && Array.isArray(parsed.records)) {
+          const uniqueMap = new Map<string, CsssAttemptRecord>();
+          parsed.records.forEach((r) => uniqueMap.set(r.questionId, r));
+          parsed.records = Array.from(uniqueMap.values());
+        }
         setResult(parsed);
       }
     } catch {
@@ -370,7 +377,7 @@ function CsssResultContent() {
 
               return (
                 <div
-                  key={q.id}
+                  key={`${rec.questionId}-${idx}`}
                   className={`p-5 rounded-2xl border-2 transition-all bg-[var(--canvas-surface)] ${
                     rec.isCorrect
                       ? "border-emerald-500/30"

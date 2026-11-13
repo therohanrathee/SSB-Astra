@@ -27,6 +27,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import {
   OpamTestResult,
   OpamQuestion,
+  OpamResponseRecord,
   OlqKey,
   OlqFactor,
   OLQ_DEFINITIONS,
@@ -51,6 +52,11 @@ function OpamResultContent() {
       const raw = localStorage.getItem("ssb_opam_latest_result");
       if (raw) {
         const parsed = JSON.parse(raw) as OpamTestResult;
+        if (parsed && Array.isArray(parsed.records)) {
+          const uniqueMap = new Map<string, OpamResponseRecord>();
+          parsed.records.forEach((r) => uniqueMap.set(r.questionId, r));
+          parsed.records = Array.from(uniqueMap.values());
+        }
         setResult(parsed);
       }
     } catch {
@@ -486,7 +492,7 @@ function OpamResultContent() {
           </div>
 
           <div className="space-y-4">
-            {filteredRecords.map((rec) => {
+            {filteredRecords.map((rec, idx) => {
               const q = questionsMap.get(rec.questionId);
               if (!q) return null;
 
@@ -506,7 +512,7 @@ function OpamResultContent() {
 
               return (
                 <div
-                  key={q.id}
+                  key={`${rec.questionId}-${idx}`}
                   className={`p-5 rounded-2xl border-2 transition-all bg-[var(--canvas-surface)] ${
                     q.isLieScale
                       ? "border-amber-500/30"

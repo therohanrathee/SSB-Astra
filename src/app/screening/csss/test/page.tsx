@@ -57,6 +57,7 @@ function CsssTestRunner() {
   const questionStartTimeRef = useRef<number>(Date.now());
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const memoryIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isAdvancingRef = useRef<boolean>(false);
 
   const currentQ: CsssQuestion = currentSet.questions[currentIndex] || currentSet.questions[0];
 
@@ -92,6 +93,9 @@ function CsssTestRunner() {
   // Advance to next question or complete test
   const advanceQuestion = useCallback(
     (isTimeout = false) => {
+      if (isAdvancingRef.current) return;
+      isAdvancingRef.current = true;
+
       // Stop all active audio
       csssAudio.stopAll();
       setIsPlayingAudio(false);
@@ -110,12 +114,17 @@ function CsssTestRunner() {
         timedOut: isTimeout && selectedOption === null,
       };
 
-      const nextRecords = [...records, record];
+      // Filter to prevent duplicate records for the same question ID
+      const nextRecords = [
+        ...records.filter((r) => r.questionId !== currentQ.id),
+        record,
+      ];
       setRecords(nextRecords);
 
       if (currentIndex + 1 < currentSet.questions.length) {
         setCurrentIndex((prev) => prev + 1);
         setSelectedOption(null);
+        isAdvancingRef.current = false;
       } else {
         // Complete test!
         if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
@@ -137,11 +146,12 @@ function CsssTestRunner() {
     setTimeRemaining(currentQ.timeLimitSec);
     setSelectedOption(null);
     setAudioPlayedCount(0);
+    isAdvancingRef.current = false;
 
     // If Memory subtest: start flash phase
     if (currentQ.subtest === "memory" && currentQ.memorySpec) {
       setMemoryPhase("flash");
-      const duration = currentQ.memorySpec.displayDurationSec || 4;
+      const duration = currentQ.memorySpec.displayDurationSec || 8;
       setMemoryCountdown(duration);
 
       if (memoryIntervalRef.current) clearInterval(memoryIntervalRef.current);
@@ -337,17 +347,28 @@ function CsssTestRunner() {
                 </div>
                 {memoryPhase === "flash" ? (
                   <span className="px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-500 border border-amber-500/40 font-bold text-xs animate-pulse">
-                    Vanish in {memoryCountdown}s
+                    Study Phase: {memoryCountdown}s Remaining
                   </span>
                 ) : (
                   <span className="px-2.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold text-xs">
-                    Matrix Vanished
+                    Matrix Vanished • Answer Question Below
                   </span>
                 )}
               </div>
 
               {memoryPhase === "flash" ? (
                 <div className="space-y-3">
+                  <div className="w-full bg-[var(--canvas-border)] h-2 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-amber-500 rounded-full transition-all duration-1000 ease-linear"
+                      style={{
+                        width: `${Math.max(
+                          0,
+                          (memoryCountdown / (currentQ.memorySpec.displayDurationSec || 8)) * 100
+                        )}%`,
+                      }}
+                    />
+                  </div>
                   <p className="text-xs text-amber-400 font-sans text-center font-bold">
                     Memorize all 9 positions and contents before the grid disappears:
                   </p>
