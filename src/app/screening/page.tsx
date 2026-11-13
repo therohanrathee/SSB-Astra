@@ -133,22 +133,27 @@ export default function ScreeningHubPage() {
                     </span>
                   </div>
                   <span className="text-[10px] font-mono text-[var(--primary-accent)] font-bold">
-                    CBT Exam Mode
+                    Basic Reasoning & Speed
                   </span>
                 </div>
 
-                <p className="text-[11px] text-[var(--fg-muted)] font-sans leading-relaxed">
-                  Authentic DIPR booklets digitized item-by-item in a full CBT interface (Testbook style). Features the right-hand Question Palette, dynamic options (2 to 5 options), strict booklet-specific countdown timers, and official OIR Rating (1 to 5) calculation.
-                </p>
+                <div className="space-y-1.5 text-[11px] font-sans leading-relaxed">
+                  <p className="text-[var(--fg-secondary)]">
+                    <strong className="text-[var(--fg-primary)]">What to Expect:</strong> 40–50 verbal and non-verbal reasoning problems solved under strict booklet time limits (approx. 17–30 mins).
+                  </p>
+                  <p className="text-[var(--fg-muted)]">
+                    <strong className="text-[var(--fg-primary)]">Assessor Motive:</strong> Assessors evaluate your innate analytical acumen, numerical-logical reasoning, and mental processing speed under pressure. Your rating establishes your official DIPR OIR benchmark (Rating 1 to 5).
+                  </p>
+                </div>
 
                 <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
                   <div className="p-2 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                    <span className="text-[var(--fg-muted)] block">VERBAL SETS</span>
-                    <span className="font-bold text-[var(--fg-primary)]">Sets 34, 53, 54, 6...</span>
+                    <span className="text-[var(--fg-muted)] block">EVALUATION METRIC</span>
+                    <span className="font-bold text-[var(--fg-primary)]">Logical & Spatial Reasoning</span>
                   </div>
                   <div className="p-2 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                    <span className="text-[var(--fg-muted)] block">NON-VERBAL SETS</span>
-                    <span className="font-bold text-[var(--fg-primary)]">Sets 35, 71, 75D...</span>
+                    <span className="text-[var(--fg-muted)] block">BENCHMARK</span>
+                    <span className="font-bold text-[var(--primary-accent)]">DIPR OIR Grade 1 to 5</span>
                   </div>
                 </div>
 
@@ -162,7 +167,7 @@ export default function ScreeningHubPage() {
                 </Link>
               </div>
 
-              {/* Sub-Module 2: PPDT Simulator with QR Mobile Sync */}
+              {/* Sub-Module 2: PPDT Simulator */}
               <div className="p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -172,26 +177,31 @@ export default function ScreeningHubPage() {
                     </span>
                   </div>
                   <span className="text-[10px] font-mono text-[var(--gold-accent)] font-bold">
-                    Physical + AI Vision
+                    Perceptual Projection
                   </span>
                 </div>
 
-                <p className="text-[11px] text-[var(--fg-muted)] font-sans leading-relaxed">
-                  30s authentic hazy projection $\rightarrow$ 4-min writing on physical paper with buzzer $\rightarrow$ instant photo upload via mobile QR Code with submission latency tracking and AI psychological assessment.
-                </p>
+                <div className="space-y-1.5 text-[11px] font-sans leading-relaxed">
+                  <p className="text-[var(--fg-secondary)]">
+                    <strong className="text-[var(--fg-primary)]">What to Expect:</strong> 30s observation of an ambiguous, hazy picture, 1 min to record character details (number, age, sex, mood) & action, followed by 4 mins to formulate a complete individual story.
+                  </p>
+                  <p className="text-[var(--fg-muted)]">
+                    <strong className="text-[var(--gold-accent)]">Assessor Motive:</strong> Assessors evaluate how you perceive situations and project your spontaneous thought processes. <span className="text-[var(--fg-primary)] font-semibold">Remember: No perspective or story theme is right or wrong</span> — assessors strictly observe how you structure thinking, maintain realism, and exhibit constructive, action-oriented leadership.
+                  </p>
+                </div>
 
-                <div className="flex items-center gap-2 text-[10px] text-[var(--fg-muted)] flex-wrap">
+                <div className="flex items-center gap-1.5 text-[10px] text-[var(--fg-muted)] flex-wrap">
                   <span className="px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                    📄 Printable Sheet
+                    30s Ambiguous Observation
                   </span>
                   <span className="px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                    ⏱️ 4-Min Strict Buzzer
+                    No Perspective Is Wrong or Right
                   </span>
                   <span className="px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                    📱 QR Code Mobile Sync
+                    Constructive Action & Initiative
                   </span>
                   <span className="px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                    🧠 AI OLQ Scoring
+                    Individual Narrative Framing
                   </span>
                 </div>
 
@@ -254,22 +264,27 @@ export default function ScreeningHubPage() {
                     </span>
                   </div>
                   <span className="text-[10px] font-mono text-emerald-500 font-bold">
-                    ~70 Questions
+                    Cognitive Speed & Memory
                   </span>
                 </div>
 
-                <p className="text-[11px] text-[var(--fg-muted)] font-sans leading-relaxed">
-                  Strict 16 to 30-second micro-timers per question with <strong>zero backtracking</strong>. Evaluates working memory, selective attention, spatial box folding, and headphone audio discrimination.
-                </p>
+                <div className="space-y-1.5 text-[11px] font-sans leading-relaxed">
+                  <p className="text-[var(--fg-secondary)]">
+                    <strong className="text-[var(--fg-primary)]">What to Expect:</strong> Rapid computerised battery measuring working memory recall, selective attention, spatial box folding, and audio signal discrimination under strict 16–30s micro-timers with zero backtracking.
+                  </p>
+                  <p className="text-[var(--fg-muted)]">
+                    <strong className="text-emerald-500">Assessor Motive:</strong> Assessors evaluate your cognitive processing speed, divided attention, and short-term retention fidelity required during high-tempo military operational tasks.
+                  </p>
+                </div>
 
                 <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
                   <div className="p-2 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                    <span className="text-[var(--fg-muted)] block">SPEED RULE</span>
-                    <span className="font-bold text-emerald-500">16-30s / Q Auto-Advance</span>
+                    <span className="text-[var(--fg-muted)] block">CORE TESTING</span>
+                    <span className="font-bold text-emerald-500">Memory, Spatial & Audio</span>
                   </div>
                   <div className="p-2 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                    <span className="text-[var(--fg-muted)] block">AUDIO BATTERY</span>
-                    <span className="font-bold text-[var(--fg-primary)]">Headphones Required</span>
+                    <span className="text-[var(--fg-muted)] block">TEMPO RULE</span>
+                    <span className="font-bold text-[var(--fg-primary)]">16-30s / Q Auto-Advance</span>
                   </div>
                 </div>
 
@@ -293,23 +308,31 @@ export default function ScreeningHubPage() {
                     </span>
                   </div>
                   <span className="text-[10px] font-mono text-emerald-500 font-bold">
-                    ~120 Items
+                    15 OLQs & Temperament
                   </span>
                 </div>
 
-                <p className="text-[11px] text-[var(--fg-muted)] font-sans leading-relaxed">
-                  Rapid psychometric evaluation mapping the 15 OLQs. Features paired consistency questions across time intervals and built-in Social Desirability ("Lie Scale") filters.
-                </p>
+                <div className="space-y-1.5 text-[11px] font-sans leading-relaxed">
+                  <p className="text-[var(--fg-secondary)]">
+                    <strong className="text-[var(--fg-primary)]">What to Expect:</strong> Timed self-administered psychometric statements evaluating personal attitudes, work habits, social dynamics, and decision-making under stress.
+                  </p>
+                  <p className="text-[var(--fg-muted)]">
+                    <strong className="text-emerald-500">Assessor Motive:</strong> Assessors evaluate your natural temperament across the 15 Officer Like Qualities (OLQs), testing for behavioural congruence, emotional resilience, and honesty through embedded consistency twin-pairs.
+                  </p>
+                </div>
 
-                <div className="flex items-center gap-2 text-[10px] text-[var(--fg-muted)] flex-wrap">
+                <div className="flex items-center gap-1.5 text-[10px] text-[var(--fg-muted)] flex-wrap">
                   <span className="px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                    🎯 15 Factor OLQ Map
+                    15 Factor OLQ Dimensions
                   </span>
                   <span className="px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                    ⚖️ Social Desirability Check
+                    Behavioural Authenticity
                   </span>
                   <span className="px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                    🔄 Consistency Pair Engine
+                    Consistency Twin-Pairing
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
+                    Emotional Resilience
                   </span>
                 </div>
 

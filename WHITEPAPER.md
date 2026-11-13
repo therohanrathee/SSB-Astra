@@ -285,7 +285,7 @@ flowchart TD
       - 5 Core Cognitive Subtests implemented:
         1. *Auditory Discrimination (Headphone Battery)*: Pure synthesizer acoustic signals using native Web Audio API (`csssAudioEngine.ts`) generating pitch pairs (Tone A vs B), rapid pip bursts (count high/low pips), and military NATO callsigns through simulated electronic warfare static crackle.
         2. *Space & Form Perception*: 2D net cube folding to 3D isometric dice with theme-adaptive SVG vectors (`csssSvgHelpers.ts`), painted multi-cut solid cube mathematics, and optical mirror/water images.
-        3. *Working Memory & Attention*: Dual-phase presentation engine: 4-second stimulus matrix flash $\rightarrow$ automated vanish/mask $\rightarrow$ masked prompt recall with mental rotation and arithmetic verification.
+        3. *Working Memory & Attention*: Dual-phase presentation engine: 8-second stimulus matrix flash with visual countdown bar $\rightarrow$ automated vanish/mask $\rightarrow$ masked prompt recall with mental rotation and arithmetic verification.
         4. *Perceptual Speed & Visual Closure*: Fast target coordinate scanning, alphanumeric cancellation, odd-one-out mathematical anomalies, and spatial pathfinding.
         5. *Linguistic Reasoning & Verbal Speed*: High-speed military verbal analogies, tactical ciphers, and rapid deductive syllogisms.
       - **Terminal CBT Test Engine (`/screening/csss/test`):**
@@ -313,7 +313,14 @@ flowchart TD
         - Social Desirability / Lie Scale meter (0-100%) categorized into *Authentic & Natural*, *Minor Idealization*, or *High Coaching Alert*.
         - Consistency Twin variance score and decision latency index.
         - 4 Classical Factors breakdown (Factor I to IV) and 15 individual OLQ ratings with detailed assessor psychological commentary on every question.
-  - **Next Agent Handoff:** Phase 5 (CSSS & OPAM Screening Engine) is complete and verified with 0 errors across 6 new routes. Next agent should pick up **Phase 6: Stage-2 Psychology Suite (TAT, WAT, SRT, SD)**.
+  - **Candidate Experience & Assessor Motive Alignment:**
+    - Streamlined dashboard top navigation by removing standalone PIQ button (consolidated into avatar dossier window).
+    - Replaced long greeting subtitle with dynamic, concise 1-line tactical recommendation computed from candidate dossier metrics.
+    - Corrected board nomenclature to official Indian Armed Forces designations: `SERVICES SELECTION BOARD (SSB)`, `AIR FORCE SELECTION BOARD (AFSB)`, and `NAVAL SELECTION BOARD (NSB)`.
+    - Removed "All 4 Wings" segmented filter; established direct 4 Day-Wise classifications (`Day 1: Screening`, `Day 2: Psychology`, `Day 3-4: GTO`, `Day 2-4: Interview`).
+    - Completely stripped promotional feature copy (e.g. "CBT Exam Mode", "QR Code Mobile Sync", "4-Min Strict Buzzer", "Printable Sheet") across Dashboard and Screening Hub.
+    - Re-grounded all module cards strictly in candidate expectations and official assessor evaluation objectives (emphasizing that in PPDT no perspective is right or wrong, but rather how candidates think, structure solutions, and exhibit constructive initiative).
+  - **Next Agent Handoff:** Phase 5 and Dashboard Refinements are complete and verified with 0 errors. Next agent should pick up **Phase 6: Stage-2 Psychology Suite (TAT, WAT, SRT, SD)**.
 - [ ] **Phase 6: Stage-2 Psychology Suite (TAT, WAT, SRT, SD)**
   - Slide projection timers, auto-advancing WAT words, SRT response recorder.
 - [ ] **Phase 7: GTO Tactical Planning (GPE)**

@@ -75,8 +75,8 @@ export default function DashboardPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Active testing wing tab
-  const [activeTab, setActiveTab] = useState<"all" | "screening" | "psychology" | "gto" | "interview">("all");
+  // Active testing wing tab (Day-wise classifications)
+  const [activeTab, setActiveTab] = useState<"screening" | "psychology" | "gto" | "interview">("screening");
 
   // Continue where left off state
   const [lastActivity, setLastActivity] = useState<LastActivity | null>(null);
@@ -296,6 +296,35 @@ export default function DashboardPage() {
   const verdict = assessment?.overall_verdict || "Assessment Pending";
   const predictedQuestions: string[] = assessment?.io_probable_questions || [];
 
+  // Dynamic Board Naming (Services Selection Board, Air Force Selection Board, Naval Selection Board)
+  const boardName = (() => {
+    const entry = (targetEntry || "").toUpperCase();
+    if (entry.includes("AFCAT") || entry.includes("AIR") || entry.includes("FLYING") || entry.includes("METEOROLOGY")) {
+      return "AIR FORCE SELECTION BOARD (AFSB)";
+    }
+    if (entry.includes("NAVY") || entry.includes("NAVAL") || entry.includes("INET") || entry.includes("10+2 B.TECH")) {
+      return "NAVAL SELECTION BOARD (NSB)";
+    }
+    return "SERVICES SELECTION BOARD (SSB)";
+  })();
+
+  // Dynamic Concise Tactical Suggestion Based on Candidate Dossier
+  const tacticalSuggestion = (() => {
+    if (assessment?.recommendations_for_improvement && assessment.recommendations_for_improvement.length > 0) {
+      return assessment.recommendations_for_improvement[0];
+    }
+    if (assessment?.vulnerabilities_and_red_flags && assessment.vulnerabilities_and_red_flags.length > 0) {
+      return `Targeted Focus: Work on ${assessment.vulnerabilities_and_red_flags[0]} in your upcoming drills.`;
+    }
+    if (completionPct < 80) {
+      return "Complete your PIQ dossier to unlock tailored Interviewing Officer predictions.";
+    }
+    if (piqScore && piqScore < 70) {
+      return "Practice your OIR & GPE modules; daily drills will improve your reasoning score.";
+    }
+    return "Practice Day-1 Screening (OIR & PPDT) to secure your Screen-In at the board.";
+  })();
+
   return (
     <div className="min-h-screen bg-military-grid flex flex-col font-mono text-[var(--fg-primary)]">
       
@@ -323,23 +352,13 @@ export default function DashboardPage() {
           <div className="pointer-events-auto hidden md:flex items-center gap-1.5 px-2 py-1 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)]/85 backdrop-blur-md shadow-sm text-xs">
             <button
               onClick={() => {
-                setActiveTab("all");
+                setActiveTab("screening");
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
               className="px-3 py-1 rounded-lg font-bold text-[var(--primary-accent)] bg-[var(--primary-accent)]/10 transition-colors"
             >
               HQ Dashboard
             </button>
-            <Link
-              href="/profile"
-              className="px-3 py-1 rounded-lg font-medium text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] hover:bg-[var(--canvas-surface-subtle)] transition-colors flex items-center gap-1.5"
-            >
-              <FileText className="w-3.5 h-3.5 text-[var(--gold-accent)]" />
-              <span>PIQ Dossier</span>
-              {assessment && (
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--military-olive)]" />
-              )}
-            </Link>
           </div>
 
           {/* Right: Floating Theme Toggle & User Profile Widget */}
@@ -453,17 +472,16 @@ export default function DashboardPage() {
           <div>
             <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[var(--service-badge-bg)] text-[var(--service-badge-text)] border border-[var(--service-badge-border)] mb-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              SSB ENTRY: {targetEntry} • ARMED FORCES SELECTION BOARD
+              ENTRY: {targetEntry} • {boardName}
             </div>
             
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--fg-primary)] tracking-tight">
               {greeting}
             </h1>
             
-            <p className="text-xs sm:text-sm text-[var(--fg-secondary)] font-sans max-w-2xl mt-1">
-              {assessment 
-                ? `Your PIQ dossier is evaluated (Score: ${piqScore}/100 • ${verdict}). Master your predicted Interview questions or launch high-fidelity Stage-1 and Stage-2 drills.`
-                : "Welcome to Candidate HQ. Select your targeted testing battery below or complete your PIQ dossier to unlock tailored Interviewing Officer predictions."}
+            <p className="text-xs sm:text-sm text-[var(--fg-secondary)] font-medium max-w-2xl mt-1 flex items-center gap-1.5">
+              <span className="text-[var(--primary-accent)] font-bold">Recommendation:</span>
+              <span>{tacticalSuggestion}</span>
             </p>
           </div>
 
@@ -613,21 +631,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Responsive Segmented Tabs Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 p-1 rounded-xl bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)] w-full text-xs font-bold">
-            <button
-              type="button"
-              onClick={() => setActiveTab("all")}
-              className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg transition-all cursor-pointer ${
-                activeTab === "all"
-                  ? "bg-[var(--primary-accent)] text-white shadow-sm"
-                  : "text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] hover:bg-[var(--canvas-surface)]"
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>All 4 Wings</span>
-            </button>
-
+          {/* Responsive Segmented Tabs Bar (4 Day-Wise Classifications) */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 p-1 rounded-xl bg-[var(--canvas-surface-subtle)] border border-[var(--canvas-border)] w-full text-xs font-bold">
             <button
               type="button"
               onClick={() => setActiveTab("screening")}
@@ -667,11 +672,11 @@ export default function DashboardPage() {
               <span>Day 3-4: GTO</span>
             </button>
 
-            {/* TAB 4: PERSONAL INTERVIEW (REQUESTED SUITE) */}
+            {/* TAB 4: PERSONAL INTERVIEW */}
             <button
               type="button"
               onClick={() => setActiveTab("interview")}
-              className={`col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg transition-all cursor-pointer ${
                 activeTab === "interview"
                   ? "bg-[var(--primary-accent)] text-white shadow-sm"
                   : "text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] hover:bg-[var(--canvas-surface)]"
@@ -682,205 +687,6 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* VIEW A: ALL 4 SUITES OVERVIEW GRID */}
-          {activeTab === "all" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-              
-              {/* CARD 1: SCREENING */}
-              <div className="hud-corner rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)] p-5 flex flex-col justify-between shadow-sm hover:border-[var(--primary-accent)] transition-all group">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-10 h-10 rounded-lg bg-[var(--primary-accent)]/10 text-[var(--primary-accent)] flex items-center justify-center border border-[var(--primary-accent)]/20 group-hover:scale-105 transition-transform">
-                      <Terminal className="w-5 h-5" />
-                    </div>
-                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[var(--service-badge-bg)] text-[var(--service-badge-text)] border border-[var(--service-badge-border)]">
-                      DAY 01
-                    </span>
-                  </div>
-
-                  <div className="text-[10px] font-bold text-[var(--gold-accent)] uppercase mb-0.5">
-                    Stage-1 Testing
-                  </div>
-                  <h3 className="text-base font-extrabold text-[var(--fg-primary)] mb-2">
-                    Screening Battery
-                  </h3>
-                  <p className="text-xs text-[var(--fg-secondary)] font-sans leading-relaxed mb-4">
-                    Master the DIPR computerized battery: <strong className="text-[var(--fg-primary)]">CSSS cognitive</strong> micro-timers (16-30s) and <strong className="text-[var(--fg-primary)]">OPAM psychometric</strong> consistency checks, plus OIR & PPDT.
-                  </p>
-
-                  <div className="space-y-1.5 font-mono text-[10px] text-[var(--fg-muted)] border-t border-[var(--canvas-border)] pt-3 mb-4">
-                    <div className="flex items-center justify-between">
-                      <span>• CSSS Cognitive</span>
-                      <span className="text-[var(--primary-accent)] font-semibold">~70 Qs</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>• OPAM Psychometric</span>
-                      <span className="text-[var(--primary-accent)] font-semibold">15 OLQs</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>• Legacy OIR / PPDT</span>
-                      <span className="text-[var(--military-olive)] font-semibold">Available</span>
-                    </div>
-                  </div>
-                </div>
-
-                <Link 
-                  href="/screening"
-                  className="w-full flex items-center justify-between p-2.5 rounded-lg bg-[var(--canvas-surface-subtle)] hover:bg-[var(--primary-accent)] text-[var(--fg-primary)] hover:text-white transition-all text-xs font-bold border border-[var(--canvas-border)] hover:border-[var(--primary-accent)] cursor-pointer"
-                >
-                  <span>Open Screening Command Hub</span>
-                  <ChevronRight className="w-4 h-4" />
-                </Link>
-              </div>
-
-              {/* CARD 2: PSYCHOLOGY */}
-              <div className="hud-corner rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)] p-5 flex flex-col justify-between shadow-sm hover:border-[var(--military-olive)] transition-all group">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-10 h-10 rounded-lg bg-[var(--military-olive)]/15 text-[var(--military-olive)] flex items-center justify-center border border-[var(--military-olive)]/25 group-hover:scale-105 transition-transform">
-                      <BookOpen className="w-5 h-5" />
-                    </div>
-                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[var(--military-olive)]/15 text-[var(--military-olive)] border border-[var(--military-olive)]/30">
-                      DAY 02
-                    </span>
-                  </div>
-
-                  <div className="text-[10px] font-bold text-[var(--military-olive)] uppercase mb-0.5">
-                    Manso Vacha
-                  </div>
-                  <h3 className="text-base font-extrabold text-[var(--fg-primary)] mb-2">
-                    Psychology Series
-                  </h3>
-                  <p className="text-xs text-[var(--fg-secondary)] font-sans leading-relaxed mb-4">
-                    Rigorous projective personality testing under strict time pressure: <strong className="text-[var(--fg-primary)]">TAT</strong> 4-min projection, <strong className="text-[var(--fg-primary)]">WAT</strong> 15-sec word flashes, <strong className="text-[var(--fg-primary)]">SRT</strong> dilemmas, and <strong className="text-[var(--fg-primary)]">SD</strong>.
-                  </p>
-
-                  <div className="space-y-1.5 font-mono text-[10px] text-[var(--fg-muted)] border-t border-[var(--canvas-border)] pt-3 mb-4">
-                    <div className="flex items-center justify-between">
-                      <span>• TAT Projection</span>
-                      <span className="text-[var(--military-olive)] font-semibold">11+1 Slides</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>• WAT Flash Words</span>
-                      <span className="text-[var(--military-olive)] font-semibold">60 Words (15s)</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>• SRT Scenarios & SD</span>
-                      <span className="text-[var(--military-olive)] font-semibold">60 Situations</span>
-                    </div>
-                  </div>
-                </div>
-
-                <button 
-                  type="button"
-                  onClick={() => setActiveTab("psychology")}
-                  className="w-full flex items-center justify-between p-2.5 rounded-lg bg-[var(--canvas-surface-subtle)] hover:bg-[var(--military-olive)] text-[var(--fg-primary)] hover:text-white transition-all text-xs font-bold border border-[var(--canvas-border)] hover:border-[var(--military-olive)] cursor-pointer"
-                >
-                  <span>Open Psychology Lab</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* CARD 3: GTO */}
-              <div className="hud-corner rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)] p-5 flex flex-col justify-between shadow-sm hover:border-[var(--gold-accent)] transition-all group">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-10 h-10 rounded-lg bg-[var(--gold-accent)]/15 text-[var(--gold-accent)] flex items-center justify-center border border-[var(--gold-accent)]/25 group-hover:scale-105 transition-transform">
-                      <Compass className="w-5 h-5" />
-                    </div>
-                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[var(--gold-accent)]/15 text-[var(--gold-accent)] border border-[var(--gold-accent)]/30">
-                      DAY 03 & 04
-                    </span>
-                  </div>
-
-                  <div className="text-[10px] font-bold text-[var(--gold-accent)] uppercase mb-0.5">
-                    Karmana Series
-                  </div>
-                  <h3 className="text-base font-extrabold text-[var(--fg-primary)] mb-2">
-                    GTO Ground Tasks
-                  </h3>
-                  <p className="text-xs text-[var(--fg-secondary)] font-sans leading-relaxed mb-4">
-                    Master outdoor group planning & ground obstacle dynamics: <strong className="text-[var(--fg-primary)]">GPE</strong> tactical sand models, <strong className="text-[var(--fg-primary)]">PGT/HGT</strong> cantilever & bridging mechanics, and <strong className="text-[var(--fg-primary)]">Lecturette</strong>.
-                  </p>
-
-                  <div className="space-y-1.5 font-mono text-[10px] text-[var(--fg-muted)] border-t border-[var(--canvas-border)] pt-3 mb-4">
-                    <div className="flex items-center justify-between">
-                      <span>• GPE Sand Models</span>
-                      <span className="text-[var(--gold-accent)] font-semibold">Priority Map</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>• PGT/HGT & Command</span>
-                      <span className="text-[var(--gold-accent)] font-semibold">Bridging Physics</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>• Lecturette & GD</span>
-                      <span className="text-[var(--gold-accent)] font-semibold">Defense Intel</span>
-                    </div>
-                  </div>
-                </div>
-
-                <button 
-                  type="button"
-                  onClick={() => setActiveTab("gto")}
-                  className="w-full flex items-center justify-between p-2.5 rounded-lg bg-[var(--canvas-surface-subtle)] hover:bg-[var(--gold-accent)] text-[var(--fg-primary)] hover:text-white transition-all text-xs font-bold border border-[var(--canvas-border)] hover:border-[var(--gold-accent)] cursor-pointer"
-                >
-                  <span>Open GTO Simulator</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* CARD 4: PERSONAL INTERVIEW (REQUESTED NEW TAB) */}
-              <div className="hud-corner rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface)] p-5 flex flex-col justify-between shadow-sm hover:border-[var(--primary-accent)] transition-all group">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-10 h-10 rounded-lg bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] flex items-center justify-center border border-[var(--primary-accent)]/25 group-hover:scale-105 transition-transform">
-                      <UserCheck className="w-5 h-5 text-[var(--gold-accent)]" />
-                    </div>
-                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[var(--primary-accent)]/15 text-[var(--primary-accent)] border border-[var(--primary-accent)]/30">
-                      DAY 02 - 04
-                    </span>
-                  </div>
-
-                  <div className="text-[10px] font-bold text-[var(--primary-accent)] uppercase mb-0.5">
-                    Interviewing Officer
-                  </div>
-                  <h3 className="text-base font-extrabold text-[var(--fg-primary)] mb-2">
-                    Personal Interview
-                  </h3>
-                  <p className="text-xs text-[var(--fg-secondary)] font-sans leading-relaxed mb-4">
-                    Master the IO interaction: rapid-fire <strong className="text-[var(--fg-primary)]">CIQ 1 to 5</strong> question sequences, deep defense of your <strong className="text-[var(--fg-primary)]">PIQ Form 107-A</strong>, and Armed Forces current affairs.
-                  </p>
-
-                  <div className="space-y-1.5 font-mono text-[10px] text-[var(--fg-muted)] border-t border-[var(--canvas-border)] pt-3 mb-4">
-                    <div className="flex items-center justify-between">
-                      <span>• CIQ 1-5 Rapid-Fire</span>
-                      <span className="text-[var(--primary-accent)] font-semibold">10-15 Qs/Breath</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>• PIQ Cross-Exam</span>
-                      <span className="text-[var(--gold-accent)] font-semibold">
-                        {predictedQuestions.length > 0 ? `${predictedQuestions.length} AI Qs` : "Personalized"}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>• Armed Forces GK</span>
-                      <span className="text-[var(--military-olive)] font-semibold">Tri-Services</span>
-                    </div>
-                  </div>
-                </div>
-
-                <button 
-                  type="button"
-                  onClick={() => setActiveTab("interview")}
-                  className="w-full flex items-center justify-between p-2.5 rounded-lg bg-[var(--primary-accent)] hover:bg-[var(--primary-hover)] text-white transition-all text-xs font-bold shadow-sm active:scale-95 cursor-pointer"
-                >
-                  <span>Launch Interview Wing</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-
-            </div>
-          )}
 
           {/* VIEW B: DEDICATED PERSONAL INTERVIEW COMMAND WING */}
           {activeTab === "interview" && (
@@ -1220,22 +1026,27 @@ export default function DashboardPage() {
                           </span>
                         </div>
                         <span className="text-[10px] font-mono text-[var(--primary-accent)] font-bold">
-                          CBT Exam Mode
+                          Basic Reasoning & Speed
                         </span>
                       </div>
 
-                      <p className="text-[11px] text-[var(--fg-muted)] font-sans leading-relaxed">
-                        Authentic DIPR booklets digitized item-by-item in a full CBT interface (Testbook style). Features the right-hand Question Palette, dynamic options (2 to 5 options), strict countdown timers, and official OIR Rating (1 to 5) calculation.
-                      </p>
+                      <div className="space-y-1.5 text-[11px] font-sans leading-relaxed">
+                        <p className="text-[var(--fg-secondary)]">
+                          <strong className="text-[var(--fg-primary)]">What to Expect:</strong> 40–50 verbal and non-verbal reasoning problems solved under strict booklet time limits (approx. 17–30 mins).
+                        </p>
+                        <p className="text-[var(--fg-muted)]">
+                          <strong className="text-[var(--fg-primary)]">Assessor Motive:</strong> Assessors evaluate your innate analytical acumen, numerical-logical reasoning, and mental processing speed under pressure. Your rating establishes your official DIPR OIR benchmark (Rating 1 to 5).
+                        </p>
+                      </div>
 
                       <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
                         <div className="p-2 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                          <span className="text-[var(--fg-muted)] block">VERBAL SETS</span>
-                          <span className="font-bold text-[var(--fg-primary)]">Sets 34, 53, 54, 6...</span>
+                          <span className="text-[var(--fg-muted)] block">EVALUATION METRIC</span>
+                          <span className="font-bold text-[var(--fg-primary)]">Logical & Spatial Reasoning</span>
                         </div>
                         <div className="p-2 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                          <span className="text-[var(--fg-muted)] block">NON-VERBAL SETS</span>
-                          <span className="font-bold text-[var(--fg-primary)]">Sets 35, 71, 75D...</span>
+                          <span className="text-[var(--fg-muted)] block">BENCHMARK</span>
+                          <span className="font-bold text-[var(--primary-accent)]">DIPR OIR Grade 1 to 5</span>
                         </div>
                       </div>
 
@@ -1249,7 +1060,7 @@ export default function DashboardPage() {
                       </Link>
                     </div>
 
-                    {/* Sub-Module 2: PPDT Simulator with QR Mobile Sync */}
+                    {/* Sub-Module 2: PPDT Simulator */}
                     <div className="p-4 rounded-xl border border-[var(--canvas-border)] bg-[var(--canvas-surface-subtle)] space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -1259,26 +1070,31 @@ export default function DashboardPage() {
                           </span>
                         </div>
                         <span className="text-[10px] font-mono text-[var(--gold-accent)] font-bold">
-                          Physical + AI Vision
+                          Perceptual Projection
                         </span>
                       </div>
 
-                      <p className="text-[11px] text-[var(--fg-muted)] font-sans leading-relaxed">
-                        30s authentic hazy projection $\rightarrow$ 4-min writing on physical paper with buzzer $\rightarrow$ instant photo upload via mobile QR Code with submission latency tracking and AI psychological assessment.
-                      </p>
+                      <div className="space-y-1.5 text-[11px] font-sans leading-relaxed">
+                        <p className="text-[var(--fg-secondary)]">
+                          <strong className="text-[var(--fg-primary)]">What to Expect:</strong> 30s observation of an ambiguous, hazy picture, 1 min to record character details (number, age, sex, mood) & action, followed by 4 mins to formulate a complete individual story.
+                        </p>
+                        <p className="text-[var(--fg-muted)]">
+                          <strong className="text-[var(--gold-accent)]">Assessor Motive:</strong> Assessors evaluate how you perceive situations and project your spontaneous thought processes. <span className="text-[var(--fg-primary)] font-semibold">Remember: No perspective or story theme is right or wrong</span> — assessors strictly observe how you structure thinking, maintain realism, and exhibit constructive, action-oriented leadership.
+                        </p>
+                      </div>
 
-                      <div className="flex items-center gap-2 text-[10px] text-[var(--fg-muted)] flex-wrap">
+                      <div className="flex items-center gap-1.5 text-[10px] text-[var(--fg-muted)] flex-wrap">
                         <span className="px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                          📄 Printable Sheet
+                          30s Ambiguous Observation
                         </span>
                         <span className="px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                          ⏱️ 4-Min Strict Buzzer
+                          No Perspective Is Wrong or Right
                         </span>
                         <span className="px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                          📱 QR Code Mobile Sync
+                          Constructive Action & Initiative
                         </span>
                         <span className="px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                          🧠 AI OLQ Scoring
+                          Individual Narrative Framing
                         </span>
                       </div>
 
@@ -1339,22 +1155,27 @@ export default function DashboardPage() {
                           </span>
                         </div>
                         <span className="text-[10px] font-mono text-emerald-500 font-bold">
-                          ~70 Questions
+                          Cognitive Speed & Memory
                         </span>
                       </div>
 
-                      <p className="text-[11px] text-[var(--fg-muted)] font-sans leading-relaxed">
-                        Strict 16 to 30-second micro-timers per question with <strong>zero backtracking</strong>. Evaluates working memory, selective attention, spatial box folding, and headphone audio discrimination.
-                      </p>
+                      <div className="space-y-1.5 text-[11px] font-sans leading-relaxed">
+                        <p className="text-[var(--fg-secondary)]">
+                          <strong className="text-[var(--fg-primary)]">What to Expect:</strong> Rapid computerised battery measuring working memory recall, selective attention, spatial box folding, and audio signal discrimination under strict 16–30s micro-timers with zero backtracking.
+                        </p>
+                        <p className="text-[var(--fg-muted)]">
+                          <strong className="text-emerald-500">Assessor Motive:</strong> Assessors evaluate your cognitive processing speed, divided attention, and short-term retention fidelity required during high-tempo military operational tasks.
+                        </p>
+                      </div>
 
                       <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
                         <div className="p-2 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                          <span className="text-[var(--fg-muted)] block">SPEED RULE</span>
-                          <span className="font-bold text-emerald-500">16-30s / Q Auto-Advance</span>
+                          <span className="text-[var(--fg-muted)] block">CORE TESTING</span>
+                          <span className="font-bold text-emerald-500">Memory, Spatial & Audio</span>
                         </div>
                         <div className="p-2 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                          <span className="text-[var(--fg-muted)] block">AUDIO BATTERY</span>
-                          <span className="font-bold text-[var(--fg-primary)]">Headphones Required</span>
+                          <span className="text-[var(--fg-muted)] block">TEMPO RULE</span>
+                          <span className="font-bold text-[var(--fg-primary)]">16-30s / Q Auto-Advance</span>
                         </div>
                       </div>
 
@@ -1379,23 +1200,31 @@ export default function DashboardPage() {
                           </span>
                         </div>
                         <span className="text-[10px] font-mono text-emerald-500 font-bold">
-                          ~120 Items
+                          15 OLQs & Temperament
                         </span>
                       </div>
 
-                      <p className="text-[11px] text-[var(--fg-muted)] font-sans leading-relaxed">
-                        Rapid psychometric evaluation mapping the 15 OLQs. Features paired consistency questions across time intervals and built-in Social Desirability ("Lie Scale") filters.
-                      </p>
+                      <div className="space-y-1.5 text-[11px] font-sans leading-relaxed">
+                        <p className="text-[var(--fg-secondary)]">
+                          <strong className="text-[var(--fg-primary)]">What to Expect:</strong> Timed self-administered psychometric statements evaluating personal attitudes, work habits, social dynamics, and decision-making under stress.
+                        </p>
+                        <p className="text-[var(--fg-muted)]">
+                          <strong className="text-emerald-500">Assessor Motive:</strong> Assessors evaluate your natural temperament across the 15 Officer Like Qualities (OLQs), testing for behavioural congruence, emotional resilience, and honesty through embedded consistency twin-pairs.
+                        </p>
+                      </div>
 
-                      <div className="flex items-center gap-2 text-[10px] text-[var(--fg-muted)] flex-wrap">
+                      <div className="flex items-center gap-1.5 text-[10px] text-[var(--fg-muted)] flex-wrap">
                         <span className="px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                          🎯 15 Factor OLQ Map
+                          15 Factor OLQ Dimensions
                         </span>
                         <span className="px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                          ⚖️ Social Desirability Check
+                          Behavioural Authenticity
                         </span>
                         <span className="px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
-                          🔄 Consistency Pair Engine
+                          Consistency Twin-Pairing
+                        </span>
+                        <span className="px-2 py-0.5 rounded bg-[var(--canvas-surface)] border border-[var(--canvas-border)]">
+                          Emotional Resilience
                         </span>
                       </div>
 
